@@ -1,0 +1,41 @@
+# Dependency directories
+node_modules/
+.gradle/
+build/
+target/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*.class
+
+# Environment files
+.env
+.env.local
+.env.*.local
+application.properties
+application-*.properties
+
+# Database
+*.db
+*.sqlite
+*.h2.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+*.jar
+
+# Spring Boot
+.m2/

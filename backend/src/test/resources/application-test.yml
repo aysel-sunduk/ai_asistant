@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aiasistan_test
+    username: aiasistan
+    password: aiasistan123
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: test-secret-key-for-unit-tests-only-must-be-at-least-64-characters-long-1234567890
+    access-expiry-ms: 900000
+    refresh-expiry-ms: 604800000

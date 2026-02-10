@@ -1,0 +1,27 @@
+# ─── Build ────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+
+# ─── IDE ──────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# ─── OS ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Ortam değişkenleri ───────────────────────
+.env
+*.env.local
+
+# ─── Log ──────────────────────────────────────
+*.log
+logs/
