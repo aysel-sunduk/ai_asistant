@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/aiasistan_test
-    username: aiasistan
-    password: aiasistan123
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/aiasistan_test}
+    username: ${TEST_DB_USERNAME:aiasistan}
+    password: ${TEST_DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -11,6 +11,6 @@ spring:
 
 app:
   jwt:
-    secret: test-secret-key-for-unit-tests-only-must-be-at-least-64-characters-long-1234567890
+    secret: ${TEST_JWT_SECRET:test-secret-key-for-unit-tests-only-must-be-at-least-64-characters-long-1234567890}
     access-expiry-ms: 900000
     refresh-expiry-ms: 604800000

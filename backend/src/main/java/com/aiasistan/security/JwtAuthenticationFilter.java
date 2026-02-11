@@ -2,6 +2,7 @@ package com.aiasistan.security;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.aiasistan.model.User;
+import com.aiasistan.repository.UserRepository;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,9 +28,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -36,61 +42,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // 1. Header'dan "Authorization" değerini al
             String authHeader = request.getHeader("Authorization");
             String token = null;
-            
-            // 2. Bearer prefix'i kontrol et ve kaldır
+
             if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);  // "Bearer " kaldırıldı (7 karakter)
+                token = authHeader.substring(7);
             }
 
-            // 3. Token boşsa sonraki filtreye geç
             if (!StringUtils.hasText(token)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // 4. Token'ı JwtService ile doğrula
             if (!jwtService.isValid(token)) {
                 logger.warn("JWT token validation failed");
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // 5. Token içinden kullanıcı bilgisini (subject) çıkar
             String subject = jwtService.extractSubject(token);
             logger.debug("JWT token validated for user: {}", subject);
 
-            // 6. Kullanıcıya geçici bir yetki tanımla (İleride DB'den roller çekilebilir)
-            var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+            List<SimpleGrantedAuthority> authorities = userRepository.findByEmail(subject)
+                    .map(User::getRole)
+                    .filter(StringUtils::hasText)
+                    .map(role -> List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())))
+                    .orElse(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
 
-            // 7. Spring Security için Authentication nesnesini oluştur
             var authentication = new UsernamePasswordAuthenticationToken(
                     subject,
                     null,
                     authorities
             );
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            // 8. Kimlik doğrulanmış kullanıcıyı sisteme (SecurityContext) kaydet
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            
+
         } catch (Exception e) {
             logger.error("JWT authentication error: {}", e.getMessage());
         }
 
-        // 9. İsteği bir sonraki filtreye veya Controller'a ilet
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Hangi yolların bu filtreden geçmeyeceğini belirler.
-     */
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getServletPath();  // Context path hariç, sadece servlet path
-        return path.startsWith("/v1/auth") 
+        String path = request.getServletPath();
+        return path.startsWith("/v1/auth")
                 || path.startsWith("/actuator")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs");

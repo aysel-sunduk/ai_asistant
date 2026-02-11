@@ -12,7 +12,7 @@ import com.aiasistan.model.RefreshToken;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
     Optional<RefreshToken> findByTokenHashAndIsRevokedFalse(String tokenHash);
-    void deleteByUserIdAndIsRevokedTrue(UUID userId);
+    void deleteByUser_IdAndIsRevokedTrue(UUID userId);
     
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.isRevoked = true WHERE rt.user.id = :userId AND rt.isRevoked = false")

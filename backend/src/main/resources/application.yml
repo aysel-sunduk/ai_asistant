@@ -9,9 +9,9 @@ spring:
 
   # ─── Veritabanı ─────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5433/ai_asistant
-    username: postgres
-    password: asel.02
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     hikari:
       maximum-pool-size: 15
       minimum-idle: 5
@@ -83,3 +83,20 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+# Finance module specific configurations
+finance:
+  currency:
+    api-url: ${CURRENCY_API_URL:https://api.exchangerate-api.com/v4/latest/}
+    api-key: ${CURRENCY_API_KEY:}
+    update-interval: 3600000 # 1 hour in milliseconds
+    retry:
+      max-attempts: 3
+      delay-ms: 1000
+    scheduler:
+      enabled: true
+      initial-delay: 60000
+  investment:
+    recommendation:
+      min-confidence-score: 50
+      max-recommendations: 20

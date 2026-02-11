@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -41,9 +42,9 @@ public class LoggingFilter extends OncePerRequestFilter {
     private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, 
-                                   HttpServletResponse response, 
-                                   FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                   @NonNull HttpServletResponse response,
+                                   @NonNull FilterChain filterChain) throws ServletException, IOException {
         
         // Request body'yi cache'le (sadece bir kez oku)
         CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
@@ -182,7 +183,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
         // Swagger ve diğer public endpointler için logging devre dışı bırak (isteğe bağlı)
         return path.startsWith("/swagger-ui") || 
