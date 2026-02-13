@@ -3,6 +3,7 @@ package com.aiasistan.security;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -46,6 +47,7 @@ public class JwtService {
         Instant expiry = now.plusMillis(accessExpiryMs);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(subject)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
@@ -58,6 +60,7 @@ public class JwtService {
         Instant expiry = now.plusMillis(refreshExpiryMs);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(subject)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
