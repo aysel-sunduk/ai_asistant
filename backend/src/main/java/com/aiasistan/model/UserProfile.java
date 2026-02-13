@@ -45,9 +45,8 @@ public class UserProfile {
     @Column(name = "weight_kg")
     private BigDecimal weightKg;
 
-    @Column(name = "preferred_currency")
-    @Enumerated(EnumType.STRING)
-    private CurrencyCode preferredCurrency = CurrencyCode.TRY;
+    @Column(name = "preferred_currency", columnDefinition = "text")
+    private String preferredCurrency = "TRY";
 
     @Column(name = "monthly_income_estimate_minor")
     private Long monthlyIncomeEstimateMinor;
@@ -102,8 +101,8 @@ public class UserProfile {
     public BigDecimal getWeightKg() { return weightKg; }
     public void setWeightKg(BigDecimal weightKg) { this.weightKg = weightKg; }
 
-    public CurrencyCode getPreferredCurrency() { return preferredCurrency; }
-    public void setPreferredCurrency(CurrencyCode preferredCurrency) { this.preferredCurrency = preferredCurrency; }
+    public String getPreferredCurrency() { return preferredCurrency; }
+    public void setPreferredCurrency(String preferredCurrency) { this.preferredCurrency = preferredCurrency; }
 
     public Long getMonthlyIncomeEstimateMinor() { return monthlyIncomeEstimateMinor; }
     public void setMonthlyIncomeEstimateMinor(Long monthlyIncomeEstimateMinor) { this.monthlyIncomeEstimateMinor = monthlyIncomeEstimateMinor; }

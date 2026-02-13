@@ -5,25 +5,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest; // Manuel Pageable için şart
+import org.springframework.data.domain.Sort;        // Manuel Pageable için şart
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.aiasistan.common.ApiResponse;
+import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.request.CurrencyRateRequest;
 import com.aiasistan.dto.request.InvestmentRequest;
 import com.aiasistan.dto.response.CurrencyRateResponse;
@@ -46,7 +38,6 @@ public class FinanceController {
     private final InvestmentService investmentService;
     private final UserService userService;
     
-    // Manuel constructor
     public FinanceController(
         CurrencyService currencyService,
         InvestmentService investmentService,
@@ -89,9 +80,18 @@ public class FinanceController {
     
     @GetMapping("/currencies")
     @Operation(summary = "Get all currency rates with pagination")
-    public ResponseEntity<ApiResponse<Page<CurrencyRateResponse>>> getAllRates(
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<CurrencyRateResponse> response = currencyService.getAllRates(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<CurrencyRateResponse>>> getAllRates(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "rateDate") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        
+        Sort sort = sortDirection.equalsIgnoreCase("ASC") 
+                    ? Sort.by(sortBy).ascending() 
+                    : Sort.by(sortBy).descending();
+        
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+        PageResponse<CurrencyRateResponse> response = currencyService.getAllRates(pageRequest);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -130,12 +130,21 @@ public class FinanceController {
     }
     
     @GetMapping("/investments")
-    @Operation(summary = "Get user investments")
-    public ResponseEntity<ApiResponse<Page<InvestmentResponse>>> getUserInvestments(
+    @Operation(summary = "Get user investments with pagination")
+    public ResponseEntity<ApiResponse<PageResponse<InvestmentResponse>>> getUserInvestments(
             Authentication authentication,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        
         UUID userId = resolveUserId(authentication);
-        Page<InvestmentResponse> response = investmentService.getUserInvestments(userId, pageable);
+        Sort sort = sortDirection.equalsIgnoreCase("ASC") 
+                    ? Sort.by(sortBy).ascending() 
+                    : Sort.by(sortBy).descending();
+        
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+        PageResponse<InvestmentResponse> response = investmentService.getUserInvestments(userId, pageRequest);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
     

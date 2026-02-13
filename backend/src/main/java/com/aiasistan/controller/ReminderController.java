@@ -1,22 +1,32 @@
 package com.aiasistan.controller;
 
-import com.aiasistan.common.ApiResponse;
-import com.aiasistan.common.dto.PageResponse;
-import com.aiasistan.common.enums.ReminderStatus;
-import com.aiasistan.dto.ReminderDto;
-import com.aiasistan.service.ReminderService;
-import jakarta.validation.Valid;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.aiasistan.common.ApiResponse;
+import com.aiasistan.common.dto.PageResponse;
+import com.aiasistan.dto.ReminderDto;
+import com.aiasistan.service.ReminderService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/v1/business/reminders")
@@ -90,7 +100,7 @@ public class ReminderController {
     public ResponseEntity<ApiResponse<ReminderDto.Response>> updateReminderStatus(
         Authentication authentication,
         @PathVariable UUID id,
-        @RequestParam ReminderStatus status
+        @RequestParam String status
     ) {
         ReminderDto.Response response = reminderService.updateReminderStatus(authentication.getName(), id, status);
         return ResponseEntity.ok(ApiResponse.ok(response, "Hatirlatici durumu guncellendi"));

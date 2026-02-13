@@ -7,8 +7,6 @@ import com.aiasistan.common.UserOwnedEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -36,9 +34,8 @@ public class Investment extends UserOwnedEntity {
     @Column(name = "avg_cost_minor")
     private Long avgCostMinor;
     
-    @Enumerated(EnumType.STRING)
     @Column(name = "currency", length = 10)
-    private CurrencyCode currency;
+    private String currency;
     
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private OffsetDateTime updatedAt;
@@ -89,11 +86,11 @@ public class Investment extends UserOwnedEntity {
         this.avgCostMinor = avgCostMinor;
     }
 
-    public CurrencyCode getCurrency() {
+    public String getCurrency() {
         return currency;
     }
 
-    public void setCurrency(CurrencyCode currency) {
+    public void setCurrency(String currency) {
         this.currency = currency;
     }
 

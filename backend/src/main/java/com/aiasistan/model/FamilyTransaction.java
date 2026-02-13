@@ -1,11 +1,8 @@
 package com.aiasistan.model;
 
 import com.aiasistan.common.UserOwnedEntity;
-import com.aiasistan.common.enums.FamilyTransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
@@ -14,16 +11,14 @@ import java.time.LocalDate;
 @Table(name = "family_transactions")
 public class FamilyTransaction extends UserOwnedEntity {
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 16)
-    private FamilyTransactionType type;
+    private String type;
 
     @Column(name = "amount_minor", nullable = false)
     private Long amountMinor;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "currency", nullable = false, length = 10)
-    private CurrencyCode currency = CurrencyCode.TRY;
+    private String currency = "TRY";
 
     @Column(name = "category", length = 60)
     private String category;
@@ -34,11 +29,11 @@ public class FamilyTransaction extends UserOwnedEntity {
     @Column(name = "note", columnDefinition = "text")
     private String note;
 
-    public FamilyTransactionType getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(FamilyTransactionType type) {
+    public void setType(String type) {
         this.type = type;
     }
 
@@ -50,11 +45,11 @@ public class FamilyTransaction extends UserOwnedEntity {
         this.amountMinor = amountMinor;
     }
 
-    public CurrencyCode getCurrency() {
+    public String getCurrency() {
         return currency;
     }
 
-    public void setCurrency(CurrencyCode currency) {
+    public void setCurrency(String currency) {
         this.currency = currency;
     }
 

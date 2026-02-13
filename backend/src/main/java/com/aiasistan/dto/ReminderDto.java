@@ -1,8 +1,5 @@
 package com.aiasistan.dto;
 
-import com.aiasistan.common.enums.ModuleKey;
-import com.aiasistan.common.enums.ReminderChannel;
-import com.aiasistan.common.enums.ReminderStatus;
 import com.aiasistan.model.Reminder;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
@@ -23,9 +20,9 @@ public class ReminderDto {
 
         private UUID workEventId;
         private UUID contactId;
-        private ModuleKey sourceModule;
+        private String sourceModule;
         private String recurrence;
-        private ReminderChannel channel;
+        private String channel;
 
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
@@ -35,12 +32,12 @@ public class ReminderDto {
         public void setWorkEventId(UUID workEventId) { this.workEventId = workEventId; }
         public UUID getContactId() { return contactId; }
         public void setContactId(UUID contactId) { this.contactId = contactId; }
-        public ModuleKey getSourceModule() { return sourceModule; }
-        public void setSourceModule(ModuleKey sourceModule) { this.sourceModule = sourceModule; }
+        public String getSourceModule() { return sourceModule; }
+        public void setSourceModule(String sourceModule) { this.sourceModule = sourceModule; }
         public String getRecurrence() { return recurrence; }
         public void setRecurrence(String recurrence) { this.recurrence = recurrence; }
-        public ReminderChannel getChannel() { return channel; }
-        public void setChannel(ReminderChannel channel) { this.channel = channel; }
+        public String getChannel() { return channel; }
+        public void setChannel(String channel) { this.channel = channel; }
     }
 
     public static class Response {
@@ -48,15 +45,15 @@ public class ReminderDto {
         private UUID userId;
         private UUID workEventId;
         private UUID contactId;
-        private ModuleKey sourceModule;
+        private String sourceModule;
         private String title;
 
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
         private OffsetDateTime remindAt;
 
         private String recurrence;
-        private ReminderChannel channel;
-        private ReminderStatus status;
+        private String channel;
+        private String status;
 
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
         private OffsetDateTime createdAt;
@@ -89,18 +86,18 @@ public class ReminderDto {
         public void setWorkEventId(UUID workEventId) { this.workEventId = workEventId; }
         public UUID getContactId() { return contactId; }
         public void setContactId(UUID contactId) { this.contactId = contactId; }
-        public ModuleKey getSourceModule() { return sourceModule; }
-        public void setSourceModule(ModuleKey sourceModule) { this.sourceModule = sourceModule; }
+        public String getSourceModule() { return sourceModule; }
+        public void setSourceModule(String sourceModule) { this.sourceModule = sourceModule; }
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
         public OffsetDateTime getRemindAt() { return remindAt; }
         public void setRemindAt(OffsetDateTime remindAt) { this.remindAt = remindAt; }
         public String getRecurrence() { return recurrence; }
         public void setRecurrence(String recurrence) { this.recurrence = recurrence; }
-        public ReminderChannel getChannel() { return channel; }
-        public void setChannel(ReminderChannel channel) { this.channel = channel; }
-        public ReminderStatus getStatus() { return status; }
-        public void setStatus(ReminderStatus status) { this.status = status; }
+        public String getChannel() { return channel; }
+        public void setChannel(String channel) { this.channel = channel; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
         public OffsetDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
         public OffsetDateTime getUpdatedAt() { return updatedAt; }

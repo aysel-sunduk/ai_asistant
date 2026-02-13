@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aiasistan.dto.request.UserProfileUpsertRequest;
 import com.aiasistan.dto.response.UserProfileResponse;
 import com.aiasistan.exception.BadRequestException;
-import com.aiasistan.model.CurrencyCode;
 import com.aiasistan.model.UserProfile;
 import com.aiasistan.repository.UserProfileRepository;
 
@@ -180,7 +179,7 @@ public class UserProfileService {
 
     private void applyFinanceFields(UserProfile profile, UserProfileUpsertRequest request) {
         if (request.getPreferredCurrency() != null) {
-            profile.setPreferredCurrency(CurrencyCode.fromString(request.getPreferredCurrency()));
+            profile.setPreferredCurrency(normalizeCurrency(request.getPreferredCurrency()));
         }
         if (request.getMonthlyIncomeEstimateMinor() != null) {
             profile.setMonthlyIncomeEstimateMinor(request.getMonthlyIncomeEstimateMinor());
@@ -205,13 +204,24 @@ public class UserProfileService {
         response.setLocale(profile.getLocale());
         response.setHeightCm(profile.getHeightCm());
         response.setWeightKg(profile.getWeightKg());
-        response.setPreferredCurrency(profile.getPreferredCurrency() != null ? profile.getPreferredCurrency().name() : null);
+        response.setPreferredCurrency(profile.getPreferredCurrency() != null ? normalizeCurrency(profile.getPreferredCurrency()) : null);
         response.setMonthlyIncomeEstimateMinor(profile.getMonthlyIncomeEstimateMinor());
         response.setInterests(profile.getInterests());
         response.setOnboarding(profile.getOnboarding());
         response.setNotifications(profile.getNotifications());
         response.setUpdatedAt(profile.getUpdatedAt());
         return response;
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return "TRY";
+        }
+        String normalized = currency.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "TRY", "USD", "EUR", "GBP" -> normalized;
+            default -> "TRY";
+        };
     }
 
     /**

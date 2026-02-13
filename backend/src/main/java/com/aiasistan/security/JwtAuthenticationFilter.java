@@ -3,6 +3,7 @@ package com.aiasistan.security;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             List<SimpleGrantedAuthority> authorities = userRepository.findByEmail(subject)
                     .map(User::getRole)
                     .filter(StringUtils::hasText)
-                    .map(role -> List.of(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())))
+                    .map(role -> List.of(new SimpleGrantedAuthority(normalizeRole(role))))
                     .orElse(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
 
             var authentication = new UsernamePasswordAuthenticationToken(
@@ -91,5 +92,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.startsWith("/actuator")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs");
+    }
+
+    private String normalizeRole(String role) {
+        String normalized = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return "ROLE_USER";
+        }
+        return normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized;
     }
 }

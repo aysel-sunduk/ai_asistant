@@ -1,23 +1,25 @@
 package com.aiasistan.service;
 
-import com.aiasistan.dto.request.InvestmentRequest;
-import com.aiasistan.dto.response.InvestmentPerformanceResponse;
-import com.aiasistan.dto.response.InvestmentResponse;
-import com.aiasistan.exception.NotFoundException;
-import com.aiasistan.model.CurrencyCode;
-import com.aiasistan.model.Investment;
-import com.aiasistan.repository.CurrencyRateRepository;
-import com.aiasistan.repository.InvestmentRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.aiasistan.common.dto.PageResponse;
+import com.aiasistan.dto.request.InvestmentRequest;
+import com.aiasistan.dto.response.InvestmentPerformanceResponse;
+import com.aiasistan.dto.response.InvestmentResponse;
+import com.aiasistan.exception.NotFoundException;
+import com.aiasistan.model.Investment;
+import com.aiasistan.repository.CurrencyRateRepository;
+import com.aiasistan.repository.InvestmentRepository;
 
 @Service
 public class InvestmentService {
@@ -41,7 +43,7 @@ public class InvestmentService {
         investment.setSymbol(request.getSymbol().toUpperCase());
         investment.setQuantity(request.getQuantity());
         investment.setAvgCostMinor(request.getAvgCostMinor());
-        investment.setCurrency(CurrencyCode.fromString(request.getCurrency()));
+        investment.setCurrency(normalizeCurrency(request.getCurrency()));
         
         Investment saved = investmentRepository.save(investment);
         return mapToResponse(saved);
@@ -62,9 +64,9 @@ public class InvestmentService {
     }
     
     @Transactional(readOnly = true)
-    public Page<InvestmentResponse> getUserInvestments(UUID userId, Pageable pageable) {
-        return investmentRepository.findByUserId(userId, pageable)
-            .map(this::mapToResponse);
+    public PageResponse<InvestmentResponse> getUserInvestments(UUID userId, Pageable pageable) {
+        Page<Investment> investmentPage = investmentRepository.findByUserId(userId, pageable);
+        return PageResponse.of(investmentPage.map(this::mapToResponse));
     }
     
     @Transactional(readOnly = true)
@@ -158,47 +160,49 @@ public class InvestmentService {
             .quantity(investment.getQuantity())
             .avgCostMinor(investment.getAvgCostMinor())
             .currentValue(currentValue)
-            .currency(investment.getCurrency() != null ? investment.getCurrency().name() : "TRY")
+            .currency(investment.getCurrency() != null ? normalizeCurrency(investment.getCurrency()) : "TRY")
             .updatedAt(investment.getUpdatedAt())
             .build();
     }
 
     private BigDecimal toMoney(Long minor) {
-        if (minor == null) {
-            return BigDecimal.ZERO;
-        }
+        if (minor == null) return BigDecimal.ZERO;
         return BigDecimal.valueOf(minor).divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP);
     }
 
     private BigDecimal resolveCurrentUnitPrice(Investment investment, BigDecimal fallbackPrice) {
-        CurrencyCode symbolCode = parseCurrencySymbol(investment.getSymbol());
-        if (symbolCode == null) {
-            return fallbackPrice;
-        }
+        String symbolCode = parseCurrencySymbol(investment.getSymbol());
+        if (symbolCode == null) return fallbackPrice;
         return currencyRateRepository.findTopByCurrencyCodeOrderByRateDateDesc(symbolCode)
             .map(rate -> rate.getRate() != null ? rate.getRate() : fallbackPrice)
             .orElse(fallbackPrice);
     }
 
     private BigDecimal resolveDailyChange(Investment investment) {
-        CurrencyCode symbolCode = parseCurrencySymbol(investment.getSymbol());
-        if (symbolCode == null) {
-            return BigDecimal.ZERO;
-        }
+        String symbolCode = parseCurrencySymbol(investment.getSymbol());
+        if (symbolCode == null) return BigDecimal.ZERO;
         return currencyRateRepository.findTopByCurrencyCodeOrderByRateDateDesc(symbolCode)
             .map(rate -> rate.getChangeRate() != null ? rate.getChangeRate() : BigDecimal.ZERO)
             .orElse(BigDecimal.ZERO);
     }
 
-    private CurrencyCode parseCurrencySymbol(String symbol) {
-        if (symbol == null || symbol.isBlank()) {
-            return null;
+    private String parseCurrencySymbol(String symbol) {
+        if (symbol == null || symbol.isBlank()) return null;
+        String normalized = symbol.trim().toUpperCase();
+        return switch (normalized) {
+            case "TRY", "USD", "EUR", "GBP" -> normalized;
+            default -> null;
+        };
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return "TRY";
         }
-        for (CurrencyCode code : CurrencyCode.values()) {
-            if (code.name().equalsIgnoreCase(symbol.trim())) {
-                return code;
-            }
-        }
-        return null;
+        String normalized = currency.trim().toUpperCase();
+        return switch (normalized) {
+            case "TRY", "USD", "EUR", "GBP" -> normalized;
+            default -> "TRY";
+        };
     }
 }

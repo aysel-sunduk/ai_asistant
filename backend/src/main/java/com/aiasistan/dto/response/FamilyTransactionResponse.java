@@ -1,14 +1,12 @@
 package com.aiasistan.dto.response;
 
-import com.aiasistan.common.enums.FamilyTransactionType;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class FamilyTransactionResponse {
     private UUID id;
-    private FamilyTransactionType type;
+    private String type;
     private Long amountMinor;
     private String currency;
     private String category;
@@ -19,8 +17,8 @@ public class FamilyTransactionResponse {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public FamilyTransactionType getType() { return type; }
-    public void setType(FamilyTransactionType type) { this.type = type; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
     public Long getAmountMinor() { return amountMinor; }
     public void setAmountMinor(Long amountMinor) { this.amountMinor = amountMinor; }
     public String getCurrency() { return currency; }

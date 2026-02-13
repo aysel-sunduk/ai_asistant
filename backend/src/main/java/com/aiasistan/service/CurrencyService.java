@@ -1,26 +1,8 @@
 package com.aiasistan.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.aiasistan.dto.request.CurrencyRateRequest;
-import com.aiasistan.dto.response.CurrencyRateResponse;
-import com.aiasistan.exception.BadRequestException;
-import com.aiasistan.exception.NotFoundException;
-import com.aiasistan.model.CurrencyCode;
-import com.aiasistan.model.CurrencyRate;
-import com.aiasistan.repository.CurrencyRateRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
+import java.time.Instant; // Önemli: PageResponse eklendi
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -31,8 +13,29 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import com.aiasistan.common.dto.PageResponse;
+import com.aiasistan.dto.request.CurrencyRateRequest;
+import com.aiasistan.dto.response.CurrencyRateResponse;
+import com.aiasistan.exception.BadRequestException;
+import com.aiasistan.exception.NotFoundException;
+import com.aiasistan.model.CurrencyRate;
+import com.aiasistan.repository.CurrencyRateRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Service
 public class CurrencyService {
+
+    private static final List<String> SUPPORTED_CURRENCIES = List.of("TRY", "USD", "EUR", "GBP");
     
     private final CurrencyRateRepository currencyRateRepository;
     private final ObjectMapper objectMapper;
@@ -66,11 +69,9 @@ public class CurrencyService {
     
     @Transactional
     public CurrencyRateResponse saveCurrencyRate(CurrencyRateRequest request) {
-        CurrencyCode currencyCode = CurrencyCode.fromString(request.getCurrencyCode());
-        
         CurrencyRate currencyRate = new CurrencyRate();
-        currencyRate.setCurrencyCode(currencyCode);
-        currencyRate.setBaseCurrency(CurrencyCode.fromString(request.getBaseCurrency()));
+        currencyRate.setCurrencyCode(normalizeCurrency(request.getCurrencyCode()));
+        currencyRate.setBaseCurrency(normalizeCurrency(request.getBaseCurrency()));
         currencyRate.setRate(request.getRate());
         currencyRate.setChangeRate(request.getChangeRate());
         currencyRate.setProviderTimestamp(request.getProviderTimestamp());
@@ -83,7 +84,7 @@ public class CurrencyService {
     
     @Transactional(readOnly = true)
     public CurrencyRateResponse getLatestRate(String currencyCode) {
-        CurrencyCode code = CurrencyCode.fromString(currencyCode);
+        String code = normalizeCurrency(currencyCode);
         CurrencyRate rate = currencyRateRepository
             .findTopByCurrencyCodeOrderByRateDateDesc(code)
             .orElseThrow(() -> new NotFoundException("Currency rate not found for: " + currencyCode));
@@ -92,7 +93,7 @@ public class CurrencyService {
     
     @Transactional(readOnly = true)
     public List<CurrencyRateResponse> getHistoricalRates(String currencyCode, LocalDateTime startDate, LocalDateTime endDate) {
-        CurrencyCode code = CurrencyCode.fromString(currencyCode);
+        String code = normalizeCurrency(currencyCode);
         return currencyRateRepository
             .findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(code, startDate, endDate)
             .stream()
@@ -100,22 +101,22 @@ public class CurrencyService {
             .collect(Collectors.toList());
     }
     
+    // PageResponse dönüşü için güncellendi
     @Transactional(readOnly = true)
-    public Page<CurrencyRateResponse> getAllRates(Pageable pageable) {
-        return currencyRateRepository.findAllByOrderByRateDateDesc(pageable)
-            .map(this::mapToResponse);
+    public PageResponse<CurrencyRateResponse> getAllRates(Pageable pageable) {
+        Page<CurrencyRate> ratesPage = currencyRateRepository.findAllByOrderByRateDateDesc(pageable);
+        return PageResponse.of(ratesPage.map(this::mapToResponse));
     }
 
     @Transactional
     public List<CurrencyRateResponse> fetchAndSaveLiveRates(String baseCurrency) {
-        CurrencyCode base = CurrencyCode.fromString(baseCurrency);
-        String baseKey = base.name();
+        String baseKey = normalizeCurrency(baseCurrency);
 
         if (isRateLimited(baseKey)) {
-            return getCachedRates(base);
+            return getCachedRates(baseKey);
         }
 
-        String url = buildRatesUrl(base.name());
+        String url = buildRatesUrl(baseKey);
         ResponseEntity<String> response = fetchExternalWithRetry(url);
 
         OffsetDateTime providerTimestamp = null;
@@ -128,21 +129,23 @@ public class CurrencyService {
             providerTimestamp = extractProviderTimestamp(root);
 
             List<CurrencyRateResponse> savedRates = new ArrayList<>();
-            for (CurrencyCode code : CurrencyCode.values()) {
-                JsonNode rateNode = ratesNode.get(code.name());
+            for (String code : SUPPORTED_CURRENCIES) {
+                JsonNode rateNode = ratesNode.get(code);
                 if (rateNode == null || !rateNode.isNumber()) {
                     continue;
                 }
 
                 BigDecimal latestRate = rateNode.decimalValue().setScale(4, RoundingMode.HALF_UP);
+                
+                // Enum uyuşmazlığını önlemek için String bazlı kontrol yapılabilir veya CAST destekli repository metodu çağrılır
                 BigDecimal changeRate = currencyRateRepository
-                    .findTopByCurrencyCodeAndBaseCurrencyOrderByRateDateDesc(code, base)
+                    .findTopByCurrencyCodeAndBaseCurrencyOrderByRateDateDesc(code, baseKey)
                     .map(prev -> latestRate.subtract(prev.getRate()))
                     .orElse(null);
 
                 CurrencyRate currencyRate = new CurrencyRate();
                 currencyRate.setCurrencyCode(code);
-                currencyRate.setBaseCurrency(base);
+                currencyRate.setBaseCurrency(baseKey);
                 currencyRate.setRate(latestRate);
                 currencyRate.setChangeRate(changeRate);
                 currencyRate.setProviderTimestamp(providerTimestamp);
@@ -167,13 +170,14 @@ public class CurrencyService {
     }
     
     private CurrencyRateResponse mapToResponse(CurrencyRate rate) {
+        String normalizedCode = normalizeCurrency(rate.getCurrencyCode());
         return CurrencyRateResponse.builder()
             .id(rate.getId())
-            .currencyCode(rate.getCurrencyCode().name())
-            .currencyName(rate.getCurrencyCode().getDisplayName())
+            .currencyCode(normalizedCode)
+            .currencyName(getCurrencyDisplayName(normalizedCode))
             .rate(rate.getRate())
             .changeRate(rate.getChangeRate())
-            .baseCurrency(rate.getBaseCurrency() != null ? rate.getBaseCurrency().name() : null)
+            .baseCurrency(rate.getBaseCurrency() != null ? normalizeCurrency(rate.getBaseCurrency()) : null)
             .providerTimestamp(rate.getProviderTimestamp())
             .rateDate(rate.getRateDate())
             .source(rate.getSource())
@@ -199,15 +203,15 @@ public class CurrencyService {
         return elapsed < updateIntervalMs;
     }
 
-    private List<CurrencyRateResponse> getCachedRates(CurrencyCode baseCurrency) {
-        String key = baseCurrency.name();
+    private List<CurrencyRateResponse> getCachedRates(String baseCurrency) {
+        String key = normalizeCurrency(baseCurrency);
         List<CurrencyRateResponse> cached = cacheByBase.get(key);
         if (cached != null && !cached.isEmpty()) {
             return cached;
         }
 
-        Map<CurrencyCode, CurrencyRate> latestByCode = new LinkedHashMap<>();
-        for (CurrencyRate rate : currencyRateRepository.findByBaseCurrencyOrderByRateDateDesc(baseCurrency)) {
+        Map<String, CurrencyRate> latestByCode = new LinkedHashMap<>();
+        for (CurrencyRate rate : currencyRateRepository.findByBaseCurrencyOrderByRateDateDesc(key)) {
             latestByCode.putIfAbsent(rate.getCurrencyCode(), rate);
         }
         if (latestByCode.isEmpty()) {
@@ -220,6 +224,23 @@ public class CurrencyService {
             .collect(Collectors.toList());
         cacheByBase.put(key, fallback);
         return fallback;
+    }
+
+    private String normalizeCurrency(String code) {
+        if (code == null || code.isBlank()) {
+            return "TRY";
+        }
+        String normalized = code.trim().toUpperCase();
+        return SUPPORTED_CURRENCIES.contains(normalized) ? normalized : "TRY";
+    }
+
+    private String getCurrencyDisplayName(String code) {
+        return switch (code) {
+            case "USD" -> "Amerikan Dolari";
+            case "EUR" -> "Euro";
+            case "GBP" -> "Ingiliz Sterlini";
+            default -> "Turk Lirasi";
+        };
     }
 
     private ResponseEntity<String> fetchExternalWithRetry(String url) {

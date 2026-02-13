@@ -1,7 +1,16 @@
 package com.aiasistan.service;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.aiasistan.common.DateTimeUtils;
-import com.aiasistan.common.enums.ReminderStatus;
 import com.aiasistan.dto.BusinessDashboardDto;
 import com.aiasistan.dto.ReminderDto;
 import com.aiasistan.dto.WorkEventDto;
@@ -9,15 +18,6 @@ import com.aiasistan.model.Reminder;
 import com.aiasistan.model.WorkEvent;
 import com.aiasistan.repository.ReminderRepository;
 import com.aiasistan.repository.WorkEventRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.TemporalAdjusters;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class BusinessDashboardService {
@@ -58,8 +58,8 @@ public class BusinessDashboardService {
         );
 
         long totalReminders = reminderRepository.countByUserId(userId);
-        List<Reminder> scheduledReminders = reminderRepository.findByUserIdAndStatus(userId, ReminderStatus.SCHEDULED);
-        List<Reminder> overdueReminders = reminderRepository.findRemindersToNotify(userId, now, ReminderStatus.SCHEDULED);
+        List<Reminder> scheduledReminders = reminderRepository.findByUserIdAndStatus(userId, "scheduled");
+        List<Reminder> overdueReminders = reminderRepository.findRemindersToNotify(userId, now, "scheduled");
 
         BusinessDashboardDto.Statistics stats = new BusinessDashboardDto.Statistics();
         stats.setTotalEvents(totalEvents);
@@ -82,10 +82,10 @@ public class BusinessDashboardService {
 
         List<WorkEvent> todayEvents = workEventRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         List<WorkEvent> upcomingEvents = workEventRepository.findUpcomingEvents(userId, now);
-        List<Reminder> dueReminders = reminderRepository.findRemindersToNotify(userId, todayEnd, ReminderStatus.SCHEDULED);
+        List<Reminder> dueReminders = reminderRepository.findRemindersToNotify(userId, todayEnd, "scheduled");
 
         WorkEventDto.Response nextEvent = upcomingEvents.isEmpty() ? null : WorkEventDto.Response.from(upcomingEvents.get(0));
-        List<Reminder> scheduledReminders = reminderRepository.findByUserIdAndStatus(userId, ReminderStatus.SCHEDULED);
+        List<Reminder> scheduledReminders = reminderRepository.findByUserIdAndStatus(userId, "scheduled");
         ReminderDto.Response nextReminder = scheduledReminders.isEmpty() ? null : ReminderDto.Response.from(scheduledReminders.get(0));
 
         BusinessDashboardDto.TodaySummary summary = new BusinessDashboardDto.TodaySummary();

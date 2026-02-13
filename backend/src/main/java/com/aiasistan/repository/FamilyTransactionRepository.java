@@ -1,6 +1,5 @@
 package com.aiasistan.repository;
 
-import com.aiasistan.common.enums.FamilyTransactionType;
 import com.aiasistan.model.FamilyTransaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +22,7 @@ public interface FamilyTransactionRepository extends JpaRepository<FamilyTransac
     @Query("SELECT COALESCE(SUM(ft.amountMinor), 0) FROM FamilyTransaction ft WHERE ft.userId = :userId AND ft.type = :type AND ft.occurredOn BETWEEN :startDate AND :endDate")
     Long sumAmountMinorByTypeAndDateRange(
         @Param("userId") UUID userId,
-        @Param("type") FamilyTransactionType type,
+        @Param("type") String type,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate
     );

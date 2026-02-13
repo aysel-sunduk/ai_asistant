@@ -15,13 +15,11 @@ public class CurrencyRate {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     
-    @Enumerated(EnumType.STRING)
     @Column(name = "currency_code", nullable = false, length = 10)
-    private CurrencyCode currencyCode;
+    private String currencyCode;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "base_currency", length = 10)
-    private CurrencyCode baseCurrency;
+    private String baseCurrency;
     
     @Column(name = "rate", nullable = false, precision = 19, scale = 4)
     private BigDecimal rate;
@@ -57,11 +55,11 @@ public class CurrencyRate {
         this.id = id;
     }
 
-    public CurrencyCode getCurrencyCode() {
+    public String getCurrencyCode() {
         return currencyCode;
     }
 
-    public void setCurrencyCode(CurrencyCode currencyCode) {
+    public void setCurrencyCode(String currencyCode) {
         this.currencyCode = currencyCode;
     }
 
@@ -105,11 +103,11 @@ public class CurrencyRate {
         this.createdAt = createdAt;
     }
 
-    public CurrencyCode getBaseCurrency() {
+    public String getBaseCurrency() {
         return baseCurrency;
     }
 
-    public void setBaseCurrency(CurrencyCode baseCurrency) {
+    public void setBaseCurrency(String baseCurrency) {
         this.baseCurrency = baseCurrency;
     }
 

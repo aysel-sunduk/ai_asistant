@@ -1,6 +1,5 @@
 package com.aiasistan.dto.request;
 
-import com.aiasistan.common.enums.FamilyTransactionType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -10,7 +9,7 @@ import java.time.LocalDate;
 public class FamilyTransactionRequest {
 
     @NotNull(message = "Type is required")
-    private FamilyTransactionType type;
+    private String type;
 
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be positive")
@@ -26,8 +25,8 @@ public class FamilyTransactionRequest {
 
     private String note;
 
-    public FamilyTransactionType getType() { return type; }
-    public void setType(FamilyTransactionType type) { this.type = type; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
     public Long getAmountMinor() { return amountMinor; }
     public void setAmountMinor(Long amountMinor) { this.amountMinor = amountMinor; }
     public String getCurrency() { return currency; }

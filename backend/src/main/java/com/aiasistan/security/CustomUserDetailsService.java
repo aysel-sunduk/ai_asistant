@@ -2,6 +2,7 @@ package com.aiasistan.security;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -44,10 +45,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     private Collection<? extends GrantedAuthority> getAuthorities(String role) {
         Collection<GrantedAuthority> authorities = new ArrayList<>();
         if (role != null) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+            authorities.add(new SimpleGrantedAuthority(normalizeRole(role)));
         } else {
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         }
         return authorities;
+    }
+
+    private String normalizeRole(String role) {
+        String normalized = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return "ROLE_USER";
+        }
+        return normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized;
     }
 }

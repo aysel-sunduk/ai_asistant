@@ -10,9 +10,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aiasistan.dto.request.ForgotPasswordRequest;
 import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
+import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
 import com.aiasistan.dto.response.LogoutResponse;
 import com.aiasistan.dto.response.RefreshTokenResponse;
@@ -36,9 +38,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, 
+    public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
-                       PasswordEncoder passwordEncoder, 
+                       PasswordEncoder passwordEncoder,
                        JwtService jwtService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -53,24 +55,23 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> {
                     logger.warn("Login failed - user not found: {}", request.getEmail());
-                    return new NotFoundException("Kullanıcı bulunamadı!");
+                    return new NotFoundException("Kullanici bulunamadi!");
                 });
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             logger.warn("Login failed - password mismatch for email: {}", request.getEmail());
-            throw new BadRequestException("E-posta veya şifre hatalı!");
+            throw new BadRequestException("E-posta veya sifre hatali!");
         }
 
         String accessToken = jwtService.generateAccessToken(user.getEmail());
         String refreshToken = jwtService.generateRefreshToken(user.getEmail());
         Instant refreshTokenExpiry = jwtService.getExpiryInstant(refreshToken);
-        
-        // Önemli: Yeni login'de eski tokenları temizlemek iyi bir pratiktir
+
         refreshTokenRepository.revokeAllUserTokens(user.getId());
 
         RefreshToken savedRefreshToken = new RefreshToken(user, hashToken(refreshToken), refreshTokenExpiry);
         refreshTokenRepository.save(savedRefreshToken);
-        
+
         logger.info("Login successful for email: {}", user.getEmail());
         return new LoginResponse(accessToken, refreshToken, user.getEmail());
     }
@@ -81,7 +82,7 @@ public class AuthService {
 
         if (userRepository.existsByEmail(request.getEmail())) {
             logger.warn("Registration failed - email already exists: {}", request.getEmail());
-            throw new ConflictException("Bu e-posta adresi zaten kayıtlı!");
+            throw new ConflictException("Bu e-posta adresi zaten kayitli!");
         }
 
         User newUser = new User();
@@ -92,57 +93,67 @@ public class AuthService {
         User savedUser = userRepository.save(newUser);
         logger.info("User registered successfully with email: {}", savedUser.getEmail());
 
-        return new RegisterResponse(savedUser.getEmail(), "Kullanıcı başarıyla kaydedildi!");
+        return new RegisterResponse(savedUser.getEmail(), "Kullanici basariyla kaydedildi!");
     }
 
-    // KRİTİK DÜZELTME: @Transactional eklendi. 
-    // Bu sayede storedToken.getUser() çağrıldığında DB session açık kalır.
+    @Transactional
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        logger.info("Forgot password attempt for email: {}", request.getEmail());
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi!"));
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Yeni sifre mevcut sifreyle ayni olamaz!");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        refreshTokenRepository.revokeAllUserTokens(user.getId());
+
+        logger.info("Password updated successfully for email: {}", user.getEmail());
+        return new ForgotPasswordResponse(user.getEmail(), "Sifre basariyla guncellendi");
+    }
+
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         logger.debug("Refresh token attempt");
 
-        // 1. JWT format/imza kontrolü
         if (!jwtService.isValid(request.getRefreshToken())) {
             logger.warn("Refresh token validation failed - token invalid or expired");
-            throw new BadRequestException("Refresh token geçersiz veya süresi dolmuş!");
+            throw new BadRequestException("Refresh token gecersiz veya suresi dolmus!");
         }
 
-        // 2. DB'de token hash kontrolü
         String tokenHash = hashToken(request.getRefreshToken());
         RefreshToken storedToken = refreshTokenRepository.findByTokenHashAndIsRevokedFalse(tokenHash)
                 .orElseThrow(() -> {
                     logger.warn("Refresh token not found or already revoked");
-                    return new NotFoundException("Refresh token bulunamadı veya iptal edilmiş!");
+                    return new NotFoundException("Refresh token bulunamadi veya iptal edilmis!");
                 });
 
-        // 3. Süre kontrolü
         if (Instant.now().isAfter(storedToken.getExpiresAt())) {
-            storedToken.setIsRevoked(true); // Süresi dolmuşsa revoke et
+            storedToken.setIsRevoked(true);
             refreshTokenRepository.save(storedToken);
             logger.warn("Refresh token has expired");
-            throw new BadRequestException("Refresh token süresi dolmuş!");
+            throw new BadRequestException("Refresh token suresi dolmus!");
         }
 
-        // 4. Kullanıcı erişimi (Proxy hatası burada çözüldü)
         User user = storedToken.getUser();
         if (user == null) {
-            throw new NotFoundException("Token ile ilişkili kullanıcı bulunamadı!");
+            throw new NotFoundException("Token ile iliskili kullanici bulunamadi!");
         }
 
-        // 5. Yeni tokenların üretilmesi
-        String userEmail = user.getEmail(); // Session açık olduğu için hata vermez
+        String userEmail = user.getEmail();
         String newAccessToken = jwtService.generateAccessToken(userEmail);
         String newRefreshToken = jwtService.generateRefreshToken(userEmail);
         Instant newRefreshTokenExpiry = jwtService.getExpiryInstant(newRefreshToken);
-        
-        // 6. Eski tokenı iptal et (Rotate işlemi)
+
         storedToken.setIsRevoked(true);
         refreshTokenRepository.save(storedToken);
-        
-        // 7. Yeni refresh token'ı kaydet
+
         RefreshToken newStoredToken = new RefreshToken(user, hashToken(newRefreshToken), newRefreshTokenExpiry);
         refreshTokenRepository.save(newStoredToken);
-        
+
         logger.info("Token refreshed successfully for email: {}", userEmail);
         return new RefreshTokenResponse(newAccessToken, newRefreshToken);
     }
@@ -150,17 +161,17 @@ public class AuthService {
     @Transactional
     public LogoutResponse logout(String accessToken) {
         if (!jwtService.isValid(accessToken)) {
-            throw new BadRequestException("Access token geçersiz!");
+            throw new BadRequestException("Access token gecersiz!");
         }
 
         String email = jwtService.extractSubject(accessToken);
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new NotFoundException("Kullanıcı bulunamadı!"));
+                .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi!"));
 
         refreshTokenRepository.revokeAllUserTokens(user.getId());
-        
+
         logger.info("User logged out successfully: {}", email);
-        return new LogoutResponse("Başarıyla çıkış yapıldı!");
+        return new LogoutResponse("Basariyla cikis yapildi!");
     }
 
     private String hashToken(String token) {
@@ -170,7 +181,9 @@ public class AuthService {
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
                 hexString.append(hex);
             }
             return hexString.toString();

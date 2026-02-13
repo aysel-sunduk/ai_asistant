@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aiasistan.common.ApiResponse;
+import com.aiasistan.dto.request.ForgotPasswordRequest;
 import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
+import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
 import com.aiasistan.dto.response.LogoutResponse;
 import com.aiasistan.dto.response.RefreshTokenResponse;
@@ -32,40 +34,45 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Başarıyla giriş yapıldı"));
+        return ResponseEntity.ok(ApiResponse.ok(response, "Basariyla giris yapildi"));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest request) {
         RegisterResponse response = authService.register(request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Kullanıcı başarıyla kaydedildi"));
+        return ResponseEntity.ok(ApiResponse.ok(response, "Kullanici basariyla kaydedildi"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        ForgotPasswordResponse response = authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Sifre basariyla guncellendi"));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshTokenResponse>> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         RefreshTokenResponse response = authService.refreshToken(request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Token başarıyla yenilendi"));
+        return ResponseEntity.ok(ApiResponse.ok(response, "Token basariyla yenilendi"));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<LogoutResponse>> logout(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        
-        // 1. Authorization header'dan token al (Bearer kaldırılıyor)
+
         String accessToken = null;
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            accessToken = authHeader.substring(7);  // "Bearer " kaldırıldı
+            accessToken = authHeader.substring(7);
         } else if (authHeader != null) {
-            accessToken = authHeader;  // Bearer olmadan geldiyse direkt kullan
+            accessToken = authHeader;
         }
-        
-        // 2. Token null'sa hata döndür
+
         if (accessToken == null || accessToken.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Access token gerekli!"));
         }
-        
+
         LogoutResponse response = authService.logout(accessToken);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Başarıyla çıkış yapıldı"));
+        return ResponseEntity.ok(ApiResponse.ok(response, "Basariyla cikis yapildi"));
     }
 }

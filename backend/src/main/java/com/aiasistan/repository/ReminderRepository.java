@@ -1,8 +1,10 @@
 package com.aiasistan.repository;
 
-import com.aiasistan.common.enums.ModuleKey;
-import com.aiasistan.common.enums.ReminderStatus;
-import com.aiasistan.model.Reminder;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,10 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.aiasistan.model.Reminder;
 
 @Repository
 public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
@@ -25,14 +24,14 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
     @Query("SELECT r FROM Reminder r WHERE r.userId = :userId AND r.status = :status ORDER BY r.remindAt ASC")
     List<Reminder> findByUserIdAndStatus(
         @Param("userId") UUID userId,
-        @Param("status") ReminderStatus status
+        @Param("status") String status
     );
 
     @Query("SELECT r FROM Reminder r WHERE r.userId = :userId AND r.remindAt <= :now AND r.status = :status")
     List<Reminder> findRemindersToNotify(
         @Param("userId") UUID userId,
         @Param("now") OffsetDateTime now,
-        @Param("status") ReminderStatus status
+        @Param("status") String status
     );
 
     @Query("SELECT r FROM Reminder r WHERE r.userId = :userId AND r.remindAt BETWEEN :startDate AND :endDate ORDER BY r.remindAt ASC")
@@ -45,8 +44,8 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
     @Query("SELECT r FROM Reminder r WHERE r.userId = :userId AND r.sourceModule = :module AND r.status = :status")
     List<Reminder> findByUserIdAndModule(
         @Param("userId") UUID userId,
-        @Param("module") ModuleKey module,
-        @Param("status") ReminderStatus status
+        @Param("module") String module,
+        @Param("status") String status
     );
 
     @Query("SELECT r FROM Reminder r WHERE r.workEventId = :workEventId")

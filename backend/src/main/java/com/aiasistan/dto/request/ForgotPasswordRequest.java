@@ -5,26 +5,26 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public class RegisterRequest {
+public class ForgotPasswordRequest {
     @NotBlank(message = "Email bos olamaz")
     @Email(message = "Gecerli bir email adresi girin",
            regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     @Pattern(regexp = "^.*@.*$", message = "Email '@' icermelidir")
     private String email;
 
-    @NotBlank(message = "Sifre bos olamaz")
+    @NotBlank(message = "Yeni sifre bos olamaz")
     @Size(min = 6, max = 128, message = "Sifre en az 6 karakter olmali")
     @Pattern(
         regexp = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,128}$",
         message = "Sifre en az 6 karakter olmali, en az 1 buyuk harf ve 1 ozel karakter icermelidir"
     )
-    private String password;
+    private String newPassword;
 
-    public RegisterRequest() {}
+    public ForgotPasswordRequest() {}
 
-    public RegisterRequest(String email, String password) {
+    public ForgotPasswordRequest(String email, String newPassword) {
         this.email = email;
-        this.password = password;
+        this.newPassword = newPassword;
     }
 
     public String getEmail() {
@@ -35,11 +35,11 @@ public class RegisterRequest {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getNewPassword() {
+        return newPassword;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
     }
 }

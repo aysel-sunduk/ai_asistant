@@ -1,6 +1,5 @@
 package com.aiasistan.service;
 
-import com.aiasistan.common.enums.FamilyTransactionType;
 import com.aiasistan.dto.request.FamilyBirthdayRequest;
 import com.aiasistan.dto.request.FamilyTransactionRequest;
 import com.aiasistan.dto.response.CurrencyRateResponse;
@@ -8,7 +7,6 @@ import com.aiasistan.dto.response.FamilyBirthdayResponse;
 import com.aiasistan.dto.response.FamilyFinanceSummaryResponse;
 import com.aiasistan.dto.response.FamilyTransactionResponse;
 import com.aiasistan.exception.NotFoundException;
-import com.aiasistan.model.CurrencyCode;
 import com.aiasistan.model.FamilyBirthday;
 import com.aiasistan.model.FamilyTransaction;
 import com.aiasistan.repository.FamilyBirthdayRepository;
@@ -54,9 +52,9 @@ public class FamilyService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = new FamilyTransaction();
         tx.setUserId(userId);
-        tx.setType(request.getType());
+        tx.setType(normalizeTransactionType(request.getType()));
         tx.setAmountMinor(request.getAmountMinor());
-        tx.setCurrency(CurrencyCode.fromString(request.getCurrency()));
+        tx.setCurrency(normalizeCurrency(request.getCurrency()));
         tx.setCategory(request.getCategory());
         tx.setOccurredOn(request.getOccurredOn());
         tx.setNote(request.getNote());
@@ -83,9 +81,9 @@ public class FamilyService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = transactionRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Family transaction not found"));
-        tx.setType(request.getType());
+        tx.setType(normalizeTransactionType(request.getType()));
         tx.setAmountMinor(request.getAmountMinor());
-        tx.setCurrency(CurrencyCode.fromString(request.getCurrency()));
+        tx.setCurrency(normalizeCurrency(request.getCurrency()));
         tx.setCategory(request.getCategory());
         tx.setOccurredOn(request.getOccurredOn());
         tx.setNote(request.getNote());
@@ -104,9 +102,9 @@ public class FamilyService {
     public FamilyFinanceSummaryResponse getFinanceSummary(String userEmail, LocalDate startDate, LocalDate endDate) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Long incomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, FamilyTransactionType.INCOME, startDate, endDate);
+            userId, "INCOME", startDate, endDate);
         Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, FamilyTransactionType.EXPENSE, startDate, endDate);
+            userId, "EXPENSE", startDate, endDate);
 
         BigDecimal income = minorToAmount(incomeMinor);
         BigDecimal expense = minorToAmount(expenseMinor);
@@ -198,7 +196,7 @@ public class FamilyService {
         response.setId(tx.getId());
         response.setType(tx.getType());
         response.setAmountMinor(tx.getAmountMinor());
-        response.setCurrency(tx.getCurrency() != null ? tx.getCurrency().name() : CurrencyCode.TRY.name());
+        response.setCurrency(tx.getCurrency() != null ? tx.getCurrency() : "TRY");
         response.setCategory(tx.getCategory());
         response.setOccurredOn(tx.getOccurredOn());
         response.setNote(tx.getNote());
@@ -231,6 +229,20 @@ public class FamilyService {
     private boolean isUpcoming(LocalDate birthDate, LocalDate now, LocalDate limit) {
         LocalDate next = nextBirthdayDate(birthDate, now);
         return !next.isBefore(now) && !next.isAfter(limit);
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return "TRY";
+        }
+        return currency.trim().toUpperCase();
+    }
+
+    private String normalizeTransactionType(String type) {
+        if (type == null || type.isBlank()) {
+            return "EXPENSE";
+        }
+        return type.trim().toUpperCase();
     }
 
     private long daysUntilBirthday(LocalDate birthDate, LocalDate now) {

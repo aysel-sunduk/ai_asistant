@@ -1,6 +1,5 @@
 package com.aiasistan.repository;
 
-import com.aiasistan.model.CurrencyCode;
 import com.aiasistan.model.CurrencyRate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,15 +15,15 @@ import java.util.UUID;
 @Repository
 public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, UUID> {
     
-    Optional<CurrencyRate> findTopByCurrencyCodeOrderByRateDateDesc(CurrencyCode currencyCode);
+    Optional<CurrencyRate> findTopByCurrencyCodeOrderByRateDateDesc(String currencyCode);
 
     Optional<CurrencyRate> findTopByCurrencyCodeAndBaseCurrencyOrderByRateDateDesc(
-        CurrencyCode currencyCode, CurrencyCode baseCurrency);
+        String currencyCode, String baseCurrency);
     
     List<CurrencyRate> findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(
-        CurrencyCode currencyCode, LocalDateTime startDate, LocalDateTime endDate);
+        String currencyCode, LocalDateTime startDate, LocalDateTime endDate);
 
-    List<CurrencyRate> findByBaseCurrencyOrderByRateDateDesc(CurrencyCode baseCurrency);
+    List<CurrencyRate> findByBaseCurrencyOrderByRateDateDesc(String baseCurrency);
     
     @Query("SELECT cr FROM CurrencyRate cr WHERE cr.rateDate >= :date")
     List<CurrencyRate> findRatesFromLast24Hours(@Param("date") LocalDateTime date);

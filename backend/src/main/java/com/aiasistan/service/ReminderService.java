@@ -1,8 +1,6 @@
 package com.aiasistan.service;
 
 import com.aiasistan.common.dto.PageResponse;
-import com.aiasistan.common.enums.ReminderChannel;
-import com.aiasistan.common.enums.ReminderStatus;
 import com.aiasistan.dto.ReminderDto;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.Reminder;
@@ -38,10 +36,10 @@ public class ReminderService {
         reminder.setRemindAt(request.getRemindAt());
         reminder.setWorkEventId(request.getWorkEventId());
         reminder.setContactId(request.getContactId());
-        reminder.setSourceModule(request.getSourceModule());
+        reminder.setSourceModule(normalizeModule(request.getSourceModule()));
         reminder.setRecurrence(request.getRecurrence());
-        reminder.setChannel(request.getChannel() != null ? request.getChannel() : ReminderChannel.IN_APP);
-        reminder.setStatus(ReminderStatus.SCHEDULED);
+        reminder.setChannel(normalizeChannel(request.getChannel()));
+        reminder.setStatus("scheduled");
 
         reminder = reminderRepository.save(reminder);
         return ReminderDto.Response.from(reminder);
@@ -66,7 +64,7 @@ public class ReminderService {
     @Transactional(readOnly = true)
     public List<ReminderDto.Response> getScheduledReminders(String userEmail) {
         UUID userId = userService.getUserIdByEmail(userEmail);
-        return reminderRepository.findByUserIdAndStatus(userId, ReminderStatus.SCHEDULED)
+        return reminderRepository.findByUserIdAndStatus(userId, "scheduled")
             .stream()
             .map(ReminderDto.Response::from)
             .collect(Collectors.toList());
@@ -91,10 +89,10 @@ public class ReminderService {
         reminder.setRemindAt(request.getRemindAt());
         reminder.setWorkEventId(request.getWorkEventId());
         reminder.setContactId(request.getContactId());
-        reminder.setSourceModule(request.getSourceModule());
+        reminder.setSourceModule(normalizeModule(request.getSourceModule()));
         reminder.setRecurrence(request.getRecurrence());
         if (request.getChannel() != null) {
-            reminder.setChannel(request.getChannel());
+            reminder.setChannel(normalizeChannel(request.getChannel()));
         }
 
         reminder = reminderRepository.save(reminder);
@@ -102,12 +100,12 @@ public class ReminderService {
     }
 
     @Transactional
-    public ReminderDto.Response updateReminderStatus(String userEmail, UUID id, ReminderStatus status) {
+    public ReminderDto.Response updateReminderStatus(String userEmail, UUID id, String status) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Reminder reminder = reminderRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Hatirlatici bulunamadi"));
 
-        reminder.setStatus(status);
+        reminder.setStatus(normalizeStatus(status));
         reminder = reminderRepository.save(reminder);
         return ReminderDto.Response.from(reminder);
     }
@@ -118,5 +116,26 @@ public class ReminderService {
         Reminder reminder = reminderRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Hatirlatici bulunamadi"));
         reminderRepository.delete(reminder);
+    }
+
+    private String normalizeModule(String module) {
+        if (module == null || module.isBlank()) {
+            return null;
+        }
+        return module.trim().toLowerCase();
+    }
+
+    private String normalizeChannel(String channel) {
+        if (channel == null || channel.isBlank()) {
+            return "in_app";
+        }
+        return channel.trim().toLowerCase();
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "scheduled";
+        }
+        return status.trim().toLowerCase();
     }
 }

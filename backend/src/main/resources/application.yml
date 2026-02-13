@@ -55,12 +55,12 @@ spring:
     properties:
       "mail.smtp.auth": true
       "mail.smtp.starttls.enable": true
-
+ 
 # ─── JWT ────────────────────────────────────
 app:
   jwt:
     secret: ${JWT_SECRET:default-dev-secret-key-change-in-production-min-64-chars-long-1234567890}
-    access-expiry-ms: ${JWT_ACCESS_EXPIRY_MS:900000}       # 15 dakika
+    access-expiry-ms: ${JWT_ACCESS_EXPIRY_MS:3600000}       # 60 dakika
     refresh-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}  # 7 gün
 
   # ─── AI API Keys ─────────────────────────────
