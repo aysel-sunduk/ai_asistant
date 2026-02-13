@@ -48,10 +48,10 @@ spring:
 
   # ─── Mail ───────────────────────────────────
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USER:}
-    password: ${MAIL_PASS:}
+    host: ${SMTP_HOST:${MAIL_HOST:smtp.gmail.com}}
+    port: ${SMTP_PORT:${MAIL_PORT:587}}
+    username: ${SMTP_USER:${MAIL_USER:}}
+    password: ${SMTP_PASS:${MAIL_PASS:}}
     properties:
       "mail.smtp.auth": true
       "mail.smtp.starttls.enable": true

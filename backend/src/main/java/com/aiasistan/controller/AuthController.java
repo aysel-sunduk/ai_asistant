@@ -47,7 +47,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
         ForgotPasswordResponse response = authService.forgotPassword(request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Sifre basariyla guncellendi"));
+        return ResponseEntity.ok(ApiResponse.ok(response, "Gecici sifre e-postaya gonderildi"));
     }
 
     @PostMapping("/refresh")

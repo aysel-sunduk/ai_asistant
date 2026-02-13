@@ -2,6 +2,7 @@ package com.aiasistan.service;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Instant;
 
 import org.slf4j.Logger;
@@ -37,15 +38,18 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -87,6 +91,8 @@ public class AuthService {
 
         User newUser = new User();
         newUser.setEmail(request.getEmail());
+        newUser.setFirstName(request.getFirstName().trim());
+        newUser.setLastName(request.getLastName().trim());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         newUser.setRole("user");
 
@@ -103,16 +109,14 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi!"));
 
-        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
-            throw new BadRequestException("Yeni sifre mevcut sifreyle ayni olamaz!");
-        }
-
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        String temporaryPassword = generateNumericTemporaryPassword(6);
+        user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
         userRepository.save(user);
         refreshTokenRepository.revokeAllUserTokens(user.getId());
+        emailService.sendTemporaryPassword(user.getEmail(), temporaryPassword);
 
         logger.info("Password updated successfully for email: {}", user.getEmail());
-        return new ForgotPasswordResponse(user.getEmail(), "Sifre basariyla guncellendi");
+        return new ForgotPasswordResponse(user.getEmail(), "Gecici sifre e-posta adresinize gonderildi");
     }
 
     @Transactional
@@ -190,5 +194,15 @@ public class AuthService {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Hata: Token hash'lenemedi", e);
         }
+    }
+
+    private String generateNumericTemporaryPassword(int length) {
+        final String digits = "0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder result = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            result.append(digits.charAt(random.nextInt(digits.length())));
+        }
+        return result.toString();
     }
 }

@@ -24,7 +24,7 @@ public class Application {
         if (envPath == null) return;
         try (BufferedReader br = Files.newBufferedReader(envPath)) {
             br.lines().forEach(l -> {
-                String line = l.trim();
+                String line = l.replace("\uFEFF", "").trim();
                 if (line.isEmpty() || line.startsWith("#")) return;
                 int eq = line.indexOf('=');
                 if (eq <= 0) return;
@@ -32,6 +32,10 @@ public class Application {
                 String val = line.substring(eq + 1).trim();
                 if ((val.startsWith("\"") && val.endsWith("\"")) || (val.startsWith("'") && val.endsWith("'"))) {
                     val = val.substring(1, val.length() - 1);
+                }
+                // Gmail app password is shown in groups of 4 chars; accept accidental spaces in .env.
+                if ("MAIL_PASS".equals(key) || "SMTP_PASS".equals(key)) {
+                    val = val.replace(" ", "");
                 }
                 // Respect existing environment variables or system properties
                 if (System.getenv(key) != null) return; // env var present -> do not override
