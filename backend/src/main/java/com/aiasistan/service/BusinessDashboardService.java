@@ -2,7 +2,8 @@ package com.aiasistan.service;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
@@ -15,8 +16,10 @@ import com.aiasistan.dto.BusinessDashboardDto;
 import com.aiasistan.dto.ReminderDto;
 import com.aiasistan.dto.WorkEventDto;
 import com.aiasistan.model.Reminder;
+import com.aiasistan.model.UserProfile;
 import com.aiasistan.model.WorkEvent;
 import com.aiasistan.repository.ReminderRepository;
+import com.aiasistan.repository.UserProfileRepository;
 import com.aiasistan.repository.WorkEventRepository;
 
 @Service
@@ -25,25 +28,30 @@ public class BusinessDashboardService {
     private final WorkEventRepository workEventRepository;
     private final ReminderRepository reminderRepository;
     private final UserService userService;
+    private final UserProfileRepository userProfileRepository;
 
     public BusinessDashboardService(
         WorkEventRepository workEventRepository,
         ReminderRepository reminderRepository,
-        UserService userService
+        UserService userService,
+        UserProfileRepository userProfileRepository
     ) {
         this.workEventRepository = workEventRepository;
         this.reminderRepository = reminderRepository;
         this.userService = userService;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @Transactional(readOnly = true)
     public BusinessDashboardDto.Statistics getStatistics(String userEmail) {
         UUID userId = userService.getUserIdByEmail(userEmail);
+        ZoneId zoneId = resolveUserZone(userId);
         OffsetDateTime now = DateTimeUtils.now();
-        OffsetDateTime todayStart = DateTimeUtils.startOfDay(LocalDate.now(ZoneOffset.UTC));
-        OffsetDateTime todayEnd = DateTimeUtils.endOfDay(LocalDate.now(ZoneOffset.UTC));
+        LocalDate userToday = ZonedDateTime.now(zoneId).toLocalDate();
+        OffsetDateTime todayStart = userToday.atStartOfDay(zoneId).toOffsetDateTime();
+        OffsetDateTime todayEnd = userToday.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime();
 
-        LocalDate weekStart = LocalDate.now(ZoneOffset.UTC).with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate weekStart = userToday.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
         LocalDate weekEnd = weekStart.plusDays(6);
 
         long totalEvents = workEventRepository.countByUserId(userId);
@@ -53,8 +61,8 @@ public class BusinessDashboardService {
 
         List<WorkEvent> thisWeekEvents = workEventRepository.findByUserIdAndDateRange(
             userId,
-            weekStart.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime(),
-            weekEnd.atTime(23, 59, 59).atOffset(ZoneOffset.UTC)
+            weekStart.atStartOfDay(zoneId).toOffsetDateTime(),
+            weekEnd.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime()
         );
 
         long totalReminders = reminderRepository.countByUserId(userId);
@@ -76,9 +84,11 @@ public class BusinessDashboardService {
     @Transactional(readOnly = true)
     public BusinessDashboardDto.TodaySummary getTodaySummary(String userEmail) {
         UUID userId = userService.getUserIdByEmail(userEmail);
+        ZoneId zoneId = resolveUserZone(userId);
         OffsetDateTime now = DateTimeUtils.now();
-        OffsetDateTime todayStart = DateTimeUtils.startOfDay(LocalDate.now(ZoneOffset.UTC));
-        OffsetDateTime todayEnd = DateTimeUtils.endOfDay(LocalDate.now(ZoneOffset.UTC));
+        LocalDate userToday = ZonedDateTime.now(zoneId).toLocalDate();
+        OffsetDateTime todayStart = userToday.atStartOfDay(zoneId).toOffsetDateTime();
+        OffsetDateTime todayEnd = userToday.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime();
 
         List<WorkEvent> todayEvents = workEventRepository.findByUserIdAndDateRange(userId, todayStart, todayEnd);
         List<WorkEvent> upcomingEvents = workEventRepository.findUpcomingEvents(userId, now);
@@ -90,7 +100,7 @@ public class BusinessDashboardService {
 
         BusinessDashboardDto.TodaySummary summary = new BusinessDashboardDto.TodaySummary();
         summary.setTotalEvents((long) todayEvents.size());
-        summary.setCompletedEvents(0L);
+        summary.setCompletedEvents(todayEvents.stream().filter(e -> !e.getEndTime().isAfter(now)).count());
         summary.setUpcomingEvents((long) upcomingEvents.size());
         summary.setDueReminders((long) dueReminders.size());
         summary.setNextEvent(nextEvent);
@@ -101,12 +111,13 @@ public class BusinessDashboardService {
     @Transactional(readOnly = true)
     public BusinessDashboardDto.WeeklyOverview getWeeklyOverview(String userEmail) {
         UUID userId = userService.getUserIdByEmail(userEmail);
+        ZoneId zoneId = resolveUserZone(userId);
 
-        LocalDate weekStart = LocalDate.now(ZoneOffset.UTC).with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate weekStart = ZonedDateTime.now(zoneId).toLocalDate().with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        OffsetDateTime weekStartTime = weekStart.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
-        OffsetDateTime weekEndTime = weekEnd.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
+        OffsetDateTime weekStartTime = weekStart.atStartOfDay(zoneId).toOffsetDateTime();
+        OffsetDateTime weekEndTime = weekEnd.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime();
 
         List<WorkEvent> weekEvents = workEventRepository.findByUserIdAndDateRange(userId, weekStartTime, weekEndTime);
         List<Reminder> weekReminders = reminderRepository.findByUserIdAndDateRange(userId, weekStartTime, weekEndTime);
@@ -114,11 +125,11 @@ public class BusinessDashboardService {
         int busyDays = 0;
         for (int i = 0; i < 7; i++) {
             LocalDate day = weekStart.plusDays(i);
-            OffsetDateTime dayStart = day.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
-            OffsetDateTime dayEnd = day.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
+            OffsetDateTime dayStart = day.atStartOfDay(zoneId).toOffsetDateTime();
+            OffsetDateTime dayEnd = day.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime();
 
             long dayEventCount = weekEvents.stream()
-                .filter(e -> !e.getStartTime().isBefore(dayStart) && !e.getStartTime().isAfter(dayEnd))
+                .filter(e -> e.getStartTime().isBefore(dayEnd) && e.getEndTime().isAfter(dayStart))
                 .count();
 
             if (dayEventCount > 0) {
@@ -134,5 +145,21 @@ public class BusinessDashboardService {
         overview.setBusyDays(busyDays);
         overview.setFreeDays(7 - busyDays);
         return overview;
+    }
+
+    private ZoneId resolveUserZone(UUID userId) {
+        return userProfileRepository.findById(userId)
+            .map(UserProfile::getTimezone)
+            .filter(tz -> tz != null && !tz.isBlank())
+            .map(this::safeZoneId)
+            .orElse(ZoneId.of("Europe/Istanbul"));
+    }
+
+    private ZoneId safeZoneId(String timezone) {
+        try {
+            return ZoneId.of(timezone);
+        } catch (Exception ignored) {
+            return ZoneId.of("Europe/Istanbul");
+        }
     }
 }
