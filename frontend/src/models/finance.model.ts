@@ -1,48 +1,79 @@
-export interface FinanceAccount {
+// ─── Genel Pagination ───
+export interface PageResponse<T> {
+    content: T[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    first: boolean;
+    last: boolean;
+}
+
+// ─── Investment ───
+export interface InvestmentResponse {
     id: string;
-    userId: string;
-    name: string;
-    type: 'bank' | 'cash' | 'credit_card' | 'investment';
-    balance: number;
+    assetType: string;
+    symbol: string;
+    quantity: number;
+    avgCostMinor: number;
+    currentValue: number;
     currency: string;
-    createdAt: string;
     updatedAt: string;
 }
 
-export interface FinanceCategory {
-    id: string;
-    userId: string;
-    name: string;
-    type: 'income' | 'expense';
-    icon?: string;
-    color?: string;
-    createdAt: string;
+export interface InvestmentRequest {
+    assetType: string;
+    symbol: string;
+    quantity: number;
+    avgCostMinor?: number;
+    currency?: string;
 }
 
-export interface FinanceTransaction {
-    id: string;
-    userId: string;
-    accountId: string;
-    categoryId: string;
-    type: 'income' | 'expense';
-    amount: number;
-    currency: string;
-    description?: string;
-    date: string;
-    createdAt: string;
-    updatedAt: string;
+export interface InvestmentPerformanceResponse {
+    totalCost: number;
+    estimatedCurrentValue: number;
+    unrealizedPnl: number;
+    dailyChange: number;
+    allocationByAssetTypePct: Record<string, number>;
 }
 
-export interface Investment {
+// ─── Currency ───
+export interface CurrencyRateResponse {
     id: string;
-    userId: string;
-    name: string;
-    type: 'stock' | 'crypto' | 'fund' | 'gold' | 'other';
-    symbol?: string;
-    amount: number;
-    buyPrice: number;
-    currentPrice: number;
-    currency: string;
-    createdAt: string;
-    updatedAt: string;
+    currencyCode: string;
+    currencyName: string;
+    rate: number;
+    changeRate: number;
+    baseCurrency: string;
+    providerTimestamp: string;
+    rateDate: string;
+    source: string;
 }
+
+// ─── Asset Type Helpers ───
+export const ASSET_TYPE_LABELS: Record<string, string> = {
+    STOCK: 'Hisse',
+    CRYPTO: 'Kripto',
+    FUND: 'Fon',
+    GOLD: 'Altın',
+    COMMODITY: 'Emtia',
+    OTHER: 'Diğer',
+};
+
+export const ASSET_TYPE_ICONS: Record<string, string> = {
+    STOCK: 'trending-up',
+    CRYPTO: 'logo-bitcoin',
+    FUND: 'pie-chart',
+    GOLD: 'diamond',
+    COMMODITY: 'cube',
+    OTHER: 'ellipsis-horizontal',
+};
+
+export const ASSET_TYPE_COLORS: Record<string, string> = {
+    STOCK: '#5B8DEF',
+    CRYPTO: '#F7931A',
+    FUND: '#4ECDC4',
+    GOLD: '#FFD700',
+    COMMODITY: '#A78BFA',
+    OTHER: '#9BA1A6',
+};

@@ -56,7 +56,7 @@ export default function RegisterScreen() {
         if (!validate()) return;
         setIsLoading(true);
         try {
-            await register({ email, password });
+            await register({ email, firstName, lastName, password });
             Alert.alert(
                 'Kayıt Başarılı',
                 'Hesabınız oluşturuldu. Giriş yapabilirsiniz.',

@@ -61,12 +61,18 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menü',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: 'Diğer',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>

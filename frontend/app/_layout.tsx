@@ -23,6 +23,7 @@ export default function RootLayout() {
         <Stack.Screen name="(games)" options={{ headerShown: false }} />
         <Stack.Screen name="(shopping)" options={{ headerShown: false }} />
         <Stack.Screen name="(reminders)" options={{ headerShown: false }} />
+        <Stack.Screen name="personal-info" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -1,11 +1,11 @@
 import { authApi } from '../src/api/auth.api';
-import type { LoginResponse, RegisterResponse, TokenResponse } from '../src/models/auth.model';
+import type { LoginResponse, RegisterRequest, RegisterResponse, TokenResponse } from '../src/models/auth.model';
 import { storage } from '../src/utils/storage';
 
 // ─── Mock Ayarları ───
 // Backend olmadan test etmek için USE_MOCK = true yapın.
 // Backend hazır olduğunda false yapmanız yeterli.
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 const MOCK_USER = {
     email: 'zeki@test.com',
@@ -49,7 +49,7 @@ export const authService = {
         return loginData;
     },
 
-    register: async (data: { email: string; password: string }): Promise<RegisterResponse> => {
+    register: async (data: RegisterRequest): Promise<RegisterResponse> => {
         if (USE_MOCK) {
             await new Promise((r) => setTimeout(r, 500));
             return { email: data.email, message: 'Kayıt başarılı' };

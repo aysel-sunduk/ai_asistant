@@ -1,20 +1,54 @@
-import type { FinanceAccount, FinanceCategory, FinanceTransaction, Investment } from '../models/finance.model';
+import type { ApiResponse } from '../models/auth.model';
+import type {
+    CurrencyRateResponse,
+    InvestmentPerformanceResponse,
+    InvestmentRequest,
+    InvestmentResponse,
+    PageResponse,
+} from '../models/finance.model';
 import apiClient from './client';
 
 export const financeApi = {
-    // Hesaplar
-    getAccounts: () => apiClient.get<FinanceAccount[]>('/finance/accounts'),
-    createAccount: (data: Partial<FinanceAccount>) => apiClient.post<FinanceAccount>('/finance/accounts', data),
+    // ─── Investments ───
+    getInvestments: (page = 0, size = 20) =>
+        apiClient.get<ApiResponse<PageResponse<InvestmentResponse>>>('/v1/finance/investments', {
+            params: { page, size },
+        }),
 
-    // Kategoriler
-    getCategories: () => apiClient.get<FinanceCategory[]>('/finance/categories'),
-    createCategory: (data: Partial<FinanceCategory>) => apiClient.post<FinanceCategory>('/finance/categories', data),
+    getInvestmentById: (id: string) =>
+        apiClient.get<ApiResponse<InvestmentResponse>>(`/v1/finance/investments/${id}`),
 
-    // İşlemler
-    getTransactions: (params?: Record<string, unknown>) => apiClient.get<FinanceTransaction[]>('/finance/transactions', { params }),
-    createTransaction: (data: Partial<FinanceTransaction>) => apiClient.post<FinanceTransaction>('/finance/transactions', data),
+    addInvestment: (data: InvestmentRequest) =>
+        apiClient.post<ApiResponse<InvestmentResponse>>('/v1/finance/investments', data),
 
-    // Yatırımlar
-    getInvestments: () => apiClient.get<Investment[]>('/finance/investments'),
-    createInvestment: (data: Partial<Investment>) => apiClient.post<Investment>('/finance/investments', data),
+    deleteInvestment: (id: string) =>
+        apiClient.delete<ApiResponse<void>>(`/v1/finance/investments/${id}`),
+
+    updateInvestmentPrice: (id: string, avgCostMinor: number) =>
+        apiClient.put<ApiResponse<InvestmentResponse>>(
+            `/v1/finance/investments/${id}/price`,
+            null,
+            { params: { avgCostMinor } },
+        ),
+
+    getTotalInvestment: () =>
+        apiClient.get<ApiResponse<number>>('/v1/finance/investments/total'),
+
+    getPortfolioPerformance: () =>
+        apiClient.get<ApiResponse<InvestmentPerformanceResponse>>('/v1/finance/investments/performance'),
+
+    // ─── Currencies ───
+    getCurrencies: (page = 0, size = 20) =>
+        apiClient.get<ApiResponse<PageResponse<CurrencyRateResponse>>>('/v1/finance/currencies', {
+            params: { page, size },
+        }),
+
+    getLatestRate: (code: string) =>
+        apiClient.get<ApiResponse<CurrencyRateResponse>>(`/v1/finance/currencies/latest/${code}`),
+
+    getHistoricalRates: (code: string, startDate: string, endDate: string) =>
+        apiClient.get<ApiResponse<CurrencyRateResponse[]>>(
+            `/v1/finance/currencies/historical/${code}`,
+            { params: { startDate, endDate } },
+        ),
 };

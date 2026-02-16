@@ -1,9 +1,12 @@
-import type { User, UserProfile } from '../models/user.model';
+import type { ApiResponse } from '../models/auth.model';
+import type { User, UserProfile, UpdateProfileRequest } from '../models/user.model';
 import apiClient from './client';
 
 export const userApi = {
-    getMe: () => apiClient.get<User>('/users/me'),
-    getProfile: () => apiClient.get<UserProfile>('/users/me/profile'),
-    updateProfile: (data: Partial<UserProfile>) =>
-        apiClient.put<UserProfile>('/users/me/profile', data),
+    getMe: () => apiClient.get<ApiResponse<User>>('/v1/users/me'),
+
+    getProfile: () => apiClient.get<ApiResponse<UserProfile>>('/v1/profile'),
+
+    updateProfile: (data: UpdateProfileRequest) =>
+        apiClient.put<ApiResponse<UserProfile>>('/v1/profile', data),
 };

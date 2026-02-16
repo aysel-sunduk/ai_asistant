@@ -63,6 +63,7 @@ export default function ProfileScreen() {
             label: 'Kişisel Bilgiler',
             subtitle: 'Ad, soyad, telefon',
             color: PURPLE,
+            onPress: () => router.push('/personal-info'),
         },
         {
             icon: 'shield-checkmark-outline',

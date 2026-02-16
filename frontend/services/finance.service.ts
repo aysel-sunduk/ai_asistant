@@ -1,44 +1,56 @@
 import { financeApi } from '../src/api/finance.api';
-import type { FinanceAccount, FinanceCategory, FinanceTransaction, Investment } from '../src/models/finance.model';
+import type {
+    CurrencyRateResponse,
+    InvestmentPerformanceResponse,
+    InvestmentRequest,
+    InvestmentResponse,
+    PageResponse,
+} from '../src/models/finance.model';
 
 export const financeService = {
-    // Hesaplar
-    getAccounts: async (): Promise<FinanceAccount[]> => {
-        const response = await financeApi.getAccounts();
-        return response.data;
-    },
-    createAccount: async (data: Partial<FinanceAccount>): Promise<FinanceAccount> => {
-        const response = await financeApi.createAccount(data);
-        return response.data;
+    // ─── Investments ───
+    getInvestments: async (page = 0, size = 20): Promise<PageResponse<InvestmentResponse>> => {
+        const response = await financeApi.getInvestments(page, size);
+        return response.data.data;
     },
 
-    // Kategoriler
-    getCategories: async (): Promise<FinanceCategory[]> => {
-        const response = await financeApi.getCategories();
-        return response.data;
-    },
-    createCategory: async (data: Partial<FinanceCategory>): Promise<FinanceCategory> => {
-        const response = await financeApi.createCategory(data);
-        return response.data;
+    getInvestmentById: async (id: string): Promise<InvestmentResponse> => {
+        const response = await financeApi.getInvestmentById(id);
+        return response.data.data;
     },
 
-    // İşlemler
-    getTransactions: async (params?: Record<string, unknown>): Promise<FinanceTransaction[]> => {
-        const response = await financeApi.getTransactions(params);
-        return response.data;
-    },
-    createTransaction: async (data: Partial<FinanceTransaction>): Promise<FinanceTransaction> => {
-        const response = await financeApi.createTransaction(data);
-        return response.data;
+    addInvestment: async (data: InvestmentRequest): Promise<InvestmentResponse> => {
+        const response = await financeApi.addInvestment(data);
+        return response.data.data;
     },
 
-    // Yatırımlar
-    getInvestments: async (): Promise<Investment[]> => {
-        const response = await financeApi.getInvestments();
-        return response.data;
+    deleteInvestment: async (id: string): Promise<void> => {
+        await financeApi.deleteInvestment(id);
     },
-    createInvestment: async (data: Partial<Investment>): Promise<Investment> => {
-        const response = await financeApi.createInvestment(data);
-        return response.data;
+
+    updateInvestmentPrice: async (id: string, avgCostMinor: number): Promise<InvestmentResponse> => {
+        const response = await financeApi.updateInvestmentPrice(id, avgCostMinor);
+        return response.data.data;
+    },
+
+    getTotalInvestment: async (): Promise<number> => {
+        const response = await financeApi.getTotalInvestment();
+        return response.data.data;
+    },
+
+    getPortfolioPerformance: async (): Promise<InvestmentPerformanceResponse> => {
+        const response = await financeApi.getPortfolioPerformance();
+        return response.data.data;
+    },
+
+    // ─── Currencies ───
+    getCurrencies: async (page = 0, size = 20): Promise<PageResponse<CurrencyRateResponse>> => {
+        const response = await financeApi.getCurrencies(page, size);
+        return response.data.data;
+    },
+
+    getLatestRate: async (code: string): Promise<CurrencyRateResponse> => {
+        const response = await financeApi.getLatestRate(code);
+        return response.data.data;
     },
 };
