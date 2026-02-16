@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     Platform,
     RefreshControl,
     ScrollView,
@@ -14,56 +13,48 @@ import {
     View,
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
-import type {
-    CurrencyRateResponse,
-    InvestmentPerformanceResponse,
-    InvestmentResponse,
-} from '../../src/models/finance.model';
+console.log('FinanceService Debug:', financeService);
+import type { CurrencyHoldingResponse, FinanceDashboardResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 
 const PURPLE = '#6C63FF';
-const PURPLE_DARK = '#5A52D5';
 const GRAY = '#9BA1A6';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-// ─── Helpers ───
-const formatCurrency = (val: number | null | undefined, currency = '₺'): string => {
-    if (val == null) return `${currency}0`;
-    const abs = Math.abs(val);
-    if (abs >= 1_000_000) return `${currency}${(val / 1_000_000).toFixed(1)}M`;
-    if (abs >= 1_000) return `${currency}${(val / 1_000).toFixed(1)}K`;
-    return `${currency}${val.toFixed(2)}`;
-};
-
-const formatMinorToCurrency = (minor: number | null | undefined, currency = '₺'): string => {
-    if (minor == null) return `${currency}0`;
-    return formatCurrency(minor / 100, currency);
-};
-
-const getPnlColor = (val: number) => (val >= 0 ? '#34D399' : '#FF6B6B');
-const getPnlPrefix = (val: number) => (val >= 0 ? '+' : '');
+import { formatCurrency, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
 
 export default function FinanceScreen() {
     const router = useRouter();
-    const [performance, setPerformance] = useState<InvestmentPerformanceResponse | null>(null);
-    const [investments, setInvestments] = useState<InvestmentResponse[]>([]);
-    const [currencies, setCurrencies] = useState<CurrencyRateResponse[]>([]);
+    const [dashboard, setDashboard] = useState<FinanceDashboardResponse | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [holdings, setHoldings] = useState<any[]>([]);
+    const [favorites, setFavorites] = useState<any[]>([]);
 
     const loadData = useCallback(async () => {
+        setErrorMsg(null);
         try {
-            const [perfRes, invRes, curRes] = await Promise.allSettled([
-                financeService.getPortfolioPerformance(),
-                financeService.getInvestments(0, 10),
-                financeService.getCurrencies(0, 10),
+            console.log('Fetching dashboard, holdings, and favorites...');
+            const [dashRes, holdingsRes, favRes] = await Promise.all([
+                financeService.getDashboard(),
+                financeService.getCurrencyHoldings(),
+                financeService.getFavorites()
             ]);
-            if (perfRes.status === 'fulfilled') setPerformance(perfRes.value);
-            if (invRes.status === 'fulfilled') setInvestments(invRes.value.content);
-            if (curRes.status === 'fulfilled') setCurrencies(curRes.value.content);
-        } catch {
-            // silent
+            console.log('Dashboard Data:', dashRes);
+            console.log('Holdings Data:', holdingsRes);
+            console.log('Favorites Data:', favRes);
+
+            setDashboard(dashRes);
+            setHoldings(Array.isArray(holdingsRes) ? holdingsRes : []);
+            setFavorites(Array.isArray(favRes) ? favRes : []);
+        } catch (error: any) {
+            console.error('Dashboard load error:', error);
+            const msg = error.response ? `Status: ${error.response.status} - ${JSON.stringify(error.response.data)}` : error.message;
+            setErrorMsg(msg);
+            setHoldings([]);
+            setFavorites([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -73,6 +64,12 @@ export default function FinanceScreen() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [])
+    );
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -88,12 +85,35 @@ export default function FinanceScreen() {
         );
     }
 
-    const totalValue = performance?.estimatedCurrentValue ?? 0;
+    return (
+        <FinanceScreenContent
+            dashboard={dashboard}
+            holdings={holdings}
+            favorites={favorites}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            router={router}
+            errorMsg={errorMsg}
+        />
+    );
+}
+
+function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRefresh, router, errorMsg }: any) {
+    const [performance, setPerformance] = useState<any>(null);
+
+    useEffect(() => {
+        financeService.getPortfolioPerformance().then(setPerformance).catch(() => { });
+    }, [refreshing]);
+
+    const totalValue = performance?.estimatedCurrentValue ?? dashboard?.totalPortfolioValue ?? 0;
     const totalCost = performance?.totalCost ?? 0;
     const pnl = performance?.unrealizedPnl ?? 0;
-    const dailyChange = performance?.dailyChange ?? 0;
     const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
-    const allocation = performance?.allocationByAssetTypePct ?? {};
+    const allocation = dashboard?.allocationByAssetTypePct ?? {};
+
+    // Use passed favorites (fallback to dashboard if needed, but explicit fetch is preferred)
+    const favCurrencies = favorites && favorites.length > 0 ? favorites : (dashboard?.favoriteCurrencies ?? []);
+    const investments = dashboard?.topInvestments ?? [];
 
     return (
         <View style={styles.container}>
@@ -122,6 +142,12 @@ export default function FinanceScreen() {
                     </View>
                 </View>
 
+                {errorMsg && (
+                    <View style={{ margin: 20, padding: 10, backgroundColor: '#FECACA', borderRadius: 8 }}>
+                        <Text style={{ color: '#DC2626', fontSize: 12 }}>Hata: {errorMsg}</Text>
+                    </View>
+                )}
+
                 {/* ─── Portföy Kartı ─── */}
                 <View style={styles.portfolioCard}>
                     <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
@@ -136,7 +162,6 @@ export default function FinanceScreen() {
                             {getPnlPrefix(pnl)}{formatCurrency(pnl)} ({getPnlPrefix(pnlPct)}{pnlPct.toFixed(1)}%)
                         </Text>
                     </View>
-                    {/* Mini sparkle */}
                     <View style={styles.portfolioSparkle}>
                         <Ionicons name="sparkles" size={40} color="rgba(255,255,255,0.08)" />
                     </View>
@@ -178,7 +203,6 @@ export default function FinanceScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Portföy Dağılımı</Text>
                         <View style={styles.allocationCard}>
-                            {/* Progress bar */}
                             <View style={styles.allocationBar}>
                                 {Object.entries(allocation).map(([type, pct], idx) => (
                                     <View
@@ -186,8 +210,8 @@ export default function FinanceScreen() {
                                         style={[
                                             styles.allocationSegment,
                                             {
-                                                flex: pct,
-                                                backgroundColor: ASSET_TYPE_COLORS[type] || '#9BA1A6',
+                                                flex: Number(pct),
+                                                backgroundColor: ASSET_TYPE_COLORS[type] || (type === "CURRENCY" ? "#22C55E" : "#9BA1A6"),
                                                 borderTopLeftRadius: idx === 0 ? 6 : 0,
                                                 borderBottomLeftRadius: idx === 0 ? 6 : 0,
                                                 borderTopRightRadius: idx === Object.keys(allocation).length - 1 ? 6 : 0,
@@ -197,18 +221,17 @@ export default function FinanceScreen() {
                                     />
                                 ))}
                             </View>
-                            {/* Legend */}
                             <View style={styles.legendRow}>
                                 {Object.entries(allocation).map(([type, pct]) => (
                                     <View key={type} style={styles.legendItem}>
                                         <View
                                             style={[
                                                 styles.legendDot,
-                                                { backgroundColor: ASSET_TYPE_COLORS[type] || '#9BA1A6' },
+                                                { backgroundColor: ASSET_TYPE_COLORS[type] || (type === "CURRENCY" ? "#22C55E" : "#9BA1A6") },
                                             ]}
                                         />
                                         <Text style={styles.legendText}>
-                                            {ASSET_TYPE_LABELS[type] || type} %{Number(pct).toFixed(0)}
+                                            {ASSET_TYPE_LABELS[type] || (type === "CURRENCY" ? "Döviz" : type)} %{Number(pct).toFixed(0)}
                                         </Text>
                                     </View>
                                 ))}
@@ -239,7 +262,7 @@ export default function FinanceScreen() {
                         </View>
                     ) : (
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.investmentScroll}>
-                            {investments.map((inv) => {
+                            {investments.map((inv: InvestmentResponse) => {
                                 const cost = (inv.avgCostMinor || 0) / 100 * inv.quantity;
                                 const invPnl = (inv.currentValue || 0) - cost;
                                 return (
@@ -287,33 +310,93 @@ export default function FinanceScreen() {
                     )}
                 </View>
 
-                {/* ─── Döviz Kurları ─── */}
+                {/* ─── Nakit Varlıklar (Döviz) ─── */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Döviz Kurları</Text>
+                        <Text style={styles.sectionTitle}>Nakit Varlıklar (Döviz)</Text>
+                    </View>
+
+                    {(!holdings || holdings.length === 0) ? (
+                        <View style={styles.emptyCard}>
+                            <Ionicons name="cash-outline" size={36} color="#E0E0E0" />
+                            <Text style={styles.emptyText}>Döviz varlığı yok</Text>
+                            <TouchableOpacity
+                                style={styles.emptyBtn}
+                                onPress={() => router.push('/(finance)/add-transaction')}
+                            >
+                                <Text style={styles.emptyBtnText}>Döviz Ekle</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.investmentScroll}>
+                            {(Array.isArray(holdings) ? holdings : []).map((h: CurrencyHoldingResponse) => {
+                                // Assuming response has profitLoss
+                                const pnl = h.profitLoss || 0;
+                                return (
+                                    <View key={h.id} style={styles.investmentCard}>
+                                        <View style={styles.investmentHeader}>
+                                            <View style={[styles.investmentIcon, { backgroundColor: '#DCFCE7' }]}>
+                                                <Ionicons name="cash" size={18} color="#22C55E" />
+                                            </View>
+                                            <Text style={styles.investmentType}>Döviz</Text>
+                                        </View>
+                                        <Text style={styles.investmentSymbol}>{h.currencyCode}</Text>
+                                        <Text style={styles.investmentValue}>
+                                            {formatCurrency(h.amount * h.currentRate)}
+                                        </Text>
+                                        <View style={styles.investmentPnl}>
+                                            <Ionicons
+                                                name={pnl >= 0 ? 'caret-up' : 'caret-down'}
+                                                size={12}
+                                                color={getPnlColor(pnl)}
+                                            />
+                                            <Text style={[styles.investmentPnlText, { color: getPnlColor(pnl) }]}>
+                                                {getPnlPrefix(pnl)}{formatCurrency(pnl)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )
+                            })}
+                        </ScrollView>
+                    )}
+                </View>
+
+                {/* ─── Döviz Kurları (Favoriler) ─── */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24 }}>
+                            <Ionicons name="star" size={16} color="#FFD93D" />
+                            <Text style={[styles.sectionTitle, { paddingHorizontal: 0 }]}>Takip Listesi</Text>
+                        </View>
                         <TouchableOpacity onPress={() => router.push('/(finance)/exchange-rates')}>
                             <Text style={styles.seeAllText}>Tümünü Gör</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {currencies.length === 0 ? (
+                    {favCurrencies.length === 0 ? (
                         <View style={styles.emptyCard}>
-                            <Ionicons name="cash-outline" size={36} color="#E0E0E0" />
-                            <Text style={styles.emptyText}>Kur verisi bulunamadı</Text>
+                            <Ionicons name="star-outline" size={36} color="#E0E0E0" />
+                            <Text style={styles.emptyText}>Favori kur eklenmedi</Text>
+                            <TouchableOpacity
+                                style={styles.emptyBtn}
+                                onPress={() => router.push('/(finance)/exchange-rates')}
+                            >
+                                <Text style={styles.emptyBtnText}>Kur Ekle</Text>
+                            </TouchableOpacity>
                         </View>
                     ) : (
                         <View style={styles.currencyCard}>
-                            {currencies.slice(0, 5).map((cur, index) => (
+                            {favCurrencies.map((cur: any, index: number) => (
                                 <View
                                     key={cur.id || index}
                                     style={[
                                         styles.currencyRow,
-                                        index < Math.min(currencies.length, 5) - 1 && styles.currencyRowBorder,
+                                        index < favCurrencies.length - 1 && styles.currencyRowBorder,
                                     ]}
                                 >
                                     <View style={styles.currencyLeft}>
-                                        <View style={styles.currencyBadge}>
-                                            <Text style={styles.currencyBadgeText}>
+                                        <View style={[styles.currencyBadge, { backgroundColor: '#FEF3C7' }]}>
+                                            <Text style={[styles.currencyBadgeText, { color: '#D97706' }]}>
                                                 {cur.currencyCode?.slice(0, 2) || '??'}
                                             </Text>
                                         </View>

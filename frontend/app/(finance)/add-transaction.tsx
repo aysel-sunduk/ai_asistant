@@ -14,7 +14,7 @@ import {
     View,
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
-import type { InvestmentRequest } from '../../src/models/finance.model';
+import type { CurrencyHoldingRequest, InvestmentRequest } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 
 const PURPLE = '#6C63FF';
@@ -22,20 +22,28 @@ const GRAY = '#9BA1A6';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-const ASSET_TYPES = ['STOCK', 'CRYPTO', 'FUND', 'GOLD', 'COMMODITY', 'OTHER'];
+// Add CURRENCY to the list
+const ASSET_TYPES = ['STOCK', 'CRYPTO', 'FUND', 'GOLD', 'COMMODITY', 'CURRENCY', 'OTHER'];
 
-export default function AddInvestmentScreen() {
+// Add label/icon/color for CURRENCY if not in model
+const EXTENDED_LABELS: Record<string, string> = { ...ASSET_TYPE_LABELS, CURRENCY: 'Döviz' };
+const EXTENDED_ICONS: Record<string, string> = { ...ASSET_TYPE_ICONS, CURRENCY: 'cash' };
+const EXTENDED_COLORS: Record<string, string> = { ...ASSET_TYPE_COLORS, CURRENCY: '#22C55E' };
+
+export default function AddTransactionScreen() {
     const router = useRouter();
     const [assetType, setAssetType] = useState('STOCK');
     const [symbol, setSymbol] = useState('');
     const [quantity, setQuantity] = useState('');
-    const [avgCost, setAvgCost] = useState('');
+    const [cost, setCost] = useState(''); // Used for Avg Cost or Buy Rate
     const [currency, setCurrency] = useState('TRY');
     const [loading, setLoading] = useState(false);
 
+    const isCurrency = assetType === 'CURRENCY';
+
     const handleSubmit = async () => {
         if (!symbol.trim()) {
-            Alert.alert('Hata', 'Sembol alanı zorunludur');
+            Alert.alert('Hata', isCurrency ? 'Para birimi kodu zorunludur' : 'Sembol alanı zorunludur');
             return;
         }
         if (!quantity.trim() || Number(quantity) <= 0) {
@@ -45,19 +53,30 @@ export default function AddInvestmentScreen() {
 
         setLoading(true);
         try {
-            const data: InvestmentRequest = {
-                assetType,
-                symbol: symbol.trim().toUpperCase(),
-                quantity: Number(quantity),
-                avgCostMinor: avgCost ? Math.round(Number(avgCost) * 100) : undefined,
-                currency: currency || 'TRY',
-            };
-            await financeService.addInvestment(data);
-            Alert.alert('Başarılı', 'Yatırım başarıyla eklendi', [
+            if (isCurrency) {
+                const data: CurrencyHoldingRequest = {
+                    currencyCode: symbol.trim().toUpperCase(),
+                    amount: Number(quantity),
+                    buyRate: Number(cost || 0),
+                    buyDate: new Date().toISOString(), // Default to now
+                };
+                await financeService.addCurrencyHolding(data);
+            } else {
+                const data: InvestmentRequest = {
+                    assetType,
+                    symbol: symbol.trim().toUpperCase(),
+                    quantity: Number(quantity),
+                    avgCostMinor: cost ? Math.round(Number(cost) * 100) : undefined,
+                    currency: currency || 'TRY',
+                };
+                await financeService.addInvestment(data);
+            }
+
+            Alert.alert('Başarılı', isCurrency ? 'Döviz varlığı eklendi' : 'Yatırım başarıyla eklendi', [
                 { text: 'Tamam', onPress: () => router.back() },
             ]);
         } catch (err: any) {
-            Alert.alert('Hata', err?.response?.data?.message || 'Yatırım eklenemedi');
+            Alert.alert('Hata', err?.response?.data?.message || 'İşlem başarısız');
         } finally {
             setLoading(false);
         }
@@ -75,30 +94,30 @@ export default function AddInvestmentScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#1A1A2E" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Yatırım Ekle</Text>
+                    <Text style={styles.headerTitle}>{isCurrency ? 'Döviz Ekle' : 'Yatırım Ekle'}</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
                 <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
                     {/* Asset Type Picker */}
-                    <Text style={styles.label}>Yatırım Türü</Text>
+                    <Text style={styles.label}>Tür</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
                         {ASSET_TYPES.map((type) => {
                             const selected = assetType === type;
                             return (
                                 <TouchableOpacity
                                     key={type}
-                                    style={[styles.typeChip, selected && { backgroundColor: ASSET_TYPE_COLORS[type] }]}
+                                    style={[styles.typeChip, selected && { backgroundColor: EXTENDED_COLORS[type] }]}
                                     onPress={() => setAssetType(type)}
                                     activeOpacity={0.7}
                                 >
                                     <Ionicons
-                                        name={(ASSET_TYPE_ICONS[type] || 'ellipsis-horizontal') as IoniconsName}
+                                        name={(EXTENDED_ICONS[type] || 'ellipsis-horizontal') as IoniconsName}
                                         size={16}
-                                        color={selected ? '#fff' : ASSET_TYPE_COLORS[type]}
+                                        color={selected ? '#fff' : EXTENDED_COLORS[type]}
                                     />
                                     <Text style={[styles.typeChipText, selected && { color: '#fff' }]}>
-                                        {ASSET_TYPE_LABELS[type]}
+                                        {EXTENDED_LABELS[type]}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -106,12 +125,12 @@ export default function AddInvestmentScreen() {
                     </ScrollView>
 
                     {/* Symbol */}
-                    <Text style={styles.label}>Sembol</Text>
+                    <Text style={styles.label}>{isCurrency ? 'Para Birimi (Örn: USD, EUR)' : 'Sembol (Örn: AAPL, GARAN)'}</Text>
                     <View style={styles.inputContainer}>
-                        <Ionicons name="search" size={18} color={GRAY} />
+                        <Ionicons name={isCurrency ? 'cash-outline' : 'search'} size={18} color={GRAY} />
                         <TextInput
                             style={styles.input}
-                            placeholder="Örn: AAPL, BTC, GLDTR"
+                            placeholder={isCurrency ? "USD" : "Sembol girin"}
                             placeholderTextColor="#C4C4C4"
                             value={symbol}
                             onChangeText={setSymbol}
@@ -133,73 +152,50 @@ export default function AddInvestmentScreen() {
                         />
                     </View>
 
-                    {/* Avg Cost */}
-                    <Text style={styles.label}>Ortalama Maliyet (birim fiyat)</Text>
+                    {/* Cost / Rate */}
+                    <Text style={styles.label}>{isCurrency ? 'Alış Kuru (Opsiyonel)' : 'Ortalama Maliyet (Birim Fiyat)'}</Text>
                     <View style={styles.inputContainer}>
                         <Text style={styles.currencySymbol}>₺</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="0.00"
                             placeholderTextColor="#C4C4C4"
-                            value={avgCost}
-                            onChangeText={setAvgCost}
+                            value={cost}
+                            onChangeText={setCost}
                             keyboardType="decimal-pad"
                         />
                     </View>
 
-                    {/* Currency */}
-                    <Text style={styles.label}>Para Birimi</Text>
-                    <View style={styles.currencyRow}>
-                        {['TRY', 'USD', 'EUR'].map((c) => (
-                            <TouchableOpacity
-                                key={c}
-                                style={[styles.currencyChip, currency === c && styles.currencyChipActive]}
-                                onPress={() => setCurrency(c)}
-                            >
-                                <Text style={[styles.currencyChipText, currency === c && styles.currencyChipTextActive]}>
-                                    {c}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    {/* Preview */}
-                    {symbol && quantity ? (
-                        <View style={styles.preview}>
-                            <Text style={styles.previewTitle}>Özet</Text>
-                            <View style={styles.previewRow}>
-                                <Text style={styles.previewLabel}>Tür</Text>
-                                <Text style={styles.previewValue}>{ASSET_TYPE_LABELS[assetType]}</Text>
+                    {/* Currency Selection (Only for Investments) */}
+                    {!isCurrency && (
+                        <>
+                            <Text style={styles.label}>İşlem Para Birimi</Text>
+                            <View style={styles.currencyRow}>
+                                {['TRY', 'USD', 'EUR'].map((c) => (
+                                    <TouchableOpacity
+                                        key={c}
+                                        style={[styles.currencyChip, currency === c && styles.currencyChipActive]}
+                                        onPress={() => setCurrency(c)}
+                                    >
+                                        <Text style={[styles.currencyChipText, currency === c && styles.currencyChipTextActive]}>
+                                            {c}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
-                            <View style={styles.previewRow}>
-                                <Text style={styles.previewLabel}>Sembol</Text>
-                                <Text style={styles.previewValue}>{symbol.toUpperCase()}</Text>
-                            </View>
-                            <View style={styles.previewRow}>
-                                <Text style={styles.previewLabel}>Miktar</Text>
-                                <Text style={styles.previewValue}>{quantity}</Text>
-                            </View>
-                            {avgCost ? (
-                                <View style={styles.previewRow}>
-                                    <Text style={styles.previewLabel}>Toplam Maliyet</Text>
-                                    <Text style={[styles.previewValue, { fontWeight: '800' }]}>
-                                        ₺{(Number(quantity) * Number(avgCost)).toFixed(2)}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </View>
-                    ) : null}
+                        </>
+                    )}
 
                     {/* Submit */}
                     <TouchableOpacity
-                        style={[styles.submitBtn, loading && { opacity: 0.6 }]}
+                        style={[styles.submitBtn, loading && { opacity: 0.6 }, isCurrency && { backgroundColor: EXTENDED_COLORS.CURRENCY }]}
                         onPress={handleSubmit}
                         disabled={loading}
                         activeOpacity={0.8}
                     >
                         <Ionicons name="add-circle" size={20} color="#fff" />
                         <Text style={styles.submitText}>
-                            {loading ? 'Ekleniyor...' : 'Yatırım Ekle'}
+                            {loading ? 'Ekleniyor...' : isCurrency ? 'Döviz Ekle' : 'Yatırım Ekle'}
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>
@@ -252,16 +248,6 @@ const styles = StyleSheet.create({
     currencyChipActive: { backgroundColor: PURPLE, borderColor: PURPLE },
     currencyChipText: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
     currencyChipTextActive: { color: '#fff' },
-
-    /* Preview */
-    preview: {
-        marginTop: 28, backgroundColor: '#fff', borderRadius: 18, padding: 20,
-        borderWidth: 1, borderColor: '#F0F0F0',
-    },
-    previewTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
-    previewRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-    previewLabel: { fontSize: 13, color: GRAY },
-    previewValue: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
 
     /* Submit */
     submitBtn: {

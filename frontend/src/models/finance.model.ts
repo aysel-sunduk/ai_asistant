@@ -50,6 +50,82 @@ export interface CurrencyRateResponse {
     source: string;
 }
 
+export interface CurrencyDetailResponse {
+    currencyCode: string;
+    baseCurrency: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    date: string;
+}
+
+export interface SupportedCurrencyResponse {
+    code: string;
+    name: string;
+}
+
+// ─── Favorites ───
+export interface FavoriteCurrencyResponse {
+    id: string;
+    currencyCode: string;
+    currencyName: string;
+    rate: number;
+    changeRate: number;
+    baseCurrency: string;
+    rateDate: string;
+}
+
+export interface FavoriteCurrencyRequest {
+    currencyCode: string;
+}
+
+// ─── Currency Holdings ───
+export interface CurrencyHoldingResponse {
+    id: string;
+    currencyCode: string;
+    amount: number;
+    buyRate: number;
+    buyDate: string;
+    currentRate: number;
+    profitLoss: number;
+    profitLossPercent: number;
+    notes: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CurrencyHoldingRequest {
+    currencyCode: string;
+    amount: number;
+    buyRate: number;
+    buyDate?: string;
+    notes?: string;
+}
+
+export interface CurrencyHoldingSummary {
+    totalInvestedTRY: number;
+    currentValueTRY: number;
+    totalProfitLoss: number;
+    totalProfitLossPercent: number;
+    holdingCount: number;
+    holdings: CurrencyHoldingResponse[];
+}
+
+// ─── Dashboard ───
+export interface FinanceDashboardResponse {
+    totalPortfolioValue: number;
+    totalInvestmentValue: number;
+    totalCurrencyHoldingValue: number;
+    dailyChange: number;
+    dailyChangePercent: number;
+    investmentCount: number;
+    currencyHoldingCount: number;
+    topInvestments: InvestmentResponse[];
+    favoriteCurrencies: FavoriteCurrencyResponse[];
+    allocationByAssetTypePct: Record<string, number>;
+}
+
 // ─── Asset Type Helpers ───
 export const ASSET_TYPE_LABELS: Record<string, string> = {
     STOCK: 'Hisse',
