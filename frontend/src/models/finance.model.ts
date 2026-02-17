@@ -47,6 +47,7 @@ export interface CurrencyRateResponse {
     baseCurrency: string;
     providerTimestamp: string;
     rateDate: string;
+    lastUpdatedAt?: string;
     source: string;
 }
 
@@ -60,10 +61,7 @@ export interface CurrencyDetailResponse {
     date: string;
 }
 
-export interface SupportedCurrencyResponse {
-    code: string;
-    name: string;
-}
+export type SupportedCurrencyResponse = string;
 
 // ─── Favorites ───
 export interface FavoriteCurrencyResponse {
@@ -74,10 +72,15 @@ export interface FavoriteCurrencyResponse {
     changeRate: number;
     baseCurrency: string;
     rateDate: string;
+    lastUpdatedAt?: string;
 }
 
 export interface FavoriteCurrencyRequest {
     currencyCode: string;
+}
+
+export interface FavoriteInvestmentRequest {
+    investmentId: string;
 }
 
 // ─── Currency Holdings ───
@@ -132,17 +135,31 @@ export const ASSET_TYPE_LABELS: Record<string, string> = {
     CRYPTO: 'Kripto',
     FUND: 'Fon',
     GOLD: 'Altın',
+    SILVER: 'Gümüş',
     COMMODITY: 'Emtia',
+    DST: 'Mevduat',
+    REIT: 'GYO',
+    BOND: 'Tahvil',
+    ETF: 'ETF',
+    WARRANT: 'Varant',
     OTHER: 'Diğer',
+    CURRENCY: 'Döviz',
 };
 
 export const ASSET_TYPE_ICONS: Record<string, string> = {
-    STOCK: 'trending-up',
+    STOCK: 'bar-chart',
     CRYPTO: 'logo-bitcoin',
     FUND: 'pie-chart',
-    GOLD: 'diamond',
+    GOLD: 'medal',
+    SILVER: 'medal-outline',
     COMMODITY: 'cube',
-    OTHER: 'ellipsis-horizontal',
+    DST: 'wallet',
+    REIT: 'business',
+    BOND: 'document-text',
+    ETF: 'layers',
+    WARRANT: 'flash',
+    OTHER: 'pricetag',
+    CURRENCY: 'cash',
 };
 
 export const ASSET_TYPE_COLORS: Record<string, string> = {
@@ -150,6 +167,13 @@ export const ASSET_TYPE_COLORS: Record<string, string> = {
     CRYPTO: '#F7931A',
     FUND: '#4ECDC4',
     GOLD: '#FFD700',
+    SILVER: '#C0C0C0',
     COMMODITY: '#A78BFA',
+    DST: '#2ECC71',
+    REIT: '#E74C3C',
+    BOND: '#95A5A6',
+    ETF: '#34495E',
+    WARRANT: '#E67E22',
     OTHER: '#9BA1A6',
+    CURRENCY: '#22C55E',
 };

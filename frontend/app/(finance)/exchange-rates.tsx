@@ -14,7 +14,7 @@ import {
     View,
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
-import type { CurrencyRateResponse, FavoriteCurrencyResponse } from '../../src/models/finance.model';
+import type { CurrencyRateResponse, FavoriteCurrencyResponse, SupportedCurrencyResponse } from '../../src/models/finance.model';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -25,37 +25,30 @@ const getPnlPrefix = (val: number) => (val >= 0 ? '+' : '');
 export default function ExchangeRatesScreen() {
     const router = useRouter();
 
-    const [currencies, setCurrencies] = useState<CurrencyRateResponse[]>([]);
     const [favorites, setFavorites] = useState<FavoriteCurrencyResponse[]>([]);
+    const [supportedInfo, setSupportedInfo] = useState<SupportedCurrencyResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
 
-    const loadData = useCallback(async (p = 0, append = false) => {
+    // Cache for latest rates of searched items to avoid refetching
+    const [searchedRates, setSearchedRates] = useState<Record<string, CurrencyRateResponse>>({});
+    const [loadingRate, setLoadingRate] = useState<string | null>(null);
+
+    const loadData = useCallback(async () => {
         setError(null);
         try {
-            const [curRes, favRes] = await Promise.all([
-                financeService.getCurrencies(p, 50),
-                p === 0 ? financeService.getFavorites() : Promise.resolve(null),
+            const [favRes, supRes] = await Promise.all([
+                financeService.getFavorites(),
+                financeService.getSupportedCurrencies(),
             ]);
 
-            if (append) {
-                setCurrencies((prev) => [...prev, ...curRes.content]);
-            } else {
-                setCurrencies(curRes.content);
-            }
-            if (favRes) {
-                setFavorites(favRes);
-            }
-
-            setHasMore(!curRes.last);
-            setPage(p);
+            setFavorites(Array.isArray(favRes) ? favRes : []);
+            setSupportedInfo(Array.isArray(supRes) ? supRes : []);
         } catch (err: any) {
             console.warn('Exchange rates error:', err?.message || err);
-            setError(err?.response?.data?.message || err?.message || 'Kurlar yüklenemedi');
+            setError(err?.response?.data?.message || err?.message || 'Veriler yüklenemedi');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -63,16 +56,33 @@ export default function ExchangeRatesScreen() {
     }, []);
 
     useEffect(() => {
-        loadData(0);
+        loadData();
     }, []);
+
+    useEffect(() => {
+        if (favorites.length > 0) {
+            console.log('First favorite debug:', JSON.stringify(favorites[0], null, 2));
+        }
+    }, [favorites]);
 
     const onRefresh = () => {
         setRefreshing(true);
-        loadData(0);
+        loadData();
     };
 
-    const loadMore = () => {
-        if (hasMore && !loading) loadData(page + 1, true);
+    const fetchRateForCode = async (code: string) => {
+        // If we already have it or it's loading, skip
+        if (searchedRates[code] || loadingRate === code) return;
+
+        setLoadingRate(code);
+        try {
+            const rate = await financeService.getLatestRate(code);
+            setSearchedRates(prev => ({ ...prev, [code]: rate }));
+        } catch (e) {
+            console.warn(`Failed to fetch rate for ${code}`, e);
+        } finally {
+            setLoadingRate(null);
+        }
     };
 
     const toggleFavorite = async (currencyCode: string) => {
@@ -83,19 +93,18 @@ export default function ExchangeRatesScreen() {
         if (isFav) {
             newFavs = newFavs.filter((f) => f.currencyCode !== currencyCode);
         } else {
-            // Placeholder for optimistic add
-            const rate = currencies.find(c => c.currencyCode === currencyCode);
-            if (rate) {
-                newFavs.push({
-                    id: 'temp',
-                    currencyCode: rate.currencyCode,
-                    currencyName: rate.currencyName,
-                    rate: rate.rate,
-                    changeRate: rate.changeRate,
-                    baseCurrency: rate.baseCurrency,
-                    rateDate: rate.rateDate
-                });
-            }
+            // If we have the rate details from search, use them for optimistic add
+            const rate = searchedRates[currencyCode];
+            newFavs.push({
+                id: 'temp_' + Date.now(),
+                currencyCode: currencyCode,
+                currencyName: rate?.currencyName || currencyCode,
+                rate: rate?.rate || 0,
+                changeRate: rate?.changeRate || 0,
+                baseCurrency: 'TRY',
+                rateDate: new Date().toISOString(),
+                lastUpdatedAt: rate?.lastUpdatedAt
+            });
         }
         setFavorites(newFavs);
 
@@ -111,30 +120,34 @@ export default function ExchangeRatesScreen() {
         } catch (err) {
             console.error('Toggle favorite error:', err);
             // Revert on error
-            loadData(0);
+            loadData();
         }
     };
 
-    // Filter by search
-    const filtered = search.trim()
-        ? currencies.filter(
-            (c) =>
-                c.currencyCode?.toLowerCase().includes(search.toLowerCase()) ||
-                c.currencyName?.toLowerCase().includes(search.toLowerCase()),
-        )
-        : currencies;
+    // Filter supported currencies by search
+    // If search is empty, show nothing (or just favorites)
+    // If search is active, show matching supported currencies
+    const isSearching = search.trim().length > 0;
 
-    // Fav codes set for easy lookup
-    const favCodes = new Set(favorites.map(f => f.currencyCode));
+    const filteredSupported = isSearching
+        ? supportedInfo.filter(code => code.toLowerCase().includes(search.toLowerCase()))
+        : [];
 
-    // Sort: favorites first, then rest
-    const sorted = [...filtered].sort((a, b) => {
-        const aFav = favCodes.has(a.currencyCode) ? 0 : 1;
-        const bFav = favCodes.has(b.currencyCode) ? 0 : 1;
-        return aFav - bFav;
-    });
-
-    const favCount = sorted.filter((c) => favCodes.has(c.currencyCode)).length;
+    // Trigger fetch for visible search results if missing
+    useEffect(() => {
+        if (isSearching) {
+            const topResults = filteredSupported.slice(0, 10);
+            topResults.forEach(code => {
+                // Determine if we need to fetch rate
+                // We verify if it is NOT in favorites (favorites already have rates)
+                // and NOT in searchedRates
+                const isFav = favorites.some(f => f.currencyCode === code);
+                if (!isFav && !searchedRates[code]) {
+                    fetchRateForCode(code);
+                }
+            });
+        }
+    }, [search, filteredSupported, favorites, searchedRates]);
 
     if (loading) {
         return (
@@ -153,14 +166,14 @@ export default function ExchangeRatesScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Döviz Kurları</Text>
+                    <Text style={styles.headerTitle}>Kur Takip Listesi</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.searchRow}>
                     <Ionicons name="search" size={18} color="rgba(255,255,255,0.6)" />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Kur ara... (USD, EUR)"
+                        placeholder="Kur ekle... (USD, EUR, GOLD)"
                         placeholderTextColor="rgba(255,255,255,0.4)"
                         value={search}
                         onChangeText={setSearch}
@@ -172,7 +185,7 @@ export default function ExchangeRatesScreen() {
                     )}
                 </View>
                 <Text style={styles.headerSub}>
-                    {currencies.length} kur · {favorites.length} favori
+                    {favorites.length} öge takip ediliyor
                 </Text>
             </View>
 
@@ -180,100 +193,132 @@ export default function ExchangeRatesScreen() {
                 contentContainerStyle={styles.scroll}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />}
-                onMomentumScrollEnd={loadMore}
             >
-                {error ? (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="alert-circle-outline" size={36} color="#FF6B6B" />
-                        <Text style={styles.emptyText}>{error}</Text>
-                        <TouchableOpacity style={styles.loadMoreBtn} onPress={() => { setLoading(true); loadData(0); }}>
-                            <Text style={styles.loadMoreText}>Tekrar Dene</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : sorted.length === 0 ? (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="search-outline" size={32} color="#E0E0E0" />
-                        <Text style={styles.emptyText}>Sonuç bulunamadı</Text>
-                    </View>
-                ) : (
-                    <View style={styles.card}>
-                        {sorted.map((cur, i) => {
-                            const isCurFav = favCodes.has(cur.currencyCode);
-                            const showFavDivider = i === favCount && favCount > 0;
-                            const change = Number(cur.changeRate);
-
-                            return (
-                                <React.Fragment key={cur.currencyCode + '_' + (cur.id || i)}>
-                                    {/* Favori header */}
-                                    {i === 0 && favCount > 0 && (
-                                        <View style={styles.inlineHeader}>
-                                            <Ionicons name="star" size={14} color="#FFD93D" />
-                                            <Text style={styles.inlineHeaderText}>Favoriler ({favCount})</Text>
-                                        </View>
-                                    )}
-                                    {i === 0 && favCount === 0 && (
-                                        <View style={styles.inlineHeader}>
-                                            <Ionicons name="cash-outline" size={14} color={PURPLE} />
-                                            <Text style={styles.inlineHeaderText}>Tüm Kurlar</Text>
-                                        </View>
-                                    )}
-                                    {/* Divider between favs and rest */}
-                                    {showFavDivider && (
-                                        <View style={styles.divider}>
-                                            <View style={styles.dividerLine} />
-                                            <Text style={styles.dividerText}>Tüm Kurlar</Text>
-                                            <View style={styles.dividerLine} />
-                                        </View>
-                                    )}
-                                    <View style={[styles.currencyRow, i < sorted.length - 1 && styles.currencyRowBorder]}>
-                                        <TouchableOpacity
-                                            onPress={() => toggleFavorite(cur.currencyCode)}
-                                            style={styles.favBtn}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                            <Ionicons
-                                                name={isCurFav ? 'star' : 'star-outline'}
-                                                size={20}
-                                                color={isCurFav ? '#FFD93D' : '#D4D4D4'}
-                                            />
-                                        </TouchableOpacity>
-                                        <View style={[styles.currencyBadge, isCurFav && { backgroundColor: '#FEF3C7' }]}>
-                                            <Text style={[styles.currencyBadgeText, isCurFav && { color: '#D97706' }]}>
-                                                {cur.currencyCode?.slice(0, 2) || '??'}
-                                            </Text>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.currencyCode}>
-                                                {cur.currencyCode}/{cur.baseCurrency || 'TRY'}
-                                            </Text>
-                                            <Text style={styles.currencyName}>{cur.currencyName}</Text>
-                                        </View>
-                                        <View style={styles.currencyRight}>
-                                            <Text style={styles.currencyRate}>{Number(cur.rate).toFixed(4)}</Text>
-                                            {cur.changeRate != null && (
-                                                <View style={styles.currencyChangeRow}>
-                                                    <Ionicons
-                                                        name={change >= 0 ? 'caret-up' : 'caret-down'}
-                                                        size={10}
-                                                        color={getPnlColor(change)}
-                                                    />
-                                                    <Text style={[styles.currencyChange, { color: getPnlColor(change) }]}>
-                                                        {getPnlPrefix(change)}{change.toFixed(2)}%
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    </View>
-                                </React.Fragment>
-                            );
-                        })}
+                {error && (
+                    <View style={styles.errorCard}>
+                        <Text style={{ color: '#fff' }}>Hata: {error}</Text>
                     </View>
                 )}
 
-                {hasMore && (
-                    <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore}>
-                        <Text style={styles.loadMoreText}>Daha fazla yükle</Text>
-                    </TouchableOpacity>
+                {/* Search Results Section */}
+                {isSearching && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Arama Sonuçları</Text>
+                        {filteredSupported.length === 0 ? (
+                            <View style={styles.emptyCard}>
+                                <Text style={styles.emptyText}>Sonuç bulunamadı</Text>
+                            </View>
+                        ) : (
+                            filteredSupported.map((code) => {
+                                const isFav = favorites.some(f => f.currencyCode === code);
+                                const rateInfo = searchedRates[code]; // May be undefined if loading
+                                // If it is fav, we might want to show the fav data instead? 
+                                // Actually let's just use the fav data if available
+                                const favData = favorites.find(f => f.currencyCode === code);
+
+                                const displayRate = isFav ? favData?.rate : rateInfo?.rate;
+                                const displayChange = isFav ? favData?.changeRate : rateInfo?.changeRate;
+                                const displayName = isFav ? favData?.currencyName : rateInfo?.currencyName;
+
+                                return (
+                                    <View key={code} style={styles.currencyRow}>
+                                        <TouchableOpacity
+                                            onPress={() => toggleFavorite(code)}
+                                            style={styles.favBtn}
+                                        >
+                                            <Ionicons
+                                                name={isFav ? 'star' : 'star-outline'}
+                                                size={22}
+                                                color={isFav ? '#FFD93D' : '#D4D4D4'}
+                                            />
+                                        </TouchableOpacity>
+                                        <View style={{ flex: 1, marginLeft: 12 }}>
+                                            <Text style={styles.currencyCode}>{code}</Text>
+                                            <Text style={styles.currencyName}>{displayName || code}</Text>
+                                        </View>
+                                        <View style={styles.currencyRight}>
+                                            {displayRate ? (
+                                                <>
+                                                    <Text style={styles.currencyRate}>{Number(displayRate).toFixed(4)}</Text>
+                                                    {displayChange != null && (
+                                                        <Text style={[styles.currencyChange, { color: getPnlColor(displayChange) }]}>
+                                                            {getPnlPrefix(displayChange)}{Number(displayChange).toFixed(2)}%
+                                                        </Text>
+                                                    )}
+                                                    {(favData?.lastUpdatedAt || rateInfo?.lastUpdatedAt) && (
+                                                        <Text style={styles.lastUpdatedText}>
+                                                            {new Date(favData?.lastUpdatedAt || rateInfo?.lastUpdatedAt || '').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                        </Text>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <ActivityIndicator size="small" color={GRAY} />
+                                            )}
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )}
+                        <View style={styles.divider} />
+                    </View>
+                )}
+
+                {/* Favorites List */}
+                {!isSearching && (
+                    <View style={styles.card}>
+                        {favorites.length === 0 ? (
+                            <View style={styles.emptyCard}>
+                                <Ionicons name="star-outline" size={48} color="#E0E0E0" />
+                                <Text style={styles.emptyText}>Listeniz boş</Text>
+                                <Text style={[styles.emptyText, { fontSize: 12, marginTop: 4 }]}>Yukarıdan arama yaparak ekleyebilirsiniz.</Text>
+                            </View>
+                        ) : (
+                            favorites.map((fav, i) => {
+                                const change = Number(fav.changeRate);
+                                return (
+                                    <React.Fragment key={fav.id || fav.currencyCode}>
+                                        <View style={[styles.currencyRow, i < favorites.length - 1 && styles.currencyRowBorder]}>
+                                            <TouchableOpacity
+                                                onPress={() => toggleFavorite(fav.currencyCode)}
+                                                style={styles.favBtn}
+                                            >
+                                                <Ionicons name="star" size={22} color="#FFD93D" />
+                                            </TouchableOpacity>
+                                            <View style={[styles.currencyBadge, { backgroundColor: '#FEF3C7' }]}>
+                                                <Text style={[styles.currencyBadgeText, { color: '#D97706' }]}>
+                                                    {fav.currencyCode?.slice(0, 2)}
+                                                </Text>
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={styles.currencyCode}>{fav.currencyCode}</Text>
+                                                <Text style={styles.currencyName}>{fav.currencyName}</Text>
+                                            </View>
+                                            <View style={styles.currencyRight}>
+                                                <Text style={styles.currencyRate}>{Number(fav.rate).toFixed(4)}</Text>
+                                                {fav.changeRate != null && (
+                                                    <View style={styles.currencyChangeRow}>
+                                                        <Ionicons
+                                                            name={change >= 0 ? 'caret-up' : 'caret-down'}
+                                                            size={10}
+                                                            color={getPnlColor(change)}
+                                                        />
+                                                        <Text style={[styles.currencyChange, { color: getPnlColor(change) }]}>
+                                                            {getPnlPrefix(change)}{change.toFixed(2)}%
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                {fav.lastUpdatedAt && (
+                                                    <Text style={styles.lastUpdatedText}>
+                                                        {new Date(fav.lastUpdatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </View>
+                                    </React.Fragment>
+                                );
+                            })
+                        )}
+                    </View>
                 )}
             </ScrollView>
         </View>
@@ -309,49 +354,37 @@ const styles = StyleSheet.create({
 
     scroll: { padding: 20, paddingBottom: 40 },
 
+    section: { marginBottom: 20 },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: GRAY, marginBottom: 10, textTransform: 'uppercase' },
+    divider: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 10 },
+
     card: {
         backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
     },
-
-    inlineHeader: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
-        backgroundColor: '#FAFAFA',
+    errorCard: {
+        backgroundColor: '#EF4444', padding: 12, borderRadius: 12, marginBottom: 16
     },
-    inlineHeaderText: { fontSize: 12, fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: 0.3 },
 
-    divider: {
-        flexDirection: 'row', alignItems: 'center', gap: 10,
-        paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FAFAFA',
-    },
-    dividerLine: { flex: 1, height: 1, backgroundColor: '#E8E8E8' },
-    dividerText: { fontSize: 11, fontWeight: '700', color: GRAY, textTransform: 'uppercase', letterSpacing: 0.3 },
-
-    currencyRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
-    currencyRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+    currencyRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, marginBottom: 8 },
+    currencyRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F5F5F5', borderRadius: 0, marginBottom: 0 },
     favBtn: { padding: 4 },
     currencyBadge: {
         width: 38, height: 38, borderRadius: 12, backgroundColor: '#EDE9FE',
-        alignItems: 'center', justifyContent: 'center',
+        alignItems: 'center', justifyContent: 'center', marginLeft: 8
     },
     currencyBadgeText: { fontSize: 13, fontWeight: '800', color: PURPLE },
-    currencyCode: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
-    currencyName: { fontSize: 11, color: GRAY, marginTop: 2 },
-    currencyRight: { alignItems: 'flex-end' },
-    currencyRate: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
+    currencyCode: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
+    currencyName: { fontSize: 12, color: GRAY, marginTop: 2 },
+    currencyRight: { alignItems: 'flex-end', marginLeft: 'auto' },
+    currencyRate: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
     currencyChangeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-    currencyChange: { fontSize: 12, fontWeight: '600' },
+    currencyChange: { fontSize: 13, fontWeight: '600' },
+    lastUpdatedText: { fontSize: 10, color: '#9BA1A6', marginTop: 2, textAlign: 'right' },
 
     emptyCard: {
         backgroundColor: '#fff', borderRadius: 18, padding: 32, alignItems: 'center', gap: 10,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
     },
-    emptyText: { fontSize: 14, color: GRAY },
-
-    loadMoreBtn: {
-        alignItems: 'center', paddingVertical: 14, marginTop: 12,
-        backgroundColor: PURPLE + '12', borderRadius: 14,
-    },
-    loadMoreText: { fontSize: 14, fontWeight: '600', color: PURPLE },
+    emptyText: { fontSize: 14, color: GRAY, textAlign: 'center' },
 });

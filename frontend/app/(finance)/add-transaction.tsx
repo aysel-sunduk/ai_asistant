@@ -22,32 +22,64 @@ const GRAY = '#9BA1A6';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-// Add CURRENCY to the list
-const ASSET_TYPES = ['STOCK', 'CRYPTO', 'FUND', 'GOLD', 'COMMODITY', 'CURRENCY', 'OTHER'];
+// Add CURRENCY to the list. Restricted to CURRENCY, GOLD, SILVER, OTHER as per user request.
+const ASSET_TYPES = ['CURRENCY', 'GOLD', 'SILVER', 'OTHER'];
 
 // Add label/icon/color for CURRENCY if not in model
 const EXTENDED_LABELS: Record<string, string> = { ...ASSET_TYPE_LABELS, CURRENCY: 'Döviz' };
 const EXTENDED_ICONS: Record<string, string> = { ...ASSET_TYPE_ICONS, CURRENCY: 'cash' };
 const EXTENDED_COLORS: Record<string, string> = { ...ASSET_TYPE_COLORS, CURRENCY: '#22C55E' };
 
+const GOLD_TYPES = [
+    { code: 'GOLD_GRAM', label: 'Gram Altın' },
+    { code: 'GOLD_CEYREK', label: 'Çeyrek Altın' },
+    { code: 'GOLD_YARIM', label: 'Yarım Altın' },
+    { code: 'GOLD_CUMHURIYET', label: 'Cumhuriyet Altını' },
+    { code: 'GOLD_ATA', label: 'Ata Altın' },
+];
+
 export default function AddTransactionScreen() {
     const router = useRouter();
     const [assetType, setAssetType] = useState('STOCK');
     const [symbol, setSymbol] = useState('');
+    const [goldType, setGoldType] = useState('GOLD_GRAM');
     const [quantity, setQuantity] = useState('');
-    const [cost, setCost] = useState(''); // Used for Avg Cost or Buy Rate
+    const [cost, setCost] = useState('');
     const [currency, setCurrency] = useState('TRY');
     const [loading, setLoading] = useState(false);
 
     const isCurrency = assetType === 'CURRENCY';
+    const isGold = assetType === 'GOLD';
+    const isSilver = assetType === 'SILVER';
+    const isOther = assetType === 'OTHER';
+    // Commodity check is now split into isGold / isSilver for specific handling
+    const isCommodity = isGold || isSilver;
 
     const handleSubmit = async () => {
-        if (!symbol.trim()) {
-            Alert.alert('Hata', isCurrency ? 'Para birimi kodu zorunludur' : 'Sembol alanı zorunludur');
+        let finalSymbol = symbol;
+
+        if (isGold) {
+            finalSymbol = goldType;
+        } else if (isSilver) {
+            finalSymbol = 'SILVER_GRAM';
+        }
+
+        // Sanitize inputs (replace comma with dot)
+        const cleanQuantity = quantity.replace(',', '.');
+        const cleanCost = cost.replace(',', '.');
+        const qtyNum = Number(cleanQuantity);
+        const costNum = Number(cleanCost);
+
+        if (!finalSymbol.trim()) {
+            Alert.alert('Hata', isCurrency ? 'Para birimi kodu zorunludur' : isOther ? 'Varlık adı zorunludur' : 'Sembol alanı zorunludur');
             return;
         }
-        if (!quantity.trim() || Number(quantity) <= 0) {
+        if (!cleanQuantity.trim() || isNaN(qtyNum) || qtyNum <= 0) {
             Alert.alert('Hata', 'Geçerli bir miktar girin');
+            return;
+        }
+        if (cost && (isNaN(costNum) || costNum < 0)) {
+            Alert.alert('Hata', 'Geçerli bir fiyat girin');
             return;
         }
 
@@ -55,20 +87,27 @@ export default function AddTransactionScreen() {
         try {
             if (isCurrency) {
                 const data: CurrencyHoldingRequest = {
-                    currencyCode: symbol.trim().toUpperCase(),
-                    amount: Number(quantity),
-                    buyRate: Number(cost || 0),
-                    buyDate: new Date().toISOString(), // Default to now
+                    currencyCode: finalSymbol.trim().toUpperCase(),
+                    amount: qtyNum,
+                    buyRate: cost ? costNum : 0,
+                    buyDate: new Date().toISOString(),
                 };
+                console.log('[AddTransaction] Currency Payload:', JSON.stringify(data, null, 2));
                 await financeService.addCurrencyHolding(data);
             } else {
                 const data: InvestmentRequest = {
                     assetType,
-                    symbol: symbol.trim().toUpperCase(),
-                    quantity: Number(quantity),
-                    avgCostMinor: cost ? Math.round(Number(cost) * 100) : undefined,
+                    symbol: finalSymbol.trim(),
+                    quantity: qtyNum,
+                    avgCostMinor: cost ? Math.round(costNum * 100) : undefined,
                     currency: currency || 'TRY',
                 };
+
+                if (!isOther) {
+                    data.symbol = data.symbol.toUpperCase();
+                }
+
+                console.log('[AddTransaction] Investment Payload:', JSON.stringify(data, null, 2));
                 await financeService.addInvestment(data);
             }
 
@@ -94,7 +133,7 @@ export default function AddTransactionScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#1A1A2E" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{isCurrency ? 'Döviz Ekle' : 'Yatırım Ekle'}</Text>
+                    <Text style={styles.headerTitle}>{isCurrency ? 'Döviz Ekle' : isCommodity ? 'Emtia Ekle' : isOther ? 'Varlık Ekle' : 'Yatırım Ekle'}</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
@@ -124,19 +163,48 @@ export default function AddTransactionScreen() {
                         })}
                     </ScrollView>
 
-                    {/* Symbol */}
-                    <Text style={styles.label}>{isCurrency ? 'Para Birimi (Örn: USD, EUR)' : 'Sembol (Örn: AAPL, GARAN)'}</Text>
-                    <View style={styles.inputContainer}>
-                        <Ionicons name={isCurrency ? 'cash-outline' : 'search'} size={18} color={GRAY} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder={isCurrency ? "USD" : "Sembol girin"}
-                            placeholderTextColor="#C4C4C4"
-                            value={symbol}
-                            onChangeText={setSymbol}
-                            autoCapitalize="characters"
-                        />
-                    </View>
+                    {/* Symbol Selection */}
+                    {isGold ? (
+                        <>
+                            <Text style={styles.label}>Altın Tipi</Text>
+                            <View style={styles.goldTypeContainer}>
+                                {GOLD_TYPES.map((type) => (
+                                    <TouchableOpacity
+                                        key={type.code}
+                                        style={[styles.goldTypeChip, goldType === type.code && styles.goldTypeChipActive]}
+                                        onPress={() => setGoldType(type.code)}
+                                    >
+                                        <Text style={[styles.goldTypeText, goldType === type.code && styles.goldTypeTextActive]}>
+                                            {type.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </>
+                    ) : isSilver ? (
+                        <>
+                            <Text style={styles.label}>Gümüş Tipi</Text>
+                            <View style={styles.readOnlyContainer}>
+                                <Ionicons name="medal-outline" size={18} color={GRAY} />
+                                <Text style={styles.readOnlyText}>Gram Gümüş</Text>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.label}>{isCurrency ? 'Para Birimi (Örn: USD, EUR)' : isOther ? 'Varlık Adı (Örn: Arsa, Saat)' : 'Sembol'}</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name={isCurrency ? 'cash-outline' : isOther ? 'pricetag-outline' : 'search'} size={18} color={GRAY} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={isCurrency ? "USD" : isOther ? "Varlık adı girin" : "Sembol girin"}
+                                    placeholderTextColor="#C4C4C4"
+                                    value={symbol}
+                                    onChangeText={setSymbol}
+                                    autoCapitalize={isOther ? "sentences" : "characters"}
+                                />
+                            </View>
+                        </>
+                    )}
 
                     {/* Quantity */}
                     <Text style={styles.label}>Miktar</Text>
@@ -256,4 +324,21 @@ const styles = StyleSheet.create({
         shadowColor: PURPLE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
     },
     submitText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    /* Gold Types */
+    goldTypeContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    goldTypeChip: {
+        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+        backgroundColor: '#fff', borderWidth: 1, borderColor: '#F0F0F0',
+    },
+    goldTypeChipActive: { backgroundColor: PURPLE, borderColor: PURPLE },
+    goldTypeText: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
+    goldTypeTextActive: { color: '#fff' },
+
+    /* Read Only */
+    readOnlyContainer: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#F5F5F5', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+        borderWidth: 1, borderColor: '#E0E0E0',
+    },
+    readOnlyText: { fontSize: 15, fontWeight: '500', color: GRAY },
 });

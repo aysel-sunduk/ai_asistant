@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { financeService } from '../../services/finance.service';
 console.log('FinanceService Debug:', financeService);
 import type { CurrencyHoldingResponse, FinanceDashboardResponse, InvestmentResponse } from '../../src/models/finance.model';
@@ -30,31 +31,53 @@ export default function FinanceScreen() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [holdings, setHoldings] = useState<any[]>([]);
-    const [favorites, setFavorites] = useState<any[]>([]);
+    const [favCurrencies, setFavCurrencies] = useState<any[]>([]);
+    const [favInvestments, setFavInvestments] = useState<any[]>([]);
 
     const loadData = useCallback(async () => {
-        setErrorMsg(null);
         try {
-            console.log('Fetching dashboard, holdings, and favorites...');
-            const [dashRes, holdingsRes, favRes] = await Promise.all([
-                financeService.getDashboard(),
-                financeService.getCurrencyHoldings(),
-                financeService.getFavorites()
-            ]);
-            console.log('Dashboard Data:', dashRes);
-            console.log('Holdings Data:', holdingsRes);
-            console.log('Favorites Data:', favRes);
+            console.log('Fetching dashboard and favorites...');
 
-            setDashboard(dashRes);
-            setHoldings(Array.isArray(holdingsRes) ? holdingsRes : []);
-            setFavorites(Array.isArray(favRes) ? favRes : []);
-        } catch (error: any) {
-            console.error('Dashboard load error:', error);
-            const msg = error.response ? `Status: ${error.response.status} - ${JSON.stringify(error.response.data)}` : error.message;
-            setErrorMsg(msg);
-            setHoldings([]);
-            setFavorites([]);
+            // Check token validity
+            const token = await AsyncStorage.getItem('accessToken');
+            if (!token) {
+                setErrorMsg("Token bulunamadı! Lütfen tekrar giriş yapın.");
+                setLoading(false);
+                return;
+            }
+
+            // Fetch independently to identify which one fails
+            try {
+                const dashRes = await financeService.getDashboard();
+                setDashboard(dashRes);
+                setErrorMsg(null);
+            } catch (e: any) {
+                console.error("Dashboard fetch failed:", e);
+                // Check for rate limit specific content or status 400 from backend
+                // The backend returns 400 with a message about AlphaVantage
+                if (e.response?.status === 400 || (e.response?.data?.message && e.response.data.message.includes('AlphaVantage'))) {
+                    setErrorMsg("Piyasa verileri şu an güncellenemiyor (Limit Aşıldı). Eski veriler gösteriliyor olabilir.");
+                } else {
+                    setErrorMsg(`Dashboard verisi alınamadı: ${e.response?.status || 'Bağlantı Hatası'}`);
+                }
+            }
+
+            try {
+                const favCurRes = await financeService.getFavorites();
+                setFavCurrencies(Array.isArray(favCurRes) ? favCurRes : []);
+            } catch (e: any) {
+                console.error("Fav Currencies fetch failed:", e);
+                // Don't block UI for this
+            }
+
+            try {
+                const favInvRes = await financeService.getFavoriteInvestments();
+                setFavInvestments(Array.isArray(favInvRes) ? favInvRes : []);
+            } catch (e: any) {
+                console.error("Fav Investments fetch failed:", e);
+                // Don't block UI for this
+            }
+
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -88,8 +111,8 @@ export default function FinanceScreen() {
     return (
         <FinanceScreenContent
             dashboard={dashboard}
-            holdings={holdings}
-            favorites={favorites}
+            favCurrencies={favCurrencies}
+            favInvestments={favInvestments}
             refreshing={refreshing}
             onRefresh={onRefresh}
             router={router}
@@ -98,7 +121,7 @@ export default function FinanceScreen() {
     );
 }
 
-function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRefresh, router, errorMsg }: any) {
+function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refreshing, onRefresh, router, errorMsg }: any) {
     const [performance, setPerformance] = useState<any>(null);
 
     useEffect(() => {
@@ -112,8 +135,9 @@ function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRe
     const allocation = dashboard?.allocationByAssetTypePct ?? {};
 
     // Use passed favorites (fallback to dashboard if needed, but explicit fetch is preferred)
-    const favCurrencies = favorites && favorites.length > 0 ? favorites : (dashboard?.favoriteCurrencies ?? []);
-    const investments = dashboard?.topInvestments ?? [];
+    const currenciesToShow = favCurrencies && favCurrencies.length > 0 ? favCurrencies : (dashboard?.favoriteCurrencies ?? []);
+    // Ensure we use favInvestments if available
+    const investmentsToShow = (favInvestments && favInvestments.length > 0) ? favInvestments : (dashboard?.topInvestments ?? []);
 
     return (
         <View style={styles.container}>
@@ -240,16 +264,19 @@ function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRe
                     </View>
                 )}
 
-                {/* ─── Yatırımlarım ─── */}
+                {/* ─── Yatırımlarım (Favoriler / Top) ─── */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Yatırımlarım</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24 }}>
+                            <Ionicons name="star" size={16} color="#F7B500" />
+                            <Text style={[styles.sectionTitle, { paddingHorizontal: 0 }]}>Favori Yatırımlar</Text>
+                        </View>
                         <TouchableOpacity onPress={() => router.push('/(finance)/investments')}>
                             <Text style={styles.seeAllText}>Tümünü Gör</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {investments.length === 0 ? (
+                    {investmentsToShow.length === 0 ? (
                         <View style={styles.emptyCard}>
                             <Ionicons name="trending-up" size={36} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Henüz yatırım yok</Text>
@@ -262,7 +289,7 @@ function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRe
                         </View>
                     ) : (
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.investmentScroll}>
-                            {investments.map((inv: InvestmentResponse) => {
+                            {investmentsToShow.map((inv: InvestmentResponse) => {
                                 const cost = (inv.avgCostMinor || 0) / 100 * inv.quantity;
                                 const invPnl = (inv.currentValue || 0) - cost;
                                 return (
@@ -310,70 +337,19 @@ function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRe
                     )}
                 </View>
 
-                {/* ─── Nakit Varlıklar (Döviz) ─── */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Nakit Varlıklar (Döviz)</Text>
-                    </View>
-
-                    {(!holdings || holdings.length === 0) ? (
-                        <View style={styles.emptyCard}>
-                            <Ionicons name="cash-outline" size={36} color="#E0E0E0" />
-                            <Text style={styles.emptyText}>Döviz varlığı yok</Text>
-                            <TouchableOpacity
-                                style={styles.emptyBtn}
-                                onPress={() => router.push('/(finance)/add-transaction')}
-                            >
-                                <Text style={styles.emptyBtnText}>Döviz Ekle</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.investmentScroll}>
-                            {(Array.isArray(holdings) ? holdings : []).map((h: CurrencyHoldingResponse) => {
-                                // Assuming response has profitLoss
-                                const pnl = h.profitLoss || 0;
-                                return (
-                                    <View key={h.id} style={styles.investmentCard}>
-                                        <View style={styles.investmentHeader}>
-                                            <View style={[styles.investmentIcon, { backgroundColor: '#DCFCE7' }]}>
-                                                <Ionicons name="cash" size={18} color="#22C55E" />
-                                            </View>
-                                            <Text style={styles.investmentType}>Döviz</Text>
-                                        </View>
-                                        <Text style={styles.investmentSymbol}>{h.currencyCode}</Text>
-                                        <Text style={styles.investmentValue}>
-                                            {formatCurrency(h.amount * h.currentRate)}
-                                        </Text>
-                                        <View style={styles.investmentPnl}>
-                                            <Ionicons
-                                                name={pnl >= 0 ? 'caret-up' : 'caret-down'}
-                                                size={12}
-                                                color={getPnlColor(pnl)}
-                                            />
-                                            <Text style={[styles.investmentPnlText, { color: getPnlColor(pnl) }]}>
-                                                {getPnlPrefix(pnl)}{formatCurrency(pnl)}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                )
-                            })}
-                        </ScrollView>
-                    )}
-                </View>
-
                 {/* ─── Döviz Kurları (Favoriler) ─── */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24 }}>
                             <Ionicons name="star" size={16} color="#FFD93D" />
-                            <Text style={[styles.sectionTitle, { paddingHorizontal: 0 }]}>Takip Listesi</Text>
+                            <Text style={[styles.sectionTitle, { paddingHorizontal: 0 }]}>Kur Takip Listesi</Text>
                         </View>
                         <TouchableOpacity onPress={() => router.push('/(finance)/exchange-rates')}>
                             <Text style={styles.seeAllText}>Tümünü Gör</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {favCurrencies.length === 0 ? (
+                    {currenciesToShow.length === 0 ? (
                         <View style={styles.emptyCard}>
                             <Ionicons name="star-outline" size={36} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Favori kur eklenmedi</Text>
@@ -386,7 +362,7 @@ function FinanceScreenContent({ dashboard, holdings, favorites, refreshing, onRe
                         </View>
                     ) : (
                         <View style={styles.currencyCard}>
-                            {favCurrencies.map((cur: any, index: number) => (
+                            {currenciesToShow.map((cur: any, index: number) => (
                                 <View
                                     key={cur.id || index}
                                     style={[

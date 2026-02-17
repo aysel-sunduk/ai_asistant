@@ -1,4 +1,5 @@
 import { financeApi } from '../src/api/finance.api';
+import axios from 'axios';
 import type {
     CurrencyDetailResponse,
     CurrencyHoldingRequest,
@@ -7,6 +8,7 @@ import type {
     CurrencyRateResponse,
     FavoriteCurrencyRequest,
     FavoriteCurrencyResponse,
+    FavoriteInvestmentRequest,
     FinanceDashboardResponse,
     InvestmentPerformanceResponse,
     InvestmentRequest,
@@ -18,8 +20,28 @@ import type {
 export const financeService = {
     // ─── Investments ───
     getInvestments: async (page = 0, size = 20, sortBy = 'updatedAt', sortDirection = 'DESC'): Promise<PageResponse<InvestmentResponse>> => {
-        const response = await financeApi.getInvestments(page, size, sortBy, sortDirection);
-        return response.data.data;
+        try {
+            const response = await financeApi.getInvestments(page, size, sortBy, sortDirection);
+            console.log('[FinanceService] getInvestments RAW:', JSON.stringify(response.data, null, 2));
+            return response.data.data;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.error('[FinanceService] getInvestments failed', {
+                    message: error.message,
+                    code: error.code,
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    method: error.config?.method,
+                    baseURL: error.config?.baseURL,
+                    url: error.config?.url,
+                    params: error.config?.params,
+                    responseData: error.response?.data,
+                });
+            } else {
+                console.error('[FinanceService] getInvestments unknown error', error);
+            }
+            throw error;
+        }
     },
 
     getInvestmentById: async (id: string): Promise<InvestmentResponse> => {
@@ -53,11 +75,34 @@ export const financeService = {
         return response.data.data;
     },
 
+    getFavoriteInvestments: async (): Promise<InvestmentResponse[]> => {
+        const response = await financeApi.getFavoriteInvestments();
+        return response.data.data;
+    },
+
+    toggleFavoriteInvestment: async (investmentId: string): Promise<void> => {
+        await financeApi.toggleFavoriteInvestment({ investmentId });
+    },
+
     // ─── Dashboard ───
     getDashboard: async (): Promise<FinanceDashboardResponse> => {
-        const response = await financeApi.getDashboard();
-        console.log('[FinanceService] getDashboard RAW:', JSON.stringify(response.data, null, 2));
-        return response.data.data;
+        try {
+            const response = await financeApi.getDashboard();
+            console.log('[FinanceService] getDashboard RAW:', JSON.stringify(response.data, null, 2));
+            return response.data.data;
+        } catch (error: any) {
+            // Only log as error if it's NOT a 400 (Rate Limit)
+            if (error.response?.status === 400) {
+                console.warn('[FinanceService] getDashboard rate limit (400):', error.response?.data?.message);
+            } else {
+                console.error('[FinanceService] getDashboard error details:', {
+                    status: error.response?.status,
+                    data: error.response?.data,
+                    headers: error.response?.headers,
+                });
+            }
+            throw error;
+        }
     },
 
     // ─── Currencies ───

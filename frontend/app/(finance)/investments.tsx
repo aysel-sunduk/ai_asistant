@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 
 
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     Platform,
     RefreshControl,
@@ -16,7 +18,7 @@ import {
     View,
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
-import type { InvestmentResponse } from '../../src/models/finance.model';
+import type { CurrencyHoldingResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 import { formatCurrency, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
 
@@ -32,33 +34,149 @@ export default function InvestmentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
+    const [favoriteInvestmentIds, setFavoriteInvestmentIds] = useState<string[]>([]);
+
+    // Load favorites from backend
+    const loadFavorites = useCallback(async () => {
+        try {
+            const favs = await financeService.getFavoriteInvestments();
+            setFavoriteInvestmentIds(favs.map(f => f.id));
+        } catch (error) {
+            console.error('[InvestmentsScreen] Failed to load favorites', error);
+        }
+    }, []);
+
+    const toggleFavoriteInvestment = useCallback(async (investmentId: string) => {
+        try {
+            // Optimistic update
+            setFavoriteInvestmentIds((prev) => {
+                return prev.includes(investmentId)
+                    ? prev.filter((id) => id !== investmentId)
+                    : [...prev, investmentId];
+            });
+            await financeService.toggleFavoriteInvestment(investmentId);
+        } catch (error) {
+            console.error('[InvestmentsScreen] Failed to toggle favorite', error);
+            loadFavorites();
+        }
+    }, [loadFavorites]);
+
+    // ... (loadFavorites and toggleFavoriteInvestment remain unchanged)
+
+    // Only show GOLD, SILVER, OTHER, and CURRENCY in the main list
+    const filteredInvestments = useMemo(
+        () => {
+            console.log('[InvestmentsScreen] Total investments before filter:', investments.length);
+            const filtered = investments.filter((investment) => {
+                const match = ['GOLD', 'SILVER', 'OTHER', 'CURRENCY'].includes(investment.assetType);
+                if (!match) console.log('[InvestmentsScreen] Filtered out:', investment.assetType, investment.symbol);
+                return match;
+            });
+            console.log('[InvestmentsScreen] Filtered investments count:', filtered.length);
+            return filtered;
+        },
+        [investments],
+    );
+
+    const logGetInvestmentsError = useCallback((error: unknown, context: Record<string, unknown>) => {
+        if (axios.isAxiosError(error)) {
+            // Downgrade 400/429 errors to warn to avoid Red Box in Expo
+            if (error.response?.status === 400 || error.response?.status === 429) {
+                console.warn('[InvestmentsScreen] Fetch ignored (Rate Limit/Bad Request)', error.message);
+            } else {
+                console.error('[InvestmentsScreen] GET /v1/finance/investments failed', {
+                    context,
+                    message: error.message,
+                    status: error.response?.status,
+                    data: error.response?.data,
+                });
+            }
+            return;
+        }
+        console.error('[InvestmentsScreen] Unknown error while loading investments', { context, error });
+    }, []);
 
     const loadInvestments = useCallback(async (pageNum: number, shouldRefresh = false) => {
         try {
             if (pageNum === 0) setLoading(true);
-            // Default sort: updatedAt DESC
-            const response = await financeService.getInvestments(pageNum, 20, 'updatedAt', 'DESC');
 
-            if (shouldRefresh) {
-                setInvestments(response.content);
-            } else {
-                setInvestments(prev => [...prev, ...response.content]);
+            console.log('[InvestmentsScreen] Requesting investments', { page: pageNum });
+
+            // Parallel fetch for first page
+            const requests: Promise<any>[] = [
+                financeService.getInvestments(pageNum, 20, 'updatedAt', 'DESC')
+            ];
+
+            // Only fetch currency holdings on first page load/refresh
+            if (pageNum === 0) {
+                requests.push(financeService.getCurrencyHoldings().catch(err => {
+                    console.error('Failed to load currency holdings', err);
+                    return [];
+                }));
             }
 
-            setHasMore(!response.last);
+            const results = await Promise.all(requests);
+
+            const investmentResponse = results[0];
+            const investmentContent = Array.isArray(investmentResponse.content) ? investmentResponse.content : [];
+
+            let finalInvestments = [...investmentContent];
+
+            // Merge currency holdings if available
+            if (pageNum === 0 && results[1]) {
+                const holdings = Array.isArray(results[1]) ? results[1] : [];
+                const currencyInvestments: InvestmentResponse[] = holdings.map((h: CurrencyHoldingResponse) => ({
+                    id: `currency_${h.id}`, // Unique ID for list key
+                    assetType: 'CURRENCY',
+                    symbol: h.currencyCode,
+                    quantity: h.amount,
+                    currency: 'TRY', // Typically holdings are valued in TRY base
+                    currentPrice: h.currentRate,
+                    currentValue: (h.amount || 0) * (h.currentRate || 1),
+                    avgCostMinor: h.buyRate ? Math.round(h.buyRate * 100) : 0, // Converting rate to minor units if needed, or just use as is in display logic
+                    profitLoss: h.profitLoss,
+                    profitLossPercent: h.profitLossPercent,
+                    updatedAt: h.updatedAt || new Date().toISOString(),
+                    name: h.currencyCode + ' Hesabı',
+                } as InvestmentResponse)); // Cast to satisfy type
+
+                // Add currency items to the BEGINNING of the list or end? 
+                // Let's add them to the beginning for visibility or mix them.
+                // For now, adding to the beginning given they are "Cash" equivalents.
+                finalInvestments = [...currencyInvestments, ...finalInvestments];
+            }
+
+            // Normalize asset types to uppercase to match frontend constants
+            finalInvestments = finalInvestments.map(inv => ({
+                ...inv,
+                assetType: inv.assetType ? inv.assetType.toUpperCase() : 'OTHER'
+            }));
+
+            if (shouldRefresh) {
+                setInvestments(finalInvestments);
+            } else {
+                setInvestments(prev => pageNum === 0 ? finalInvestments : [...prev, ...finalInvestments]);
+            }
+
+            setHasMore(!investmentResponse.last);
             setPage(pageNum);
         } catch (error) {
-            console.error('Failed to load investments:', error);
+            logGetInvestmentsError(error, { pageNum, shouldRefresh });
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [logGetInvestmentsError]);
 
     useFocusEffect(
         useCallback(() => {
+            console.log('[InvestmentsScreen] focused');
             loadInvestments(0, true);
-        }, [loadInvestments])
+            loadFavorites();
+            return () => {
+                console.log('[InvestmentsScreen] focus cleanup');
+            };
+        }, [loadInvestments, loadFavorites])
     );
 
 
@@ -74,11 +192,42 @@ export default function InvestmentsScreen() {
         }
     };
 
+    const handleDelete = useCallback((item: InvestmentResponse) => {
+        Alert.alert(
+            'Yatırımı Sil',
+            `${item.symbol} yatırımını silmek istediğinize emin misiniz?`,
+            [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                    text: 'Sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            await financeService.deleteInvestment(item.id);
+                            // Refresh list
+                            loadInvestments(0, true);
+                        } catch (err: any) {
+                            Alert.alert('Hata', 'Yatırım silinemedi: ' + (err.message || 'Bilinmeyen hata'));
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    }, [loadInvestments]);
+
     const renderItem = ({ item }: { item: InvestmentResponse }) => {
+        const isCurrency = item.assetType === 'CURRENCY';
+        // For CURRENCY, avgCostMinor was mapped from buyRate * 100.
+        // Standard logic: cost = avgCost * quantity. 
+        // If avgCostMinor is rate * 100, then cost = (rate * 100 / 100) * quantity = rate * quantity.
+        // This matches standard logic. 
         const cost = (item.avgCostMinor || 0) / 100 * item.quantity;
         const currentVal = item.currentValue || 0;
         const pnl = currentVal - cost;
         const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+        const isFavorite = favoriteInvestmentIds.includes(item.id);
 
         return (
             <TouchableOpacity
@@ -102,6 +251,26 @@ export default function InvestmentsScreen() {
                         </View>
                     </View>
                     <View style={styles.rightContainer}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                            {!isCurrency && (
+                                <TouchableOpacity
+                                    onPress={() => handleDelete(item)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                                onPress={() => toggleFavoriteInvestment(item.id)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons
+                                    name={isFavorite ? 'star' : 'star-outline'}
+                                    size={18}
+                                    color={isFavorite ? '#F7B500' : '#C9CED6'}
+                                />
+                            </TouchableOpacity>
+                        </View>
                         <Text style={styles.value}>{formatCurrency(currentVal, item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '₺')}</Text>
                         <Text style={styles.quantity}>{item.quantity} adet</Text>
                     </View>
@@ -152,10 +321,19 @@ export default function InvestmentsScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={investments}
+                    data={filteredInvestments}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={
+                        <View>
+                            {/* Investments Title */}
+                            <View style={styles.allInvestmentsTitleRow}>
+                                <Ionicons name="layers" size={14} color={GRAY} />
+                                <Text style={styles.allInvestmentsTitle}>Varlıklar</Text>
+                            </View>
+                        </View>
+                    }
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />
                     }
@@ -164,7 +342,7 @@ export default function InvestmentsScreen() {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="file-tray-outline" size={48} color="#E0E0E0" />
-                            <Text style={styles.emptyText}>Henüz yatırımınız bulunmuyor</Text>
+                            <Text style={styles.emptyText}>Bu kategoride varlık bulunmuyor</Text>
                             <TouchableOpacity
                                 style={styles.emptyBtn}
                                 onPress={() => router.push('/(finance)/add-transaction')}
@@ -178,7 +356,7 @@ export default function InvestmentsScreen() {
                     }
                 />
             )}
-        </View>
+        </View >
     );
 }
 
@@ -215,6 +393,7 @@ const styles = StyleSheet.create({
     rightContainer: { alignItems: 'flex-end' },
     value: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
     quantity: { fontSize: 12, color: GRAY, fontWeight: '500' },
+    favoriteBtn: { marginBottom: 8 },
 
     divider: { height: 1, backgroundColor: '#F5F5F5', marginBottom: 12 },
 
@@ -229,5 +408,19 @@ const styles = StyleSheet.create({
     emptyBtn: {
         marginTop: 12, backgroundColor: PURPLE + '15', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12
     },
-    emptyBtnText: { color: PURPLE, fontWeight: '600' }
+    emptyBtnText: { color: PURPLE, fontWeight: '600' },
+
+    allInvestmentsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 10,
+    },
+    allInvestmentsTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: GRAY,
+        textTransform: 'uppercase',
+    },
+    sectionContainer: { marginBottom: 16 },
 });

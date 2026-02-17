@@ -7,6 +7,7 @@ import type {
     CurrencyRateResponse,
     FavoriteCurrencyRequest,
     FavoriteCurrencyResponse,
+    FavoriteInvestmentRequest,
     FinanceDashboardResponse,
     InvestmentPerformanceResponse,
     InvestmentRequest,
@@ -44,6 +45,12 @@ export const financeApi = {
 
     getPortfolioPerformance: () =>
         apiClient.get<ApiResponse<InvestmentPerformanceResponse>>('/v1/finance/investments/performance'),
+
+    getFavoriteInvestments: () =>
+        apiClient.get<ApiResponse<InvestmentResponse[]>>('/v1/finance/investments/favorites'),
+
+    toggleFavoriteInvestment: (data: FavoriteInvestmentRequest) =>
+        apiClient.post<ApiResponse<void>>('/v1/finance/investments/favorites', data),
 
     // ─── Dashboard ───
     getDashboard: () =>

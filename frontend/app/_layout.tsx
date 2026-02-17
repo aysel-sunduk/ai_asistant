@@ -4,6 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ignoreLogs } from '../src/utils/ignoreLogs';
+
+// Initialize log suppression
+ignoreLogs();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
