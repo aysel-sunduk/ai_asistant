@@ -29,6 +29,8 @@ import com.aiasistan.dto.WorkEventDto;
 import com.aiasistan.service.WorkEventService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -37,7 +39,7 @@ import jakarta.validation.constraints.Min;
 @Validated
 @RestController
 @RequestMapping("/v1/business/events")
-@Tag(name = "İş Etkinlikleri", description = "Toplantı ve iş etkinlikleri yönetimi")
+@Tag(name = "Is Etkinlikleri", description = "Toplanti ve is etkinlikleri yonetimi")
 public class WorkEventController {
     
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
@@ -51,7 +53,13 @@ public class WorkEventController {
     }
 
     @PostMapping
-    @Operation(summary = "Yeni toplantı oluştur")
+    @Operation(
+        summary = "Yeni toplanti olustur",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
+        )
+    )
     public ResponseEntity<ApiResponse<WorkEventDto.Response>> createWorkEvent(
         Authentication authentication,
         @Valid @RequestBody WorkEventDto.Request request
@@ -64,7 +72,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Toplantı detayını getir")
+    @Operation(summary = "Toplanti detayini getir")
     public ResponseEntity<ApiResponse<WorkEventDto.Response>> getWorkEventById(
         Authentication authentication,
         @PathVariable UUID id
@@ -76,7 +84,7 @@ public class WorkEventController {
     }
 
     @GetMapping
-    @Operation(summary = "Tüm toplantıları listele (sayfalı)")
+    @Operation(summary = "Tum toplantilari listele (sayfali)")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getAllWorkEvents(
         Authentication authentication,
         @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -93,7 +101,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/date-range")
-    @Operation(summary = "Tarih aralığına göre toplantıları getir")
+    @Operation(summary = "Tarih araligina gore toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByDateRange(
         Authentication authentication,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
@@ -106,7 +114,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/upcoming")
-    @Operation(summary = "Yaklaşan toplantıları getir")
+    @Operation(summary = "Yaklasan toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getUpcomingEvents(
         Authentication authentication
     ) {
@@ -117,7 +125,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/ongoing")
-    @Operation(summary = "Devam eden toplantıları getir")
+    @Operation(summary = "Devam eden toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getOngoingEvents(
         Authentication authentication
     ) {
@@ -128,7 +136,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/today")
-    @Operation(summary = "Bugünkü toplantıları getir")
+    @Operation(summary = "Bugunku toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getTodayEvents(
         Authentication authentication
     ) {
@@ -139,7 +147,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/this-week")
-    @Operation(summary = "Bu haftaki toplantıları getir")
+    @Operation(summary = "Bu haftaki toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getThisWeekEvents(
         Authentication authentication
     ) {
@@ -150,7 +158,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/by-status")
-    @Operation(summary = "Duruma göre toplantıları getir")
+    @Operation(summary = "Duruma gore toplantilari getir")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByStatus(
         Authentication authentication,
         @RequestParam String status,
@@ -166,7 +174,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/by-priority")
-    @Operation(summary = "Önceliğe göre toplantıları getir")
+    @Operation(summary = "Oncelige gore toplantilari getir")
     public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByPriority(
         Authentication authentication,
         @RequestParam String priority
@@ -178,7 +186,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/by-type")
-    @Operation(summary = "Toplantı tipine göre getir")
+    @Operation(summary = "Toplanti tipine gore getir")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByType(
         Authentication authentication,
         @RequestParam String eventType,
@@ -194,7 +202,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/online")
-    @Operation(summary = "Online toplantıları getir")
+    @Operation(summary = "Online toplantilari getir")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getOnlineEvents(
         Authentication authentication,
         @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -208,7 +216,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/past")
-    @Operation(summary = "Geçmiş toplantıları getir")
+    @Operation(summary = "Gecmis toplantilari getir")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getPastEvents(
         Authentication authentication,
         @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -222,7 +230,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Toplantı ara")
+    @Operation(summary = "Toplanti ara")
     public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> searchEvents(
         Authentication authentication,
         @RequestParam String query,
@@ -238,7 +246,7 @@ public class WorkEventController {
     }
 
     @GetMapping("/summary")
-    @Operation(summary = "Toplantı istatistikleri ve özet")
+    @Operation(summary = "Toplanti istatistikleri ve ozet")
     public ResponseEntity<ApiResponse<WorkEventDto.Summary>> getEventsSummary(
         Authentication authentication
     ) {
@@ -249,7 +257,13 @@ public class WorkEventController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Toplantıyı güncelle")
+    @Operation(
+        summary = "Toplantiyi guncelle",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
+        )
+    )
     public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateWorkEvent(
         Authentication authentication,
         @PathVariable UUID id,
@@ -262,7 +276,7 @@ public class WorkEventController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Toplantı durumunu güncelle")
+    @Operation(summary = "Toplanti durumunu guncelle")
     public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateEventStatus(
         Authentication authentication,
         @PathVariable UUID id,
@@ -275,7 +289,7 @@ public class WorkEventController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Toplantıyı sil")
+    @Operation(summary = "Toplantiyi sil")
     public ResponseEntity<ApiResponse<Void>> deleteWorkEvent(
         Authentication authentication,
         @PathVariable UUID id

@@ -1,4 +1,5 @@
 server:
+  address: 0.0.0.0
   port: 8080
   servlet:
     context-path: /api
@@ -46,6 +47,8 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
 
+
+
   # ─── Mail ───────────────────────────────────
   mail:
     host: ${SMTP_HOST:${MAIL_HOST:smtp.gmail.com}}
@@ -89,13 +92,29 @@ finance:
   currency:
     api-url: ${CURRENCY_API_URL:https://api.exchangerate-api.com/v4/latest/}
     api-key: ${CURRENCY_API_KEY:}
-    update-interval: 3600000 # 1 hour in milliseconds
+    metals:
+      collectapi:
+        url: ${COLLECTAPI_GOLD_URL:https://api.collectapi.com/economy/goldPrice}
+        api-key: ${COLLECTAPI_API_KEY:}
+        daily-request-limit: ${COLLECTAPI_DAILY_REQUEST_LIMIT:3}
+        monthly-request-limit: ${COLLECTAPI_MONTHLY_REQUEST_LIMIT:100}
+        scheduler-enabled: ${COLLECTAPI_SCHEDULER_ENABLED:true}
+        sync-cron: ${COLLECTAPI_SYNC_CRON:0 0 9,15,21 * * *} # 3 times/day
+    alpha-vantage:
+      base-url: ${ALPHAVANTAGE_BASE_URL:https://www.alphavantage.co/query}
+      api-key: ${ALPHAVANTAGE_API_KEY:}
+      daily-request-limit: ${ALPHAVANTAGE_DAILY_REQUEST_LIMIT:500}
+    update-interval: ${FINANCE_CURRENCY_UPDATE_INTERVAL_MS:300000} # Base throttle (5 min). Effective interval also respects daily limit.
+    history:
+      retention-days: ${CURRENCY_HISTORY_RETENTION_DAYS:30}
+      cleanup-cron: ${CURRENCY_HISTORY_CLEANUP_CRON:0 30 3 * * *}
     retry:
       max-attempts: 3
       delay-ms: 1000
     scheduler:
-      enabled: true
+      enabled: ${CURRENCY_SCHEDULER_ENABLED:true}
       initial-delay: 60000
+      sync-cron: ${CURRENCY_SYNC_CRON:0 0 9,12,15,18,21 * * *} # 5 times/day
   investment:
     recommendation:
       min-confidence-score: 50

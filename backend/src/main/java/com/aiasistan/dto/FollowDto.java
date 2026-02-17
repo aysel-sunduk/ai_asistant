@@ -89,6 +89,7 @@ public class FollowDto {
     public static class FollowStateResponse {
         private UUID targetUserId;
         private boolean following;
+        private String relationStatus;
 
         public UUID getTargetUserId() {
             return targetUserId;
@@ -104,6 +105,65 @@ public class FollowDto {
 
         public void setFollowing(boolean following) {
             this.following = following;
+        }
+
+        public String getRelationStatus() {
+            return relationStatus;
+        }
+
+        public void setRelationStatus(String relationStatus) {
+            this.relationStatus = relationStatus;
+        }
+    }
+
+    public static class FollowRequestResponse {
+        private UserSummary user;
+        private String status;
+        private OffsetDateTime requestedAt;
+        private OffsetDateTime updatedAt;
+
+        public UserSummary getUser() {
+            return user;
+        }
+
+        public void setUser(UserSummary user) {
+            this.user = user;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public OffsetDateTime getRequestedAt() {
+            return requestedAt;
+        }
+
+        public void setRequestedAt(OffsetDateTime requestedAt) {
+            this.requestedAt = requestedAt;
+        }
+
+        public OffsetDateTime getUpdatedAt() {
+            return updatedAt;
+        }
+
+        public void setUpdatedAt(OffsetDateTime updatedAt) {
+            this.updatedAt = updatedAt;
+        }
+    }
+
+    public static class RequestStatsResponse {
+        private long incomingPendingCount;
+
+        public long getIncomingPendingCount() {
+            return incomingPendingCount;
+        }
+
+        public void setIncomingPendingCount(long incomingPendingCount) {
+            this.incomingPendingCount = incomingPendingCount;
         }
     }
 }

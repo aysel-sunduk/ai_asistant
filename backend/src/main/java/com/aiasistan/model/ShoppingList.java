@@ -1,13 +1,17 @@
 package com.aiasistan.model;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
@@ -31,6 +35,9 @@ public class ShoppingList {
 
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
+
+    @OneToMany(mappedBy = "list", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ShoppingItem> items = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -80,5 +87,13 @@ public class ShoppingList {
 
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<ShoppingItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<ShoppingItem> items) {
+        this.items = items;
     }
 }

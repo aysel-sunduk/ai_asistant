@@ -26,10 +26,12 @@ public class BlogPostService {
 
     private final BlogPostRepository blogPostRepository;
     private final UserService userService;
+    private final SocialFollowService socialFollowService;
 
-    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService) {
+    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, SocialFollowService socialFollowService) {
         this.blogPostRepository = blogPostRepository;
         this.userService = userService;
+        this.socialFollowService = socialFollowService;
     }
 
     @Transactional
@@ -57,6 +59,37 @@ public class BlogPostService {
     public PageResponse<BlogPostDto.Response> getPosts(String userEmail, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Page<BlogPostDto.Response> page = blogPostRepository.findByUserId(userId, pageable).map(BlogPostDto.Response::from);
+        return PageResponse.of(page);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<BlogPostDto.Response> getVisiblePostsByUser(String userEmail, UUID targetUserId, Pageable pageable) {
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        if (viewerId.equals(targetUserId)) {
+            return getPosts(userEmail, pageable);
+        }
+
+        List<String> allowedVisibility = socialFollowService.isFollowing(viewerId, targetUserId)
+            ? List.of("public", "followers")
+            : List.of("public");
+
+        Page<BlogPostDto.Response> page = blogPostRepository
+            .findByUserIdAndStatusAndVisibilityIn(targetUserId, "published", allowedVisibility, pageable)
+            .map(BlogPostDto.Response::from);
+        return PageResponse.of(page);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<BlogPostDto.Response> getFollowingFeed(String userEmail, Pageable pageable) {
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        List<UUID> followingIds = socialFollowService.getFollowingUserIds(viewerId);
+        if (followingIds.isEmpty()) {
+            return PageResponse.of(Page.empty(pageable));
+        }
+
+        Page<BlogPostDto.Response> page = blogPostRepository
+            .findByUserIdInAndStatusAndVisibilityIn(followingIds, "published", List.of("public", "followers"), pageable)
+            .map(BlogPostDto.Response::from);
         return PageResponse.of(page);
     }
 

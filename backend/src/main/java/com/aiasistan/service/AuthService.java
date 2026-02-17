@@ -4,6 +4,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,8 @@ import com.aiasistan.dto.request.ForgotPasswordRequest;
 import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
+import com.aiasistan.dto.request.ChangePasswordRequest;
+import com.aiasistan.dto.response.ChangePasswordResponse;
 import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
 import com.aiasistan.dto.response.LogoutResponse;
@@ -33,6 +36,7 @@ import com.aiasistan.security.JwtService;
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private static final Pattern PASSWORD_POLICY = Pattern.compile("^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,128}$");
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -89,17 +93,41 @@ public class AuthService {
             throw new ConflictException("Bu e-posta adresi zaten kayitli!");
         }
 
+        validatePasswordPolicy(request.getPassword());
+
         User newUser = new User();
         newUser.setEmail(request.getEmail());
         newUser.setFirstName(request.getFirstName().trim());
         newUser.setLastName(request.getLastName().trim());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        newUser.setVisibility("public");
         newUser.setRole("user");
 
         User savedUser = userRepository.save(newUser);
         logger.info("User registered successfully with email: {}", savedUser.getEmail());
 
         return new RegisterResponse(savedUser.getEmail(), "Kullanici basariyla kaydedildi!");
+    }
+
+    @Transactional
+    public ChangePasswordResponse changePassword(String userEmail, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(userEmail)
+            .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi!"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Mevcut sifre hatali");
+        }
+
+        validatePasswordPolicy(request.getNewPassword());
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Yeni sifre mevcut sifre ile ayni olamaz");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        refreshTokenRepository.revokeAllUserTokens(user.getId());
+
+        return new ChangePasswordResponse(user.getEmail(), "Sifre basariyla degistirildi");
     }
 
     @Transactional
@@ -204,5 +232,11 @@ public class AuthService {
             result.append(digits.charAt(random.nextInt(digits.length())));
         }
         return result.toString();
+    }
+
+    private void validatePasswordPolicy(String password) {
+        if (password == null || !PASSWORD_POLICY.matcher(password).matches()) {
+            throw new BadRequestException("Sifre en az 6 karakter olmali, en az 1 buyuk harf ve 1 ozel karakter icermelidir");
+        }
     }
 }

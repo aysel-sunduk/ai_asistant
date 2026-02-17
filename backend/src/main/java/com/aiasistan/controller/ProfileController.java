@@ -9,10 +9,13 @@ import org.springframework.web.bind.annotation.*;
 
 import com.aiasistan.common.ApiResponse;
 import com.aiasistan.dto.request.UserProfileUpsertRequest;
+import com.aiasistan.dto.request.UserVisibilityUpdateRequest;
 import com.aiasistan.dto.response.UserProfileResponse;
+import com.aiasistan.model.User;
 import com.aiasistan.service.UserProfileService;
 import com.aiasistan.service.UserProfileService.ModuleCompletionStatus;
 import com.aiasistan.service.UserService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/v1/profile")
@@ -70,5 +73,16 @@ public class ProfileController {
         UUID userId = userService.getUserIdByEmail(email);
         UserProfileResponse profile = userProfileService.upsertModuleProfile(userId, module, request);
         return ResponseEntity.ok(ApiResponse.ok(profile, "Module profile updated"));
+    }
+
+    @PatchMapping("/visibility")
+    public ResponseEntity<ApiResponse<Map<String, String>>> updateVisibility(
+            Authentication authentication,
+            @Valid @RequestBody UserVisibilityUpdateRequest request) {
+        User updated = userService.updateVisibilityByEmail(authentication.getName(), request.getVisibility());
+        Map<String, String> data = Map.of(
+            "visibility", updated.getVisibility()
+        );
+        return ResponseEntity.ok(ApiResponse.ok(data, "Visibility updated"));
     }
 }

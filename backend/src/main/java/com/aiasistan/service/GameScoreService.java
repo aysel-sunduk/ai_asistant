@@ -3,6 +3,10 @@ package com.aiasistan.service;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,18 +18,29 @@ import com.aiasistan.dto.GameScoreDto;
 import com.aiasistan.exception.BadRequestException;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.GameScore;
+import com.aiasistan.model.User;
 import com.aiasistan.repository.GameScoreRepository;
+import com.aiasistan.repository.UserRepository;
 
 @Service
 public class GameScoreService {
     private static final Set<String> ALLOWED_DIFFICULTY = Set.of("easy", "medium", "hard");
 
     private final GameScoreRepository gameScoreRepository;
+    private final UserRepository userRepository;
     private final UserService userService;
+    private final SocialFollowService socialFollowService;
 
-    public GameScoreService(GameScoreRepository gameScoreRepository, UserService userService) {
+    public GameScoreService(
+        GameScoreRepository gameScoreRepository,
+        UserRepository userRepository,
+        UserService userService,
+        SocialFollowService socialFollowService
+    ) {
         this.gameScoreRepository = gameScoreRepository;
+        this.userRepository = userRepository;
         this.userService = userService;
+        this.socialFollowService = socialFollowService;
     }
 
     @Transactional
@@ -67,6 +82,77 @@ public class GameScoreService {
         return PageResponse.of(page);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<GameScoreDto.FollowingLeaderboardResponse> getFollowingLeaderboard(
+        String userEmail,
+        String gameKey,
+        Pageable pageable
+    ) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        List<UUID> followingIds = socialFollowService.getFollowingUserIds(userId);
+        if (followingIds.isEmpty()) {
+            return PageResponse.of(Page.empty(pageable));
+        }
+
+        Page<GameScore> page = gameScoreRepository
+            .findByGameKeyAndUserIdInOrderByScoreDesc(normalizeGameKey(gameKey), followingIds, pageable);
+
+        Map<UUID, User> userMap = userRepository.findAllById(
+            page.getContent().stream().map(GameScore::getUserId).toList()
+        ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
+
+        int pageOffset = pageable.getPageNumber() * pageable.getPageSize();
+        List<GameScoreDto.FollowingLeaderboardResponse> content = java.util.stream.IntStream
+            .range(0, page.getContent().size())
+            .mapToObj(i -> mapFollowingLeaderboardRow(page.getContent().get(i), userMap, pageOffset + i + 1))
+            .filter(java.util.Objects::nonNull)
+            .toList();
+
+        Page<GameScoreDto.FollowingLeaderboardResponse> mapped = new org.springframework.data.domain.PageImpl<>(
+            content,
+            pageable,
+            page.getTotalElements()
+        );
+        return PageResponse.of(mapped);
+    }
+
+    @Transactional(readOnly = true)
+    public GameScoreDto.RankSummaryResponse getRankSummary(String userEmail, String gameKey) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        String normalizedGameKey = normalizeGameKey(gameKey);
+
+        Integer bestScore = gameScoreRepository.findBestScoreByGameKeyAndUserId(normalizedGameKey, userId);
+        long globalPlayerCount = gameScoreRepository.countPlayersByGameKey(normalizedGameKey);
+
+        List<UUID> networkUserIds = new java.util.ArrayList<>(socialFollowService.getFollowingUserIds(userId));
+        if (!networkUserIds.contains(userId)) {
+            networkUserIds.add(userId);
+        }
+        long friendsPlayerCount = networkUserIds.isEmpty()
+            ? 0
+            : gameScoreRepository.countPlayersByGameKeyAndUserIds(normalizedGameKey, networkUserIds);
+
+        GameScoreDto.RankSummaryResponse response = new GameScoreDto.RankSummaryResponse();
+        response.setGameKey(normalizedGameKey);
+        response.setBestScore(bestScore);
+        response.setGlobalPlayerCount(globalPlayerCount);
+        response.setFriendsPlayerCount(friendsPlayerCount);
+
+        if (bestScore == null) {
+            response.setGlobalRank(null);
+            response.setFriendsRank(null);
+            return response;
+        }
+
+        response.setGlobalRank((int) gameScoreRepository.calculateGlobalRankByBestScore(normalizedGameKey, bestScore));
+        if (networkUserIds.isEmpty()) {
+            response.setFriendsRank(null);
+        } else {
+            response.setFriendsRank((int) gameScoreRepository.calculateFriendsRankByBestScore(normalizedGameKey, networkUserIds, bestScore));
+        }
+        return response;
+    }
+
     @Transactional
     public void deleteScore(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
@@ -89,5 +175,27 @@ public class GameScoreService {
         }
         String normalized = difficulty.trim().toLowerCase(Locale.ROOT);
         return ALLOWED_DIFFICULTY.contains(normalized) ? normalized : "medium";
+    }
+
+    private GameScoreDto.FollowingLeaderboardResponse mapFollowingLeaderboardRow(
+        GameScore score,
+        Map<UUID, User> userMap,
+        int rank
+    ) {
+        User user = userMap.get(score.getUserId());
+        if (user == null) {
+            return null;
+        }
+        GameScoreDto.FollowingLeaderboardResponse row = new GameScoreDto.FollowingLeaderboardResponse();
+        row.setRank(rank);
+        row.setUserId(user.getId());
+        row.setEmail(user.getEmail());
+        row.setFirstName(user.getFirstName());
+        row.setLastName(user.getLastName());
+        row.setScore(score.getScore());
+        row.setDifficulty(score.getDifficulty());
+        row.setDurationSec(score.getDurationSec());
+        row.setPlayedAt(score.getPlayedAt());
+        return row;
     }
 }

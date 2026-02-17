@@ -23,7 +23,27 @@ import com.aiasistan.repository.HealthLogRepository;
 @Service
 public class HealthLogService {
 
-    private static final Set<String> ALLOWED_LOG_TYPES = Set.of("daily_summary", "water", "exercise", "meal");
+    private static final Set<String> ALLOWED_LOG_TYPES = Set.of(
+        "daily_summary",
+        "water",
+        "exercise",
+        "meal",
+        "steps",
+        "distance",
+        "active_calories",
+        "resting_calories",
+        "heart_rate",
+        "sleep"
+    );
+    private static final Set<String> ALLOWED_SOURCES = Set.of(
+        "manual",
+        "mobile_device",
+        "apple_health",
+        "apple_healthkit",
+        "google_fit",
+        "health_connect",
+        "other"
+    );
 
     private final HealthLogRepository healthLogRepository;
     private final UserService userService;
@@ -37,12 +57,32 @@ public class HealthLogService {
     public HealthLogDto.Response createLog(String userEmail, HealthLogDto.Request request) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         String normalizedType = normalizeLogType(request.getLogType());
+        String normalizedSource = normalizeSource(request.getSource());
+        String externalRecordId = normalizeExternalRecordId(request.getExternalRecordId());
         validateDataByType(normalizedType, request.getData());
 
+        if (externalRecordId != null) {
+            return healthLogRepository.findByUserIdAndExternalRecordId(userId, externalRecordId)
+                .map(HealthLogDto.Response::from)
+                .orElseGet(() -> saveNewHealthLog(userId, normalizedType, request, normalizedSource, externalRecordId));
+        }
+
+        return saveNewHealthLog(userId, normalizedType, request, normalizedSource, null);
+    }
+
+    private HealthLogDto.Response saveNewHealthLog(
+        UUID userId,
+        String normalizedType,
+        HealthLogDto.Request request,
+        String normalizedSource,
+        String externalRecordId
+    ) {
         HealthLog healthLog = new HealthLog();
         healthLog.setUserId(userId);
         healthLog.setLogType(normalizedType);
         healthLog.setLogDate(request.getLogDate() != null ? request.getLogDate() : LocalDate.now());
+        healthLog.setSource(normalizedSource);
+        healthLog.setExternalRecordId(externalRecordId);
         healthLog.setData(request.getData());
 
         return HealthLogDto.Response.from(healthLogRepository.save(healthLog));
@@ -88,6 +128,8 @@ public class HealthLogService {
 
         healthLog.setLogType(normalizedType);
         healthLog.setLogDate(request.getLogDate() != null ? request.getLogDate() : healthLog.getLogDate());
+        healthLog.setSource(normalizeSource(request.getSource()));
+        healthLog.setExternalRecordId(normalizeExternalRecordId(request.getExternalRecordId()));
         healthLog.setData(request.getData());
 
         return HealthLogDto.Response.from(healthLogRepository.save(healthLog));
@@ -108,7 +150,9 @@ public class HealthLogService {
     private String normalizeLogType(String logType) {
         String normalized = logType == null ? "" : logType.trim().toLowerCase(Locale.ROOT);
         if (!ALLOWED_LOG_TYPES.contains(normalized)) {
-            throw new BadRequestException("Gecersiz logType. Desteklenen: daily_summary, water, exercise, meal");
+            throw new BadRequestException(
+                "Gecersiz logType. Desteklenen: daily_summary, water, exercise, meal, steps, distance, active_calories, resting_calories, heart_rate, sleep"
+            );
         }
         return normalized;
     }
@@ -120,6 +164,24 @@ public class HealthLogService {
         if (endDate.isBefore(startDate)) {
             throw new BadRequestException("Bitis tarihi baslangic tarihinden once olamaz");
         }
+    }
+
+    private String normalizeSource(String source) {
+        String normalized = source == null ? "manual" : source.trim().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_SOURCES.contains(normalized)) {
+            throw new BadRequestException(
+                "Gecersiz source. Desteklenen: manual, mobile_device, apple_health, apple_healthkit, google_fit, health_connect, other"
+            );
+        }
+        return normalized;
+    }
+
+    private String normalizeExternalRecordId(String externalRecordId) {
+        if (externalRecordId == null) {
+            return null;
+        }
+        String value = externalRecordId.trim();
+        return value.isEmpty() ? null : value;
     }
 
     private void validateDataByType(String logType, Map<String, Object> data) {
@@ -135,6 +197,11 @@ public class HealthLogService {
                 requirePositiveNumber(data, "calories");
                 requirePositiveNumber(data, "waterMl");
             }
+            case "steps" -> requirePositiveNumber(data, "count");
+            case "distance" -> requirePositiveNumber(data, "kilometers");
+            case "active_calories", "resting_calories" -> requirePositiveNumber(data, "kcal");
+            case "heart_rate" -> requirePositiveNumber(data, "bpm");
+            case "sleep" -> requirePositiveNumber(data, "minutes");
             default -> throw new BadRequestException("Desteklenmeyen log tipi");
         }
     }

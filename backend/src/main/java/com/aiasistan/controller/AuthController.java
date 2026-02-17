@@ -1,6 +1,8 @@
 package com.aiasistan.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -8,10 +10,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aiasistan.common.ApiResponse;
+import com.aiasistan.dto.request.ChangePasswordRequest;
 import com.aiasistan.dto.request.ForgotPasswordRequest;
 import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
+import com.aiasistan.dto.response.ChangePasswordResponse;
 import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
 import com.aiasistan.dto.response.LogoutResponse;
@@ -48,6 +52,18 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request) {
         ForgotPasswordResponse response = authService.forgotPassword(request);
         return ResponseEntity.ok(ApiResponse.ok(response, "Gecici sifre e-postaya gonderildi"));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<ChangePasswordResponse>> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Bu islem icin giris yapmaniz gerekiyor"));
+        }
+        ChangePasswordResponse response = authService.changePassword(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Sifre basariyla degistirildi"));
     }
 
     @PostMapping("/refresh")

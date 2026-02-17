@@ -10,6 +10,7 @@ public class UserProfileUpsertRequest {
     private String gender;
     private String timezone;
     private String locale;
+    private String profileVisibility;
     private Integer heightCm;
     private BigDecimal weightKg;
     private String preferredCurrency;
@@ -28,6 +29,8 @@ public class UserProfileUpsertRequest {
     public void setTimezone(String timezone) { this.timezone = timezone; }
     public String getLocale() { return locale; }
     public void setLocale(String locale) { this.locale = locale; }
+    public String getProfileVisibility() { return profileVisibility; }
+    public void setProfileVisibility(String profileVisibility) { this.profileVisibility = profileVisibility; }
     public Integer getHeightCm() { return heightCm; }
     public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }
     public BigDecimal getWeightKg() { return weightKg; }

@@ -76,6 +76,37 @@ public class BlogPostController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @GetMapping("/users/{targetUserId}")
+    public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getUserVisiblePosts(
+        Authentication authentication,
+        @PathVariable UUID targetUserId,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+        @RequestParam(defaultValue = "updatedAt") String sortBy,
+        @RequestParam(defaultValue = "DESC") String sortDirection
+    ) {
+        var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "updatedAt");
+        PageResponse<BlogPostDto.Response> response = blogPostService.getVisiblePostsByUser(
+            authentication.getName(),
+            targetUserId,
+            PageRequest.of(page, size, sort)
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/feed/following")
+    public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getFollowingFeed(
+        Authentication authentication,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        PageResponse<BlogPostDto.Response> response = blogPostService.getFollowingFeed(
+            authentication.getName(),
+            PageRequest.of(page, size)
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BlogPostDto.Response>> updatePost(
         Authentication authentication,

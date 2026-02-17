@@ -18,6 +18,10 @@ public class HealthLogDto {
 
         private LocalDate logDate;
 
+        private String source;
+
+        private String externalRecordId;
+
         @NotNull(message = "Veri alani bos olamaz")
         private Map<String, Object> data;
 
@@ -37,6 +41,22 @@ public class HealthLogDto {
             this.logDate = logDate;
         }
 
+        public String getSource() {
+            return source;
+        }
+
+        public void setSource(String source) {
+            this.source = source;
+        }
+
+        public String getExternalRecordId() {
+            return externalRecordId;
+        }
+
+        public void setExternalRecordId(String externalRecordId) {
+            this.externalRecordId = externalRecordId;
+        }
+
         public Map<String, Object> getData() {
             return data;
         }
@@ -51,6 +71,8 @@ public class HealthLogDto {
         private UUID userId;
         private String logType;
         private LocalDate logDate;
+        private String source;
+        private String externalRecordId;
         private Map<String, Object> data;
         private OffsetDateTime loggedAt;
 
@@ -60,6 +82,8 @@ public class HealthLogDto {
             response.userId = healthLog.getUserId();
             response.logType = healthLog.getLogType();
             response.logDate = healthLog.getLogDate();
+            response.source = healthLog.getSource();
+            response.externalRecordId = healthLog.getExternalRecordId();
             response.data = healthLog.getData();
             response.loggedAt = healthLog.getLoggedAt();
             return response;
@@ -95,6 +119,22 @@ public class HealthLogDto {
 
         public void setLogDate(LocalDate logDate) {
             this.logDate = logDate;
+        }
+
+        public String getSource() {
+            return source;
+        }
+
+        public void setSource(String source) {
+            this.source = source;
+        }
+
+        public String getExternalRecordId() {
+            return externalRecordId;
+        }
+
+        public void setExternalRecordId(String externalRecordId) {
+            this.externalRecordId = externalRecordId;
         }
 
         public Map<String, Object> getData() {

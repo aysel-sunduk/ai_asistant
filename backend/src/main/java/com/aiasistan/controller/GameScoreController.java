@@ -87,6 +87,30 @@ public class GameScoreController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @GetMapping("/leaderboard/following")
+    public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.FollowingLeaderboardResponse>>> getFollowingLeaderboard(
+        Authentication authentication,
+        @RequestParam String gameKey,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        PageResponse<GameScoreDto.FollowingLeaderboardResponse> response = gameScoreService.getFollowingLeaderboard(
+            authentication.getName(),
+            gameKey,
+            PageRequest.of(page, size)
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/rank-summary")
+    public ResponseEntity<ApiResponse<GameScoreDto.RankSummaryResponse>> getRankSummary(
+        Authentication authentication,
+        @RequestParam String gameKey
+    ) {
+        GameScoreDto.RankSummaryResponse response = gameScoreService.getRankSummary(authentication.getName(), gameKey);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteScore(
         Authentication authentication,

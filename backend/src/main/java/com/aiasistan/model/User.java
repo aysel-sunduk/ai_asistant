@@ -31,6 +31,9 @@ public class User {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "visibility", nullable = false, length = 16)
+    private String visibility = "public";
+
     private String role = "user";
 
     @CreationTimestamp
@@ -72,6 +75,9 @@ public class User {
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
+
+    public String getVisibility() { return visibility; }
+    public void setVisibility(String visibility) { this.visibility = visibility; }
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }

@@ -21,6 +21,8 @@ public interface HealthLogRepository extends JpaRepository<HealthLog, UUID> {
 
     Optional<HealthLog> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<HealthLog> findByUserIdAndExternalRecordId(UUID userId, String externalRecordId);
+
     @Query("SELECT h FROM HealthLog h WHERE h.userId = :userId AND h.logDate BETWEEN :startDate AND :endDate ORDER BY h.logDate DESC, h.loggedAt DESC")
     List<HealthLog> findByUserIdAndDateRange(
         @Param("userId") UUID userId,

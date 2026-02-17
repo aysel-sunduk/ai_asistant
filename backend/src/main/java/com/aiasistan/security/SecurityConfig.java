@@ -63,6 +63,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/v1/auth/change-password").authenticated()
                 .requestMatchers(
                     "/v1/auth/**",
                     "/v3/api-docs/**",
@@ -83,6 +84,5 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-
 
 

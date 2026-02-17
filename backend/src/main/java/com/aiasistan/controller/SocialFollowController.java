@@ -91,4 +91,63 @@ public class SocialFollowController {
         FollowDto.StatsResponse response = socialFollowService.getStats(authentication.getName());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @PostMapping("/requests/{requesterUserId}/accept")
+    public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> acceptRequest(
+        Authentication authentication,
+        @PathVariable UUID requesterUserId
+    ) {
+        FollowDto.FollowStateResponse response = socialFollowService.acceptFollowRequest(authentication.getName(), requesterUserId);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi kabul edildi"));
+    }
+
+    @PostMapping("/requests/{requesterUserId}/reject")
+    public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> rejectRequest(
+        Authentication authentication,
+        @PathVariable UUID requesterUserId
+    ) {
+        FollowDto.FollowStateResponse response = socialFollowService.rejectFollowRequest(authentication.getName(), requesterUserId);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi reddedildi"));
+    }
+
+    @PostMapping("/requests/{targetUserId}/withdraw")
+    public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> withdrawRequest(
+        Authentication authentication,
+        @PathVariable UUID targetUserId
+    ) {
+        FollowDto.FollowStateResponse response = socialFollowService.withdrawFollowRequest(authentication.getName(), targetUserId);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi geri cekildi"));
+    }
+
+    @GetMapping("/requests/incoming")
+    public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowRequestResponse>>> getIncomingRequests(
+        Authentication authentication,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        PageResponse<FollowDto.FollowRequestResponse> response = socialFollowService.getIncomingRequests(
+            authentication.getName(),
+            PageRequest.of(page, size, Sort.by("createdAt").descending())
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/requests/outgoing")
+    public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowRequestResponse>>> getOutgoingRequests(
+        Authentication authentication,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        PageResponse<FollowDto.FollowRequestResponse> response = socialFollowService.getOutgoingRequests(
+            authentication.getName(),
+            PageRequest.of(page, size, Sort.by("createdAt").descending())
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/requests/stats")
+    public ResponseEntity<ApiResponse<FollowDto.RequestStatsResponse>> getRequestStats(Authentication authentication) {
+        FollowDto.RequestStatsResponse response = socialFollowService.getRequestStats(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
 }

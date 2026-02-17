@@ -26,6 +26,10 @@ import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.ReminderDto;
 import com.aiasistan.service.ReminderService;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 
 @RestController
@@ -39,6 +43,13 @@ public class ReminderController {
     }
 
     @PostMapping
+    @Operation(
+        summary = "Create reminder",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = ReminderDto.Request.class))
+        )
+    )
     public ResponseEntity<ApiResponse<ReminderDto.Response>> createReminder(
         Authentication authentication,
         @Valid @RequestBody ReminderDto.Request request
@@ -87,6 +98,13 @@ public class ReminderController {
     }
 
     @PutMapping("/{id}")
+    @Operation(
+        summary = "Update reminder",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = ReminderDto.Request.class))
+        )
+    )
     public ResponseEntity<ApiResponse<ReminderDto.Response>> updateReminder(
         Authentication authentication,
         @PathVariable UUID id,
@@ -100,6 +118,10 @@ public class ReminderController {
     public ResponseEntity<ApiResponse<ReminderDto.Response>> updateReminderStatus(
         Authentication authentication,
         @PathVariable UUID id,
+        @Parameter(
+            description = "Kabul edilen degerler: scheduled, sent, skipped, canceled",
+            example = "scheduled"
+        )
         @RequestParam String status
     ) {
         ReminderDto.Response response = reminderService.updateReminderStatus(authentication.getName(), id, status);

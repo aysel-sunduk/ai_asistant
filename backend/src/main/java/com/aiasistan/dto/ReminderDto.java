@@ -2,6 +2,7 @@ package com.aiasistan.dto;
 
 import com.aiasistan.model.Reminder;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -10,18 +11,52 @@ import java.util.UUID;
 
 public class ReminderDto {
 
+    @Schema(name = "ReminderRequest")
     public static class Request {
         @NotBlank(message = "Baslik bos olamaz")
+        @Schema(example = "Yarin saat 10 toplanti hatirlat")
         private String title;
 
         @NotNull(message = "Hatirlatma zamani bos olamaz")
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+        @Schema(
+            description = "ISO-8601 formatinda tarih/saat. Ornek: 2026-02-20T10:30:00+03:00",
+            example = "2026-02-20T10:30:00+03:00"
+        )
         private OffsetDateTime remindAt;
 
+        @Schema(
+            description = "Opsiyonel: bagli is etkinligi id. Sadece toplantiya bagli hatirlatici icin gonderilir.",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+            nullable = true
+        )
         private UUID workEventId;
+        @Schema(
+            description = "Opsiyonel: bagli kisi id. Genel hatirlaticilarda gonderilmez.",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+            nullable = true
+        )
         private UUID contactId;
+        @Schema(
+            description = "Hatirlaticinin geldigi modul. Bos gonderilirse varsayilan: general",
+            allowableValues = {"general", "business", "work", "family", "health", "finance", "social", "shopping", "goals"},
+            example = "business",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         private String sourceModule;
+        @Schema(
+            description = "Tekrar tipi. Bos gonderilirse varsayilan: none",
+            allowableValues = {"none", "daily", "weekly", "monthly", "yearly", "weekdays", "custom"},
+            example = "none",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         private String recurrence;
+        @Schema(
+            description = "Bildirim kanali. Bos gonderilirse varsayilan: in_app",
+            allowableValues = {"in_app", "email", "push", "sms"},
+            example = "in_app",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         private String channel;
 
         public String getTitle() { return title; }
@@ -40,6 +75,7 @@ public class ReminderDto {
         public void setChannel(String channel) { this.channel = channel; }
     }
 
+    @Schema(name = "ReminderResponse")
     public static class Response {
         private UUID id;
         private UUID userId;

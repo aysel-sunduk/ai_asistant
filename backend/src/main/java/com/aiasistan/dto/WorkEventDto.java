@@ -8,6 +8,7 @@ import com.aiasistan.model.WorkEvent;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -19,48 +20,93 @@ public class WorkEventDto {
     public static class Request {
         @NotBlank(message = "Baslik bos olamaz")
         @Size(max = 500, message = "Baslik en fazla 500 karakter olabilir")
+        @Schema(
+            description = "Toplanti basligi",
+            example = "Haftalik urun toplantisi",
+            requiredMode = Schema.RequiredMode.REQUIRED
+        )
         private String title;
         
         @Size(max = 5000, message = "Aciklama en fazla 5000 karakter olabilir")
+        @Schema(
+            description = "Toplanti aciklamasi",
+            example = "Sprint hedefleri ve engeller konusulacak"
+        )
         private String description;
 
         @NotNull(message = "Baslangic zamani bos olamaz")
+        @Schema(
+            description = "ISO-8601 baslangic zamani",
+            example = "2026-02-20T10:00:00+03:00",
+            requiredMode = Schema.RequiredMode.REQUIRED
+        )
         private OffsetDateTime startTime;
 
         @NotNull(message = "Bitis zamani bos olamaz")
+        @Schema(
+            description = "ISO-8601 bitis zamani (startTime'dan sonra olmali)",
+            example = "2026-02-20T11:00:00+03:00",
+            requiredMode = Schema.RequiredMode.REQUIRED
+        )
         private OffsetDateTime endTime;
 
         @Min(value = 0, message = "Katilimci sayisi negatif olamaz")
+        @Max(value = 10000, message = "Katilimci sayisi 10000'den fazla olamaz")
+        @Schema(description = "Katilimci sayisi (0-10000)", example = "6")
         private Integer participantCount;
         
         @Size(max = 500, message = "Konum en fazla 500 karakter olabilir")
+        @Schema(description = "Toplanti konumu", example = "Maslak Ofis - 3. Kat Toplanti Odasi")
         private String location;
         
         @Pattern(regexp = "(?i)^(SCHEDULED|ONGOING|COMPLETED|CANCELLED|POSTPONED)$", 
                  message = "Gecersiz durum")
+        @Schema(
+            description = "Etkinlik durumu",
+            allowableValues = {"SCHEDULED", "ONGOING", "COMPLETED", "CANCELLED", "POSTPONED"},
+            example = "SCHEDULED"
+        )
         private String status;
         
         @Pattern(regexp = "(?i)^(LOW|MEDIUM|HIGH|URGENT)$", 
                  message = "Gecersiz oncelik")
+        @Schema(
+            description = "Oncelik seviyesi",
+            allowableValues = {"LOW", "MEDIUM", "HIGH", "URGENT"},
+            example = "MEDIUM"
+        )
         private String priority;
         
         @Pattern(regexp = "(?i)^(MEETING|CONFERENCE|PRESENTATION|INTERVIEW|TRAINING|WORKSHOP|CLIENT_MEETING|TEAM_MEETING|ONE_ON_ONE|BRAINSTORMING|REVIEW|OTHER)$",
                  message = "Gecersiz toplanti tipi")
+        @Schema(
+            description = "Toplanti/etkinlik tipi",
+            allowableValues = {"MEETING", "CONFERENCE", "PRESENTATION", "INTERVIEW", "TRAINING", "WORKSHOP", "CLIENT_MEETING", "TEAM_MEETING", "ONE_ON_ONE", "BRAINSTORMING", "REVIEW", "OTHER"},
+            example = "MEETING"
+        )
         private String eventType;
         
+        @Schema(description = "Online toplanti mi?", example = "true")
         private Boolean isOnline;
         
         @Pattern(regexp = "^(https?://)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$|^$", 
                  message = "Gecersiz URL formati")
         @Size(max = 1000, message = "Meeting URL en fazla 1000 karakter olabilir")
+        @Schema(
+            description = "Online toplanti linki. isOnline=true ise zorunlu",
+            example = "https://meet.google.com/abc-defg-hij"
+        )
         private String meetingUrl;
         
         @Min(value = 0, message = "Hatirlatma suresi negatif olamaz")
+        @Schema(description = "Toplanti baslamadan kac dakika once hatirlatilacak", example = "30")
         private Integer reminderMinutesBefore;
         
+        @Schema(description = "Opsiyonel ek alanlar", example = "{\"agenda\":\"Q1 plan\", \"owner\":\"Asel\"}")
         private Map<String, Object> metadata;
         
         @Size(max = 5000, message = "Notlar en fazla 5000 karakter olabilir")
+        @Schema(description = "Opsiyonel notlar", example = "Toplanti notlari burada tutulabilir")
         private String notes;
 
         // GETTERS & SETTERS

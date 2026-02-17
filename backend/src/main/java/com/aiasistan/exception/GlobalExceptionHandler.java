@@ -89,6 +89,9 @@ public class GlobalExceptionHandler {
         String message = "Gecersiz istek govdesi";
         if (ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null) {
             message = "Gecersiz veri formati: " + ex.getMostSpecificCause().getMessage();
+            if (message.toLowerCase().contains("offsetdatetime") || message.toLowerCase().contains("remindat")) {
+                message = "Gecersiz remindAt formati. Ornek: 2026-02-20T10:30:00+03:00";
+            }
         }
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)

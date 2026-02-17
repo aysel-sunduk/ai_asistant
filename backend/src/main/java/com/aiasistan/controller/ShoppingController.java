@@ -58,12 +58,14 @@ public class ShoppingController {
         Authentication authentication,
         @RequestParam(defaultValue = "0") @Min(0) int page,
         @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+        @RequestParam(required = false) Boolean archived,
         @RequestParam(defaultValue = "createdAt") String sortBy,
         @RequestParam(defaultValue = "DESC") String sortDirection
     ) {
         var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, LIST_SORT_FIELDS, "createdAt");
         PageResponse<ShoppingListDto.Response> response = shoppingService.getLists(
             authentication.getName(),
+            archived,
             PageRequest.of(page, size, sort)
         );
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -86,6 +88,29 @@ public class ShoppingController {
     ) {
         ShoppingListDto.Response response = shoppingService.updateList(authentication.getName(), listId, request);
         return ResponseEntity.ok(ApiResponse.ok(response, "Alisveris listesi guncellendi"));
+    }
+
+    @PatchMapping("/lists/{listId}/archive")
+    public ResponseEntity<ApiResponse<ShoppingListDto.Response>> updateListArchive(
+        Authentication authentication,
+        @PathVariable UUID listId,
+        @Valid @RequestBody ShoppingListDto.ArchiveRequest request
+    ) {
+        ShoppingListDto.Response response = shoppingService.updateListArchive(
+            authentication.getName(),
+            listId,
+            request.getArchived()
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response, "Alisveris listesi arsiv durumu guncellendi"));
+    }
+
+    @GetMapping("/lists/{listId}/summary")
+    public ResponseEntity<ApiResponse<ShoppingListDto.SummaryResponse>> getListSummary(
+        Authentication authentication,
+        @PathVariable UUID listId
+    ) {
+        ShoppingListDto.SummaryResponse response = shoppingService.getListSummary(authentication.getName(), listId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @DeleteMapping("/lists/{listId}")

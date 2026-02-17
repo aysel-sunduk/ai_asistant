@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.ShoppingItemDto;
 import com.aiasistan.dto.ShoppingListDto;
-import com.aiasistan.exception.BadRequestException;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.ShoppingItem;
 import com.aiasistan.model.ShoppingList;
@@ -47,9 +46,11 @@ public class ShoppingService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ShoppingListDto.Response> getLists(String userEmail, Pageable pageable) {
+    public PageResponse<ShoppingListDto.Response> getLists(String userEmail, Boolean archived, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
-        Page<ShoppingListDto.Response> page = shoppingListRepository.findByUserId(userId, pageable)
+        Page<ShoppingListDto.Response> page = (archived == null
+            ? shoppingListRepository.findByUserId(userId, pageable)
+            : shoppingListRepository.findByUserIdAndIsArchived(userId, archived, pageable))
             .map(ShoppingListDto.Response::from);
         return PageResponse.of(page);
     }
@@ -78,6 +79,7 @@ public class ShoppingService {
     public void deleteList(String userEmail, UUID listId) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         ShoppingList list = findOwnedList(userId, listId);
+        shoppingItemRepository.deleteByList_Id(listId);
         shoppingListRepository.delete(list);
     }
 
@@ -87,7 +89,7 @@ public class ShoppingService {
         ShoppingList list = findOwnedList(userId, listId);
 
         ShoppingItem item = new ShoppingItem();
-        item.setListId(list.getId());
+        item.setList(list);
         applyItemRequest(item, request);
 
         return ShoppingItemDto.Response.from(shoppingItemRepository.save(item));
@@ -98,7 +100,7 @@ public class ShoppingService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         findOwnedList(userId, listId);
 
-        Page<ShoppingItemDto.Response> page = shoppingItemRepository.findByListId(listId, pageable)
+        Page<ShoppingItemDto.Response> page = shoppingItemRepository.findByList_Id(listId, pageable)
             .map(ShoppingItemDto.Response::from);
         return PageResponse.of(page);
     }
@@ -143,24 +145,44 @@ public class ShoppingService {
         shoppingItemRepository.delete(item);
     }
 
+    @Transactional
+    public ShoppingListDto.Response updateListArchive(String userEmail, UUID listId, Boolean archived) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        ShoppingList list = findOwnedList(userId, listId);
+        list.setIsArchived(Boolean.TRUE.equals(archived));
+        return ShoppingListDto.Response.from(shoppingListRepository.save(list));
+    }
+
+    @Transactional(readOnly = true)
+    public ShoppingListDto.SummaryResponse getListSummary(String userEmail, UUID listId) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        findOwnedList(userId, listId);
+
+        Long totalEstimatedPriceMinor = shoppingItemRepository.sumEstimatedPriceMinorByListId(listId);
+        Long totalCheckedPriceMinor = shoppingItemRepository.sumCheckedEstimatedPriceMinorByListId(listId);
+        Long totalItemCount = shoppingItemRepository.countByList_Id(listId);
+        Long checkedItemCount = shoppingItemRepository.countByList_IdAndIsCheckedTrue(listId);
+
+        return new ShoppingListDto.SummaryResponse(
+            totalEstimatedPriceMinor,
+            totalCheckedPriceMinor,
+            totalItemCount,
+            checkedItemCount
+        );
+    }
+
     private ShoppingList findOwnedList(UUID userId, UUID listId) {
         return shoppingListRepository.findByIdAndUserId(listId, userId)
             .orElseThrow(() -> new NotFoundException("Alisveris listesi bulunamadi"));
     }
 
     private ShoppingItem findItemInList(UUID listId, UUID itemId) {
-        return shoppingItemRepository.findByIdAndListId(itemId, listId)
+        return shoppingItemRepository.findByIdAndList_Id(itemId, listId)
             .orElseThrow(() -> new NotFoundException("Alisveris urunu bulunamadi"));
     }
 
     private void applyItemRequest(ShoppingItem item, ShoppingItemDto.Request request) {
         String normalizedName = request.getName().trim();
-        if (normalizedName.length() < 2 || normalizedName.length() > 100) {
-            throw new BadRequestException("Urun adi 2-100 karakter arasinda olmali");
-        }
-        if (request.getEstimatedPriceMinor() != null && request.getEstimatedPriceMinor() < 0) {
-            throw new BadRequestException("Tahmini fiyat negatif olamaz");
-        }
         item.setName(normalizedName);
         item.setQuantity(request.getQuantity() != null && request.getQuantity() > 0 ? request.getQuantity() : 1);
         item.setUnit(request.getUnit() == null ? null : request.getUnit().trim());

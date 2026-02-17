@@ -15,5 +15,7 @@ public interface ShoppingListRepository extends JpaRepository<ShoppingList, UUID
 
     Page<ShoppingList> findByUserId(UUID userId, Pageable pageable);
 
+    Page<ShoppingList> findByUserIdAndIsArchived(UUID userId, Boolean isArchived, Pageable pageable);
+
     Optional<ShoppingList> findByIdAndUserId(UUID id, UUID userId);
 }

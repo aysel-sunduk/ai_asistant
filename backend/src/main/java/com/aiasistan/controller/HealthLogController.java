@@ -35,7 +35,7 @@ import jakarta.validation.constraints.Min;
 @RestController
 @RequestMapping("/v1/health/logs")
 public class HealthLogController {
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("loggedAt", "logDate", "logType");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("loggedAt", "logDate", "logType", "source");
 
     private final HealthLogService healthLogService;
 

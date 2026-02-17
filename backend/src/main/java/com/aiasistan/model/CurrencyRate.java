@@ -15,10 +15,10 @@ public class CurrencyRate {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     
-    @Column(name = "currency_code", nullable = false, length = 10)
+    @Column(name = "currency_code", nullable = false, length = 32)
     private String currencyCode;
 
-    @Column(name = "base_currency", length = 10)
+    @Column(name = "base_currency", length = 32)
     private String baseCurrency;
     
     @Column(name = "rate", nullable = false, precision = 19, scale = 4)

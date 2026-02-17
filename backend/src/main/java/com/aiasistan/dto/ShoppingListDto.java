@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.aiasistan.model.ShoppingList;
 
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -89,6 +90,65 @@ public class ShoppingListDto {
 
         public void setCreatedAt(OffsetDateTime createdAt) {
             this.createdAt = createdAt;
+        }
+    }
+
+    public static class ArchiveRequest {
+        @NotNull(message = "Archived bilgisi zorunludur")
+        private Boolean archived;
+
+        public Boolean getArchived() {
+            return archived;
+        }
+
+        public void setArchived(Boolean archived) {
+            this.archived = archived;
+        }
+    }
+
+    public static class SummaryResponse {
+        private Long totalEstimatedPriceMinor;
+        private Long totalCheckedPriceMinor;
+        private Long totalItemCount;
+        private Long checkedItemCount;
+
+        public SummaryResponse(Long totalEstimatedPriceMinor, Long totalCheckedPriceMinor, Long totalItemCount, Long checkedItemCount) {
+            this.totalEstimatedPriceMinor = totalEstimatedPriceMinor;
+            this.totalCheckedPriceMinor = totalCheckedPriceMinor;
+            this.totalItemCount = totalItemCount;
+            this.checkedItemCount = checkedItemCount;
+        }
+
+        public Long getTotalEstimatedPriceMinor() {
+            return totalEstimatedPriceMinor;
+        }
+
+        public void setTotalEstimatedPriceMinor(Long totalEstimatedPriceMinor) {
+            this.totalEstimatedPriceMinor = totalEstimatedPriceMinor;
+        }
+
+        public Long getTotalCheckedPriceMinor() {
+            return totalCheckedPriceMinor;
+        }
+
+        public void setTotalCheckedPriceMinor(Long totalCheckedPriceMinor) {
+            this.totalCheckedPriceMinor = totalCheckedPriceMinor;
+        }
+
+        public Long getTotalItemCount() {
+            return totalItemCount;
+        }
+
+        public void setTotalItemCount(Long totalItemCount) {
+            this.totalItemCount = totalItemCount;
+        }
+
+        public Long getCheckedItemCount() {
+            return checkedItemCount;
+        }
+
+        public void setCheckedItemCount(Long checkedItemCount) {
+            this.checkedItemCount = checkedItemCount;
         }
     }
 }

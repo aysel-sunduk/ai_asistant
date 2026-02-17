@@ -39,6 +39,9 @@ public class UserProfile {
     @Column(name = "locale")
     private String locale = "tr-TR";
 
+    @Column(name = "profile_visibility")
+    private String profileVisibility = "public";
+
     @Column(name = "height_cm")
     private Integer heightCm;
 
@@ -94,6 +97,9 @@ public class UserProfile {
 
     public String getLocale() { return locale; }
     public void setLocale(String locale) { this.locale = locale; }
+
+    public String getProfileVisibility() { return profileVisibility; }
+    public void setProfileVisibility(String profileVisibility) { this.profileVisibility = profileVisibility; }
 
     public Integer getHeightCm() { return heightCm; }
     public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }

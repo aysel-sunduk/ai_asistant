@@ -8,11 +8,15 @@ import java.util.UUID;
 
 public class UserProfileResponse {
     private UUID userId;
+    private String email;
+    private String firstName;
+    private String lastName;
     private String fullName;
     private LocalDate birthDate;
     private String gender;
     private String timezone;
     private String locale;
+    private String profileVisibility;
     private Integer heightCm;
     private BigDecimal weightKg;
     private String preferredCurrency;
@@ -24,6 +28,12 @@ public class UserProfileResponse {
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public LocalDate getBirthDate() { return birthDate; }
@@ -34,6 +44,8 @@ public class UserProfileResponse {
     public void setTimezone(String timezone) { this.timezone = timezone; }
     public String getLocale() { return locale; }
     public void setLocale(String locale) { this.locale = locale; }
+    public String getProfileVisibility() { return profileVisibility; }
+    public void setProfileVisibility(String profileVisibility) { this.profileVisibility = profileVisibility; }
     public Integer getHeightCm() { return heightCm; }
     public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }
     public BigDecimal getWeightKg() { return weightKg; }

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -13,16 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aiasistan.dto.request.UserProfileUpsertRequest;
 import com.aiasistan.dto.response.UserProfileResponse;
 import com.aiasistan.exception.BadRequestException;
+import com.aiasistan.exception.NotFoundException;
+import com.aiasistan.model.User;
 import com.aiasistan.model.UserProfile;
 import com.aiasistan.repository.UserProfileRepository;
+import com.aiasistan.repository.UserRepository;
 
 @Service
 public class UserProfileService {
+    private static final Set<String> ALLOWED_PROFILE_VISIBILITY = Set.of("public", "private");
 
     private final UserProfileRepository userProfileRepository;
+    private final UserRepository userRepository;
 
-    public UserProfileService(UserProfileRepository userProfileRepository) {
+    public UserProfileService(UserProfileRepository userProfileRepository, UserRepository userRepository) {
         this.userProfileRepository = userProfileRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -117,6 +124,7 @@ public class UserProfileService {
     public UserProfileResponse upsertProfile(UUID userId, UserProfileUpsertRequest request) {
         UserProfile profile = getOrCreateProfile(userId);
         applyAllFields(profile, request);
+        syncUsersTableColumns(profile);
         UserProfile saved = userProfileRepository.save(profile);
         return toResponse(saved);
     }
@@ -135,6 +143,7 @@ public class UserProfileService {
             default -> throw new BadRequestException("Unknown module: " + module);
         }
 
+        syncUsersTableColumns(profile);
         UserProfile saved = userProfileRepository.save(profile);
         return toResponse(saved);
     }
@@ -145,8 +154,10 @@ public class UserProfileService {
     }
 
     private UserProfile createDefaultProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));
         UserProfile profile = new UserProfile();
-        profile.setUserId(userId);
+        profile.setUser(user);
         return userProfileRepository.save(profile);
     }
 
@@ -165,9 +176,13 @@ public class UserProfileService {
     }
 
     private void applyWorkFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getFullName() != null) profile.setFullName(request.getFullName());
+        if (request.getFullName() != null) profile.setFullName(request.getFullName().trim());
         if (request.getTimezone() != null) profile.setTimezone(request.getTimezone());
         if (request.getLocale() != null) profile.setLocale(request.getLocale());
+        if (request.getProfileVisibility() != null) {
+            String normalized = normalizeProfileVisibility(request.getProfileVisibility());
+            profile.setProfileVisibility(normalized);
+        }
     }
 
     private void applyHealthFields(UserProfile profile, UserProfileUpsertRequest request) {
@@ -187,7 +202,7 @@ public class UserProfileService {
     }
 
     private void applyFamilyFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getFullName() != null) profile.setFullName(request.getFullName());
+        if (request.getFullName() != null) profile.setFullName(request.getFullName().trim());
     }
 
     private void applyGoalsFields(UserProfile profile, UserProfileUpsertRequest request) {
@@ -195,13 +210,27 @@ public class UserProfileService {
     }
 
     private UserProfileResponse toResponse(UserProfile profile) {
+        User user = profile.getUser();
+        if (user == null && profile.getUserId() != null) {
+            user = userRepository.findById(profile.getUserId()).orElse(null);
+        }
+
         UserProfileResponse response = new UserProfileResponse();
         response.setUserId(profile.getUserId());
+        if (user != null) {
+            response.setEmail(user.getEmail());
+            response.setFirstName(user.getFirstName());
+            response.setLastName(user.getLastName());
+            response.setProfileVisibility(normalizeProfileVisibility(user.getVisibility()));
+        }
         response.setFullName(profile.getFullName());
         response.setBirthDate(profile.getBirthDate());
         response.setGender(profile.getGender());
         response.setTimezone(profile.getTimezone());
         response.setLocale(profile.getLocale());
+        if (response.getProfileVisibility() == null) {
+            response.setProfileVisibility(normalizeProfileVisibility(profile.getProfileVisibility()));
+        }
         response.setHeightCm(profile.getHeightCm());
         response.setWeightKg(profile.getWeightKg());
         response.setPreferredCurrency(profile.getPreferredCurrency() != null ? normalizeCurrency(profile.getPreferredCurrency()) : null);
@@ -222,6 +251,43 @@ public class UserProfileService {
             case "TRY", "USD", "EUR", "GBP" -> normalized;
             default -> "TRY";
         };
+    }
+
+    private String normalizeProfileVisibility(String visibility) {
+        if (visibility == null || visibility.isBlank()) {
+            return "public";
+        }
+        String normalized = visibility.trim().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_PROFILE_VISIBILITY.contains(normalized)) {
+            throw new BadRequestException("profileVisibility only accepts: public, private");
+        }
+        return normalized;
+    }
+
+    private void syncUsersTableColumns(UserProfile profile) {
+        if (profile == null || profile.getUserId() == null) {
+            return;
+        }
+        userRepository.findById(profile.getUserId()).ifPresent(user -> {
+            user.setVisibility(normalizeProfileVisibility(profile.getProfileVisibility()));
+            syncUserNameFromFullName(user, profile.getFullName());
+        });
+    }
+
+    private void syncUserNameFromFullName(User user, String fullName) {
+        if (user == null || fullName == null || fullName.isBlank()) {
+            return;
+        }
+        String[] parts = fullName.trim().split("\\s+");
+        if (parts.length == 0) {
+            return;
+        }
+        String firstName = parts[0];
+        String lastName = parts.length > 1
+            ? String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length))
+            : "";
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
     }
 
     /**

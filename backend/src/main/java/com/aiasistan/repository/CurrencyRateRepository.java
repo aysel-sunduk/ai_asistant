@@ -23,10 +23,15 @@ public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, UUID
     List<CurrencyRate> findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(
         String currencyCode, LocalDateTime startDate, LocalDateTime endDate);
 
+    List<CurrencyRate> findByCurrencyCodeAndBaseCurrencyAndRateDateBetweenOrderByRateDateDesc(
+        String currencyCode, String baseCurrency, LocalDateTime startDate, LocalDateTime endDate);
+
     List<CurrencyRate> findByBaseCurrencyOrderByRateDateDesc(String baseCurrency);
     
     @Query("SELECT cr FROM CurrencyRate cr WHERE cr.rateDate >= :date")
     List<CurrencyRate> findRatesFromLast24Hours(@Param("date") LocalDateTime date);
     
     Page<CurrencyRate> findAllByOrderByRateDateDesc(Pageable pageable);
+
+    long deleteByRateDateBefore(LocalDateTime cutoffDate);
 }

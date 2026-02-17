@@ -34,6 +34,12 @@ public class HealthLog {
     @Column(name = "log_date", nullable = false)
     private LocalDate logDate;
 
+    @Column(name = "source", nullable = false, length = 32)
+    private String source;
+
+    @Column(name = "external_record_id", length = 128)
+    private String externalRecordId;
+
     @Type(JsonBinaryType.class)
     @Column(name = "data", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> data;
@@ -86,6 +92,22 @@ public class HealthLog {
 
     public void setData(Map<String, Object> data) {
         this.data = data;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getExternalRecordId() {
+        return externalRecordId;
+    }
+
+    public void setExternalRecordId(String externalRecordId) {
+        this.externalRecordId = externalRecordId;
     }
 
     public OffsetDateTime getLoggedAt() {

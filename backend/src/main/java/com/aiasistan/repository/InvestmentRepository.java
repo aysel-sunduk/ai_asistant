@@ -9,16 +9,27 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface InvestmentRepository extends JpaRepository<Investment, UUID> {
     
     List<Investment> findByUserId(UUID userId);
+
+    List<Investment> findByUserIdAndIdIn(UUID userId, List<UUID> ids);
     
     Page<Investment> findByUserId(UUID userId, Pageable pageable);
-    
+
+    Page<Investment> findByUserIdAndAssetType(UUID userId, String assetType, Pageable pageable);
+
+    List<Investment> findByUserIdAndAssetTypeOrderByUpdatedAtDesc(UUID userId, String assetType);
+
     List<Investment> findByUserIdAndAssetType(UUID userId, String assetType);
+
+    Optional<Investment> findByIdAndUserIdAndAssetType(UUID id, UUID userId, String assetType);
+
+    Optional<Investment> findByIdAndUserId(UUID id, UUID userId);
     
     @Query("SELECT i FROM Investment i WHERE i.userId = :userId AND i.quantity * i.avgCostMinor IS NOT NULL")
     List<Investment> findProfitableInvestments(@Param("userId") UUID userId);

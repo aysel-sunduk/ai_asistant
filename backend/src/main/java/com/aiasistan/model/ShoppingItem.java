@@ -4,9 +4,12 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
@@ -19,8 +22,9 @@ public class ShoppingItem {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "list_id", nullable = false, columnDefinition = "uuid")
-    private UUID listId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "list_id", nullable = false)
+    private ShoppingList list;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -58,12 +62,16 @@ public class ShoppingItem {
         this.id = id;
     }
 
-    public UUID getListId() {
-        return listId;
+    public ShoppingList getList() {
+        return list;
     }
 
-    public void setListId(UUID listId) {
-        this.listId = listId;
+    public void setList(ShoppingList list) {
+        this.list = list;
+    }
+
+    public UUID getListId() {
+        return list != null ? list.getId() : null;
     }
 
     public String getName() {
