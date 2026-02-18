@@ -79,6 +79,20 @@ public class BlogPostDto {
         }
     }
 
+    public static class CommentRequest {
+        @NotBlank(message = "Yorum icerigi bos olamaz")
+        @Size(min = 1, max = 1000, message = "Yorum 1-1000 karakter arasinda olmali")
+        private String content;
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+    }
+
     public static class CleanResponse {
         private String originalContent;
         private String cleanContent;
@@ -111,6 +125,8 @@ public class BlogPostDto {
         private String[] tags;
         private Integer likeCount;
         private List<Map<String, Object>> comments;
+        private Integer commentCount;
+        private Boolean likedByMe;
         private OffsetDateTime createdAt;
         private OffsetDateTime updatedAt;
 
@@ -126,6 +142,8 @@ public class BlogPostDto {
             response.tags = post.getTags();
             response.likeCount = post.getLikeCount();
             response.comments = post.getComments();
+            response.commentCount = post.getComments() != null ? post.getComments().size() : 0;
+            response.likedByMe = false;
             response.createdAt = post.getCreatedAt();
             response.updatedAt = post.getUpdatedAt();
             return response;
@@ -209,6 +227,22 @@ public class BlogPostDto {
 
         public void setComments(List<Map<String, Object>> comments) {
             this.comments = comments;
+        }
+
+        public Integer getCommentCount() {
+            return commentCount;
+        }
+
+        public void setCommentCount(Integer commentCount) {
+            this.commentCount = commentCount;
+        }
+
+        public Boolean getLikedByMe() {
+            return likedByMe;
+        }
+
+        public void setLikedByMe(Boolean likedByMe) {
+            this.likedByMe = likedByMe;
         }
 
         public OffsetDateTime getCreatedAt() {

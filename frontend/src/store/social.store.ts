@@ -1,14 +1,14 @@
 import { create } from 'zustand';
-import type { Follow } from '../models/social.model';
+import type { FollowItem } from '../models/social.model';
 
 interface SocialState {
-    followers: Follow[];
-    following: Follow[];
+    followers: FollowItem[];
+    following: FollowItem[];
     isLoading: boolean;
 
-    setFollowers: (followers: Follow[]) => void;
-    setFollowing: (following: Follow[]) => void;
-    addFollowing: (follow: Follow) => void;
+    setFollowers: (followers: FollowItem[]) => void;
+    setFollowing: (following: FollowItem[]) => void;
+    addFollowing: (follow: FollowItem) => void;
     removeFollowing: (userId: string) => void;
     setLoading: (loading: boolean) => void;
 }
@@ -24,7 +24,7 @@ export const useSocialStore = create<SocialState>((set) => ({
         set((state) => ({ following: [...state.following, follow] })),
     removeFollowing: (userId) =>
         set((state) => ({
-            following: state.following.filter((f) => f.followingId !== userId),
+            following: state.following.filter((f) => f.user.userId !== userId),
         })),
     setLoading: (isLoading) => set({ isLoading }),
 }));

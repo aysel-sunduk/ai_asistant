@@ -126,6 +126,35 @@ public class BlogPostController {
         return ResponseEntity.ok(ApiResponse.ok(response, "Icerik temizlendi"));
     }
 
+    @PostMapping("/{id}/likes/toggle")
+    public ResponseEntity<ApiResponse<BlogPostDto.Response>> toggleLike(
+        Authentication authentication,
+        @PathVariable UUID id
+    ) {
+        BlogPostDto.Response response = blogPostService.toggleLike(authentication.getName(), id);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Begeni durumu guncellendi"));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<ApiResponse<BlogPostDto.Response>> addComment(
+        Authentication authentication,
+        @PathVariable UUID id,
+        @Valid @RequestBody BlogPostDto.CommentRequest request
+    ) {
+        BlogPostDto.Response response = blogPostService.addComment(authentication.getName(), id, request.getContent());
+        return ResponseEntity.ok(ApiResponse.ok(response, "Yorum eklendi"));
+    }
+
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<BlogPostDto.Response>> deleteComment(
+        Authentication authentication,
+        @PathVariable UUID id,
+        @PathVariable UUID commentId
+    ) {
+        BlogPostDto.Response response = blogPostService.deleteComment(authentication.getName(), id, commentId);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Yorum silindi"));
+    }
+
     @PostMapping("/clean-preview")
     public ResponseEntity<ApiResponse<BlogPostDto.CleanResponse>> cleanPreview(
         @Valid @RequestBody BlogPostDto.CleanRequest request

@@ -1,10 +1,8 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
     Platform,
     ScrollView,
     StatusBar,
@@ -16,8 +14,8 @@ import {
     View,
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
+import { remindersService } from '../../services/reminders.service';
 import { workService } from '../../services/work.service';
-import type { WorkEvent, WorkEventRequest } from '../../src/models/work.model';
 
 const COLOR = '#5B8DEF';
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
@@ -27,7 +25,6 @@ const PRIORITY_LABELS: Record<(typeof PRIORITIES)[number], string> = {
     HIGH: 'Yuksek',
     URGENT: 'Acil',
 };
-const STATUSES = ['SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED', 'POSTPONED'] as const;
 const EVENT_TYPES = [
     'MEETING',
     'TEAM_MEETING',
@@ -37,9 +34,6 @@ const EVENT_TYPES = [
     'PRESENTATION',
     'OTHER',
 ] as const;
-const REMINDERS = [5, 15, 30, 60] as const;
-const LOCATION_OPTIONS = ['Toplanti Odasi A', 'Toplanti Odasi B', 'Acik Ofis', 'Musteri Ofisi', 'Belirlenecek', 'Diger'] as const;
-
 const EVENT_TYPE_LABELS: Record<(typeof EVENT_TYPES)[number], string> = {
     MEETING: 'Toplanti',
     TEAM_MEETING: 'Ekip Toplantisi',
@@ -49,20 +43,31 @@ const EVENT_TYPE_LABELS: Record<(typeof EVENT_TYPES)[number], string> = {
     PRESENTATION: 'Sunum',
     OTHER: 'Diger',
 };
-const STATUS_LABELS: Record<(typeof STATUSES)[number], string> = {
-    SCHEDULED: 'Planlandi',
-    ONGOING: 'Devam Ediyor',
-    COMPLETED: 'Tamamlandi',
-    CANCELLED: 'Iptal',
-    POSTPONED: 'Ertelendi',
-};
-
-type PickerTarget = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null;
+const REMINDERS = [5, 15, 30, 60] as const;
+const LOCATION_OPTIONS = ['Toplanti Odasi A', 'Toplanti Odasi B', 'Acik Ofis', 'Musteri Ofisi', 'Belirlenecek', 'Diger'] as const;
 
 const formatDate = (d: Date) =>
     d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
 const formatTime = (d: Date) =>
     d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+const toBackendOffsetDateTime = (date: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
+    const offsetMinutes = -date.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const abs = Math.abs(offsetMinutes);
+    const oh = pad(Math.floor(abs / 60));
+    const om = pad(abs % 60);
+    return `${y}-${m}-${d}T${hh}:${mm}:${ss}${sign}${oh}:${om}`;
+};
+
+type PickerTarget = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null;
 
 const mergeDate = (base: Date, part: Date, kind: 'date' | 'time') => {
     const next = new Date(base);
@@ -74,20 +79,8 @@ const mergeDate = (base: Date, part: Date, kind: 'date' | 'time') => {
     return next;
 };
 
-const toDate = (v?: string) => {
-    const d = v ? new Date(v) : new Date();
-    return Number.isNaN(d.getTime()) ? new Date() : d;
-};
-
-export default function EventDetailScreen() {
+export default function CreateEventScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams<{ id?: string }>();
-    const eventId = typeof params.id === 'string' ? params.id : '';
-
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [event, setEvent] = useState<WorkEvent | null>(null);
-
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [participantCount, setParticipantCount] = useState('');
@@ -97,69 +90,14 @@ export default function EventDetailScreen() {
     const [meetingUrl, setMeetingUrl] = useState('');
     const [priority, setPriority] = useState<(typeof PRIORITIES)[number]>('MEDIUM');
     const [eventType, setEventType] = useState<(typeof EVENT_TYPES)[number]>('MEETING');
-    const [status, setStatus] = useState<(typeof STATUSES)[number]>('SCHEDULED');
     const [reminderMinutesBefore, setReminderMinutesBefore] = useState<(typeof REMINDERS)[number]>(15);
-    const [startAt, setStartAt] = useState(new Date());
-    const [endAt, setEndAt] = useState(new Date(Date.now() + 60 * 60 * 1000));
-
+    const [startAt, setStartAt] = useState(new Date(Date.now() + 30 * 60 * 1000));
+    const [endAt, setEndAt] = useState(new Date(Date.now() + 90 * 60 * 1000));
+    const [submitting, setSubmitting] = useState(false);
     const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
-
-    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
-        setToastType(type);
-        setToastMessage(message);
-        setToastVisible(true);
-    };
-
-    const fillForm = (e: WorkEvent) => {
-        setEvent(e);
-        setTitle(e.title || '');
-        setDescription(e.description || '');
-        setParticipantCount(e.participantCount != null ? String(e.participantCount) : '');
-        setIsOnline(Boolean(e.isOnline));
-        const incomingLocation = e.location || '';
-        if (!incomingLocation) {
-            setLocationOption('Belirlenecek');
-            setCustomLocation('');
-        } else if ((LOCATION_OPTIONS as readonly string[]).includes(incomingLocation)) {
-            setLocationOption(incomingLocation as (typeof LOCATION_OPTIONS)[number]);
-            setCustomLocation('');
-        } else {
-            setLocationOption('Diger');
-            setCustomLocation(incomingLocation);
-        }
-        setMeetingUrl(e.meetingUrl || '');
-        setPriority((e.priority as (typeof PRIORITIES)[number]) || 'MEDIUM');
-        setEventType((e.eventType as (typeof EVENT_TYPES)[number]) || 'MEETING');
-        setStatus((e.status as (typeof STATUSES)[number]) || 'SCHEDULED');
-        setReminderMinutesBefore((e.reminderMinutesBefore as (typeof REMINDERS)[number]) || 15);
-        setStartAt(toDate(e.startTime));
-        setEndAt(toDate(e.endTime));
-    };
-
-    const loadEvent = useCallback(async () => {
-        if (!eventId) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            const data = await workService.getEvent(eventId);
-            fillForm(data);
-        } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Toplanti detayi alinamadi.');
-        } finally {
-            setLoading(false);
-        }
-    }, [eventId]);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadEvent();
-        }, [loadEvent]),
-    );
 
     const pickerValue = useMemo(() => {
         if (pickerTarget === 'startDate' || pickerTarget === 'startTime') return startAt;
@@ -171,17 +109,22 @@ export default function EventDetailScreen() {
         return 'time' as const;
     }, [pickerTarget]);
 
-    const onPickerChange = (eventData: DateTimePickerEvent, selected?: Date) => {
+    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+        setToastType(type);
+        setToastMessage(message);
+        setToastVisible(true);
+    };
+
+    const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
         if (Platform.OS === 'android') setPickerTarget(null);
-        if (eventData.type === 'dismissed' || !selected || !pickerTarget) return;
+        if (event.type === 'dismissed' || !selected || !pickerTarget) return;
         if (pickerTarget === 'startDate') setStartAt((prev) => mergeDate(prev, selected, 'date'));
         if (pickerTarget === 'startTime') setStartAt((prev) => mergeDate(prev, selected, 'time'));
         if (pickerTarget === 'endDate') setEndAt((prev) => mergeDate(prev, selected, 'date'));
         if (pickerTarget === 'endTime') setEndAt((prev) => mergeDate(prev, selected, 'time'));
     };
 
-    const submitUpdate = async () => {
-        if (!eventId) return;
+    const submit = async () => {
         if (!title.trim()) {
             showToast('error', 'Baslik zorunlu.');
             return;
@@ -205,82 +148,46 @@ export default function EventDetailScreen() {
             return;
         }
 
-        const payload: WorkEventRequest = {
-            title: title.trim(),
-            description: description.trim() || undefined,
-            participantCount: participantCount ? Number(participantCount) : undefined,
-            isOnline,
-            location: finalLocation,
-            meetingUrl: isOnline ? meetingUrl.trim() : undefined,
-            priority,
-            eventType,
-            status,
-            reminderMinutesBefore,
-            startTime: startAt.toISOString(),
-            endTime: endAt.toISOString(),
-        };
-
-        setSaving(true);
+        setSubmitting(true);
         try {
-            const updated = await workService.updateEvent(eventId, payload);
-            fillForm(updated);
-            showToast('success', 'Toplanti guncellendi.');
+            const createdEvent = await workService.createEvent({
+                title: title.trim(),
+                description: description.trim() || undefined,
+                participantCount: participantCount ? Number(participantCount) : undefined,
+                isOnline,
+                location: finalLocation,
+                meetingUrl: isOnline ? meetingUrl.trim() : undefined,
+                priority,
+                eventType,
+                reminderMinutesBefore,
+                startTime: startAt.toISOString(),
+                endTime: endAt.toISOString(),
+            });
+
+            // Toplanti olusturulunca, secilen dakika kadar once otomatik hatirlatici uret.
+            if (createdEvent?.id && reminderMinutesBefore > 0) {
+                const remindAt = new Date(startAt.getTime() - reminderMinutesBefore * 60 * 1000);
+                try {
+                    await remindersService.create({
+                        title: `${title.trim()} toplanti hatirlaticisi`,
+                        remindAt: toBackendOffsetDateTime(remindAt),
+                        workEventId: createdEvent.id,
+                        sourceModule: 'work',
+                        recurrence: 'none',
+                        channel: 'in_app',
+                    });
+                } catch {
+                    // Toplanti olusturma basariliysa reminder hatasi akisi bozmasin.
+                }
+            }
+            showToast('success', 'Toplanti basariyla olusturuldu.');
+            setTimeout(() => router.replace('/(work)/events'), 500);
         } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Toplanti guncellenemedi.');
+            showToast('error', error?.response?.data?.message || 'Toplanti olusturulamadi.');
         } finally {
-            setSaving(false);
+            setSubmitting(false);
         }
     };
-
-    const changeStatus = async (newStatus: (typeof STATUSES)[number]) => {
-        if (!eventId) return;
-        if (status === newStatus) return;
-        setStatus(newStatus);
-        try {
-            const updated = await workService.updateEventStatus(eventId, newStatus);
-            fillForm(updated);
-            showToast('success', `Durum: ${STATUS_LABELS[newStatus]}`);
-        } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Durum guncellenemedi.');
-            if (event?.status) setStatus(event.status as (typeof STATUSES)[number]);
-        }
-    };
-
-    const removeEvent = () => {
-        if (!eventId) return;
-        Alert.alert('Toplantiyi sil', 'Bu toplanti kalici olarak silinsin mi?', [
-            { text: 'Iptal', style: 'cancel' },
-            {
-                text: 'Sil',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await workService.deleteEvent(eventId);
-                        showToast('success', 'Toplanti silindi.');
-                        setTimeout(() => router.replace('/(work)/events'), 400);
-                    } catch (error: any) {
-                        showToast('error', error?.response?.data?.message || 'Toplanti silinemedi.');
-                    }
-                },
-            },
-        ]);
-    };
-
-    if (loading) {
-        return (
-            <View style={styles.loadingWrap}>
-                <ActivityIndicator size="large" color={COLOR} />
-            </View>
-        );
-    }
-
-    if (!eventId) {
-        return (
-            <View style={styles.loadingWrap}>
-                <Text>Toplanti id bulunamadi.</Text>
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -290,36 +197,23 @@ export default function EventDetailScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Toplanti Detayi</Text>
-                    <TouchableOpacity onPress={removeEvent} style={styles.backBtn}>
-                        <Ionicons name="trash-outline" size={18} color="#fff" />
-                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Yeni Toplanti</Text>
+                    <View style={{ width: 40 }} />
                 </View>
             </View>
 
-            <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 28 }}>
+            <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 32 }}>
                 <Text style={styles.label}>Baslik</Text>
-                <TextInput value={title} onChangeText={setTitle} style={styles.input} />
+                <TextInput value={title} onChangeText={setTitle} placeholder="Orn: Sprint Planning" style={styles.input} />
 
                 <Text style={styles.label}>Aciklama</Text>
                 <TextInput
                     value={description}
                     onChangeText={setDescription}
+                    placeholder="Toplanti notu"
                     multiline
                     style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
                 />
-
-                <Text style={styles.label}>Durum Akisi</Text>
-                <View style={styles.chipsWrap}>
-                    {STATUSES.map((s) => (
-                        <Chip
-                            key={s}
-                            value={STATUS_LABELS[s]}
-                            selected={status === s}
-                            onPress={() => changeStatus(s)}
-                        />
-                    ))}
-                </View>
 
                 <Text style={styles.label}>Tarih ve Saat</Text>
                 <View style={styles.row2}>
@@ -348,7 +242,8 @@ export default function EventDetailScreen() {
                     {EVENT_TYPES.map((item) => (
                         <Chip
                             key={item}
-                            value={EVENT_TYPE_LABELS[item]}
+                            value={item}
+                            label={EVENT_TYPE_LABELS[item]}
                             selected={eventType === item}
                             onPress={() => setEventType(item)}
                         />
@@ -360,7 +255,8 @@ export default function EventDetailScreen() {
                     {PRIORITIES.map((item) => (
                         <Chip
                             key={item}
-                            value={PRIORITY_LABELS[item]}
+                            value={item}
+                            label={PRIORITY_LABELS[item]}
                             selected={priority === item}
                             onPress={() => setPriority(item)}
                         />
@@ -415,22 +311,23 @@ export default function EventDetailScreen() {
                             placeholder="https://meet.google.com/..."
                             style={styles.input}
                             autoCapitalize="none"
+                            keyboardType="url"
                         />
                     </>
                 )}
 
-                <Text style={styles.label}>Katilimci Sayisi</Text>
+                <Text style={styles.label}>Katilimci Sayisi (Opsiyonel)</Text>
                 <TextInput
                     value={participantCount}
                     onChangeText={setParticipantCount}
                     placeholder="Orn: 6"
-                    keyboardType="number-pad"
                     style={styles.input}
+                    keyboardType="number-pad"
                 />
 
-                <TouchableOpacity style={[styles.submitBtn, saving && { opacity: 0.7 }]} onPress={submitUpdate} disabled={saving}>
-                    <Ionicons name="save-outline" size={18} color="#fff" />
-                    <Text style={styles.submitText}>{saving ? 'Kaydediliyor...' : 'Degisiklikleri Kaydet'}</Text>
+                <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={submit} disabled={submitting}>
+                    <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                    <Text style={styles.submitText}>{submitting ? 'Olusturuluyor...' : 'Toplantiyi Olustur'}</Text>
                 </TouchableOpacity>
             </ScrollView>
 
@@ -444,30 +341,36 @@ export default function EventDetailScreen() {
                 />
             )}
 
-            <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
+            <Toast
+                visible={toastVisible}
+                type={toastType}
+                message={toastMessage}
+                onHide={() => setToastVisible(false)}
+            />
         </View>
     );
 }
 
 function Chip({
     value,
+    label,
     selected,
     onPress,
 }: {
     value: string;
+    label?: string;
     selected: boolean;
     onPress: () => void;
 }) {
     return (
         <TouchableOpacity onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}>
-            <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{value}</Text>
+            <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label || value}</Text>
         </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
-    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
         backgroundColor: COLOR,
         borderBottomLeftRadius: 28,

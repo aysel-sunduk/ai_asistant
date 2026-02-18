@@ -54,5 +54,8 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
     @Query("SELECT r FROM Reminder r WHERE r.contactId = :contactId")
     List<Reminder> findByContactId(@Param("contactId") UUID contactId);
 
+    List<Reminder> findByUserIdAndSourceModuleAndTitle(UUID userId, String sourceModule, String title);
+    List<Reminder> findByUserIdAndStatusAndRemindAtLessThanEqualOrderByRemindAtAsc(UUID userId, String status, OffsetDateTime remindAt);
+
     long countByUserId(UUID userId);
 }

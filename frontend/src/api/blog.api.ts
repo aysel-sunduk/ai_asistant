@@ -1,12 +1,27 @@
-import type { BlogPost } from '../models/blog.model';
+import type { ApiResponse } from '../models/auth.model';
+import type { BlogPage, BlogPost, BlogPostRequest } from '../models/blog.model';
 import apiClient from './client';
 
 export const blogApi = {
-    getPosts: (params?: Record<string, unknown>) => apiClient.get<BlogPost[]>('/blog/posts', { params }),
-    getPost: (id: string) => apiClient.get<BlogPost>(`/blog/posts/${id}`),
-    createPost: (data: Partial<BlogPost>) => apiClient.post<BlogPost>('/blog/posts', data),
-    updatePost: (id: string, data: Partial<BlogPost>) => apiClient.put<BlogPost>(`/blog/posts/${id}`, data),
-    deletePost: (id: string) => apiClient.delete(`/blog/posts/${id}`),
-    likePost: (id: string) => apiClient.post(`/blog/posts/${id}/like`),
-    addComment: (id: string, content: string) => apiClient.post(`/blog/posts/${id}/comments`, { content }),
+    getPosts: (page = 0, size = 20, sortBy = 'updatedAt', sortDirection: 'ASC' | 'DESC' = 'DESC') =>
+        apiClient.get<ApiResponse<BlogPage>>('/v1/blog/posts', {
+            params: { page, size, sortBy, sortDirection },
+        }),
+    getFollowingFeed: (page = 0, size = 20) =>
+        apiClient.get<ApiResponse<BlogPage>>('/v1/blog/posts/feed/following', {
+            params: { page, size },
+        }),
+    getUserVisiblePosts: (targetUserId: string, page = 0, size = 20, sortBy = 'updatedAt', sortDirection: 'ASC' | 'DESC' = 'DESC') =>
+        apiClient.get<ApiResponse<BlogPage>>(`/v1/blog/posts/users/${targetUserId}`, {
+            params: { page, size, sortBy, sortDirection },
+        }),
+    getPost: (id: string) => apiClient.get<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}`),
+    createPost: (data: BlogPostRequest) => apiClient.post<ApiResponse<BlogPost>>('/v1/blog/posts', data),
+    updatePost: (id: string, data: BlogPostRequest) => apiClient.put<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}`, data),
+    deletePost: (id: string) => apiClient.delete<ApiResponse<void>>(`/v1/blog/posts/${id}`),
+    toggleLike: (id: string) => apiClient.post<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/likes/toggle`),
+    addComment: (id: string, content: string) => apiClient.post<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/comments`, { content }),
+    deleteComment: (id: string, commentId: string) => apiClient.delete<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/comments/${commentId}`),
+    cleanPost: (id: string) => apiClient.patch<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/clean`),
+    cleanPreview: (content: string) => apiClient.post<ApiResponse<{ originalContent: string; cleanContent: string }>>('/v1/blog/posts/clean-preview', { content }),
 };

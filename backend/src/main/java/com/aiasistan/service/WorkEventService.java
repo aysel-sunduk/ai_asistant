@@ -290,12 +290,14 @@ public class WorkEventService {
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
         event.setParticipantCount(request.getParticipantCount() != null ? request.getParticipantCount() : 0);
-        event.setLocation(request.getLocation());
+        event.setLocation(request.getLocation() != null ? request.getLocation().trim() : null);
         
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             String normalizedStatus = normalizeEnumValue(request.getStatus());
             validateStatus(normalizedStatus);
             event.setStatus(normalizedStatus);
+        } else if (!isTerminalStatus(event.getStatus())) {
+            event.setStatus(inferStatus(request.getStartTime(), request.getEndTime()));
         }
         if (request.getPriority() != null && !request.getPriority().trim().isEmpty()) {
             String normalizedPriority = normalizeEnumValue(request.getPriority());
@@ -311,6 +313,8 @@ public class WorkEventService {
             event.setIsOnline(request.getIsOnline());
             if (!request.getIsOnline()) {
                 event.setMeetingUrl(null);
+            } else {
+                event.setLocation(null);
             }
         }
         if (request.getMeetingUrl() != null && Boolean.TRUE.equals(event.getIsOnline())) {
@@ -329,6 +333,7 @@ public class WorkEventService {
         validateParticipantCount(request.getParticipantCount());
         validateEventDuration(request.getStartTime(), request.getEndTime());
         validateOnlineMeetingUrl(request.getIsOnline(), request.getMeetingUrl());
+        validateLocationForOffline(request.getIsOnline(), request.getLocation());
         
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             validateStatus(normalizeEnumValue(request.getStatus()));
@@ -378,6 +383,26 @@ public class WorkEventService {
         if (Boolean.FALSE.equals(isOnline) && meetingUrl != null && !meetingUrl.trim().isEmpty()) {
             throw new BadRequestException("Fiziksel toplanti icin meeting URL gonderilemez");
         }
+    }
+
+    private void validateLocationForOffline(Boolean isOnline, String location) {
+        if (Boolean.FALSE.equals(isOnline) && (location == null || location.trim().isEmpty())) {
+            throw new BadRequestException("Fiziksel toplanti icin konum zorunludur");
+        }
+        if (Boolean.TRUE.equals(isOnline) && location != null && !location.trim().isEmpty()) {
+            throw new BadRequestException("Online toplanti icin fiziksel konum gonderilemez");
+        }
+    }
+
+    private boolean isTerminalStatus(String status) {
+        return "COMPLETED".equals(status) || "CANCELLED".equals(status) || "POSTPONED".equals(status);
+    }
+
+    private String inferStatus(OffsetDateTime startTime, OffsetDateTime endTime) {
+        OffsetDateTime now = OffsetDateTime.now();
+        if (endTime.isBefore(now)) return "COMPLETED";
+        if (!startTime.isAfter(now) && !endTime.isBefore(now)) return "ONGOING";
+        return "SCHEDULED";
     }
 
     private void validateStatus(String status) {

@@ -41,6 +41,7 @@ public class BlogPost extends UserOwnedEntity {
     @Column(name = "comments", columnDefinition = "jsonb")
     private List<Map<String, Object>> comments;
 
+
     public String getTitle() {
         return title;
     }
@@ -104,4 +105,5 @@ public class BlogPost extends UserOwnedEntity {
     public void setComments(List<Map<String, Object>> comments) {
         this.comments = comments;
     }
+
 }

@@ -92,6 +92,21 @@ public class SocialFollowController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @GetMapping("/discover")
+    public ResponseEntity<ApiResponse<PageResponse<FollowDto.DiscoverUserResponse>>> getDiscoverUsers(
+        Authentication authentication,
+        @RequestParam(required = false) String q,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        PageResponse<FollowDto.DiscoverUserResponse> response = socialFollowService.getDiscoverUsers(
+            authentication.getName(),
+            q,
+            PageRequest.of(page, size, Sort.by("createdAt").descending())
+        );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @PostMapping("/requests/{requesterUserId}/accept")
     public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> acceptRequest(
         Authentication authentication,

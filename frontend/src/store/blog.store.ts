@@ -1,19 +1,19 @@
 import { create } from 'zustand';
-import type { BlogPost, Comment } from '../models/blog.model';
+import type { BlogComment, BlogPost } from '../models/blog.model';
 
 interface BlogState {
     posts: BlogPost[];
     selectedPost: BlogPost | null;
-    comments: Comment[];
+    comments: BlogComment[];
     isLoading: boolean;
 
     setPosts: (posts: BlogPost[]) => void;
     setSelectedPost: (post: BlogPost | null) => void;
-    setComments: (comments: Comment[]) => void;
+    setComments: (comments: BlogComment[]) => void;
     addPost: (post: BlogPost) => void;
     updatePost: (post: BlogPost) => void;
     removePost: (id: string) => void;
-    addComment: (comment: Comment) => void;
+    addComment: (comment: BlogComment) => void;
     setLoading: (loading: boolean) => void;
 }
 

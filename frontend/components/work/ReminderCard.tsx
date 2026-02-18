@@ -7,14 +7,16 @@ import Card from '../ui/Card';
 interface Props { reminder: Reminder; onToggle?: () => void; }
 
 export default function ReminderCard({ reminder, onToggle }: Props) {
+    const isDone = reminder.status === 'sent' || reminder.status === 'skipped' || reminder.isCompleted;
+
     return (
         <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
             <Card>
                 <View style={styles.row}>
-                    <Text style={styles.check}>{reminder.isCompleted ? '☑️' : '⬜'}</Text>
+                    <Text style={styles.badge}>{isDone ? 'Tamam' : 'Planli'}</Text>
                     <View style={styles.info}>
-                        <Text style={[styles.title, reminder.isCompleted && styles.completed]}>{reminder.title}</Text>
-                        <Text style={styles.date}>{formatDateTime(reminder.dateTime)}</Text>
+                        <Text style={[styles.title, isDone && styles.completed]}>{reminder.title}</Text>
+                        <Text style={styles.date}>{formatDateTime(reminder.remindAt || reminder.dateTime)}</Text>
                     </View>
                 </View>
             </Card>
@@ -24,7 +26,15 @@ export default function ReminderCard({ reminder, onToggle }: Props) {
 
 const styles = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    check: { fontSize: 22 },
+    badge: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#5B8DEF',
+        backgroundColor: '#EEF4FF',
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
     info: { flex: 1 },
     title: { fontSize: 16, fontWeight: '600', color: '#11181C' },
     completed: { textDecorationLine: 'line-through', color: '#9BA1A6' },

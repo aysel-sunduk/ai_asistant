@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { remindersService } from '../../services/reminders.service';
-import type { Reminder } from '../models/reminder.model';
+import type { ReminderRequest, ReminderStatus } from '../models/reminder.model';
 import { useRemindersStore } from '../store/reminders.store';
 
 export function useReminders() {
@@ -9,21 +9,27 @@ export function useReminders() {
     const fetchReminders = useCallback(async () => {
         store.setLoading(true);
         try {
-            const reminders = await remindersService.getAll();
-            store.setReminders(reminders);
+            const page = await remindersService.getAll();
+            store.setReminders(page.content);
         } finally {
             store.setLoading(false);
         }
     }, []);
 
-    const createReminder = useCallback(async (data: Partial<Reminder>) => {
+    const createReminder = useCallback(async (data: ReminderRequest) => {
         const reminder = await remindersService.create(data);
         store.addReminder(reminder);
         return reminder;
     }, []);
 
-    const updateReminder = useCallback(async (id: string, data: Partial<Reminder>) => {
+    const updateReminder = useCallback(async (id: string, data: ReminderRequest) => {
         const reminder = await remindersService.update(id, data);
+        store.updateReminder(reminder);
+        return reminder;
+    }, []);
+
+    const updateReminderStatus = useCallback(async (id: string, status: ReminderStatus) => {
+        const reminder = await remindersService.updateStatus(id, status);
         store.updateReminder(reminder);
         return reminder;
     }, []);
@@ -38,6 +44,7 @@ export function useReminders() {
         fetchReminders,
         createReminder,
         updateReminder,
+        updateReminderStatus,
         deleteReminder,
     };
 }

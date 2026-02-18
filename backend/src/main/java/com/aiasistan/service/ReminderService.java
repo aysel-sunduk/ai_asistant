@@ -93,6 +93,18 @@ public class ReminderService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReminderDto.Response> getNotificationFeed(String userEmail, int withinMinutes) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        int safeWindow = Math.max(1, Math.min(withinMinutes, 60 * 24 * 30));
+        OffsetDateTime threshold = OffsetDateTime.now().plusMinutes(safeWindow);
+        return reminderRepository
+            .findByUserIdAndStatusAndRemindAtLessThanEqualOrderByRemindAtAsc(userId, "scheduled", threshold)
+            .stream()
+            .map(ReminderDto.Response::from)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<ReminderDto.Response> getRemindersByDateRange(String userEmail, OffsetDateTime startDate, OffsetDateTime endDate) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         return reminderRepository.findByUserIdAndDateRange(userId, startDate, endDate)
@@ -130,6 +142,31 @@ public class ReminderService {
         reminder.setStatus(normalizeStatus(status));
         reminder = reminderRepository.save(reminder);
         return ReminderDto.Response.from(reminder);
+    }
+
+    @Transactional
+    public ReminderDto.Response dismissNotification(String userEmail, UUID id) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        Reminder reminder = reminderRepository.findByIdAndUserId(id, userId)
+            .orElseThrow(() -> new NotFoundException("Bildirim bulunamadi"));
+        reminder.setStatus("skipped");
+        return ReminderDto.Response.from(reminderRepository.save(reminder));
+    }
+
+    @Transactional
+    public int clearNotifications(String userEmail, int withinMinutes) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        int safeWindow = Math.max(1, Math.min(withinMinutes, 60 * 24 * 30));
+        OffsetDateTime threshold = OffsetDateTime.now().plusMinutes(safeWindow);
+        List<Reminder> notifications = reminderRepository
+            .findByUserIdAndStatusAndRemindAtLessThanEqualOrderByRemindAtAsc(userId, "scheduled", threshold);
+
+        if (notifications.isEmpty()) {
+            return 0;
+        }
+        notifications.forEach(r -> r.setStatus("skipped"));
+        reminderRepository.saveAll(notifications);
+        return notifications.size();
     }
 
     @Transactional

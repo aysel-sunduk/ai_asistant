@@ -1,0 +1,276 @@
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Toast from '../../components/ui/Toast';
+import { contactsService } from '../../services/contacts.service';
+import type { Contact } from '../../src/models/contact.model';
+
+const COLOR = '#FF8A65';
+
+export default function MembersScreen() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editing, setEditing] = useState<Contact | null>(null);
+    const [name, setName] = useState('');
+    const [relationship, setRelationship] = useState('');
+    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [notes, setNotes] = useState('');
+    const [birthDate, setBirthDate] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+    const [toastMessage, setToastMessage] = useState('');
+
+    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+        setToastType(type);
+        setToastMessage(message);
+        setToastVisible(true);
+    };
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const page = await contactsService.getAll(0, 200);
+            setContacts(page.content || []);
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Kisiler alinamadi.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            void load();
+        }, [load]),
+    );
+
+    const resetForm = () => {
+        setEditing(null);
+        setName('');
+        setRelationship('');
+        setPhone('');
+        setEmail('');
+        setNotes('');
+        setBirthDate(null);
+    };
+
+    const openCreate = () => {
+        resetForm();
+        setModalVisible(true);
+    };
+
+    const openEdit = (contact: Contact) => {
+        setEditing(contact);
+        setName(contact.name || '');
+        setRelationship(contact.relationship || '');
+        setPhone(contact.phone || '');
+        setEmail(contact.email || '');
+        setNotes(contact.notes || '');
+        setBirthDate(contact.birthDate ? new Date(contact.birthDate) : null);
+        setModalVisible(true);
+    };
+
+    const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
+        if (Platform.OS === 'android') setShowDatePicker(false);
+        if (event.type === 'dismissed' || !selected) return;
+        setBirthDate(selected);
+    };
+
+    const submit = async () => {
+        if (!name.trim()) {
+            showToast('error', 'Isim zorunlu.');
+            return;
+        }
+        setSaving(true);
+        try {
+            const payload = {
+                name: name.trim(),
+                relationship: relationship.trim() || undefined,
+                phone: phone.trim() || undefined,
+                email: email.trim() || undefined,
+                notes: notes.trim() || undefined,
+                birthDate: birthDate ? birthDate.toISOString().slice(0, 10) : undefined,
+            };
+            if (editing) {
+                await contactsService.update(editing.id, payload);
+                showToast('success', 'Kisi guncellendi.');
+            } else {
+                await contactsService.create(payload);
+                showToast('success', 'Kisi eklendi.');
+            }
+            setModalVisible(false);
+            resetForm();
+            await load();
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Kayit islemi basarisiz.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const remove = (contact: Contact) => {
+        Alert.alert('Kisiyi sil', `${contact.name} silinsin mi?`, [
+            { text: 'Iptal', style: 'cancel' },
+            {
+                text: 'Sil',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await contactsService.delete(contact.id);
+                        await load();
+                        showToast('success', 'Kisi silindi.');
+                    } catch (error: any) {
+                        showToast('error', error?.response?.data?.message || 'Silinemedi.');
+                    }
+                },
+            },
+        ]);
+    };
+
+    return (
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <View style={styles.header}>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Kisiler</Text>
+                    <TouchableOpacity onPress={openCreate} style={styles.backBtn}>
+                        <Ionicons name="add" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+                <Text style={styles.subText}>{contacts.length} kisi kaydi</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.content}>
+                {loading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={COLOR} />
+                    </View>
+                ) : contacts.length === 0 ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>Henuz kisi yok</Text>
+                        <Text style={styles.emptySub}>Sag ustteki + ile ekleyebilirsin.</Text>
+                    </View>
+                ) : (
+                    contacts.map((c) => (
+                        <View key={c.id} style={styles.card}>
+                            <View style={styles.avatar}>
+                                <Text style={styles.avatarText}>
+                                    {(c.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                </Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.name}>{c.name}</Text>
+                                <Text style={styles.meta}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}</Text>
+                            </View>
+                            <View style={styles.actions}>
+                                <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(c)}>
+                                    <Ionicons name="create-outline" size={16} color="#64748B" />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.iconBtn} onPress={() => remove(c)}>
+                                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))
+                )}
+            </ScrollView>
+
+            <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalSheet}>
+                        <Text style={styles.modalTitle}>{editing ? 'Kisi Duzenle' : 'Kisi Ekle'}</Text>
+                        <TextInput placeholder="Isim" value={name} onChangeText={setName} style={styles.input} />
+                        <TextInput placeholder="Yakinlik" value={relationship} onChangeText={setRelationship} style={styles.input} />
+                        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+                            <Text style={{ color: '#0F172A' }}>
+                                {birthDate
+                                    ? birthDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })
+                                    : 'Dogum gunu (opsiyonel)'}
+                            </Text>
+                        </TouchableOpacity>
+                        <TextInput placeholder="Telefon (opsiyonel)" value={phone} onChangeText={setPhone} style={styles.input} />
+                        <TextInput placeholder="E-posta (opsiyonel)" value={email} onChangeText={setEmail} style={styles.input} />
+                        <TextInput placeholder="Not (opsiyonel)" value={notes} onChangeText={setNotes} style={[styles.input, { minHeight: 72, textAlignVertical: 'top' }]} multiline />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+                                <Text style={styles.cancelText}>Vazgec</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={submit} disabled={saving}>
+                                <Text style={styles.saveText}>{saving ? 'Kaydediliyor...' : editing ? 'Guncelle' : 'Kaydet'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={birthDate || new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                />
+            )}
+
+            <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F8F9FA' },
+    header: { backgroundColor: COLOR, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingBottom: 16 },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    },
+    backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+    subText: { color: 'rgba(255,255,255,0.9)', marginTop: 8, marginLeft: 20, fontWeight: '600' },
+    content: { padding: 16, paddingBottom: 24 },
+    centered: { paddingVertical: 40, alignItems: 'center' },
+    emptyCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 14 },
+    emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+    emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
+    card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    avatar: { width: 40, height: 40, borderRadius: 999, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
+    avatarText: { color: '#B91C1C', fontSize: 12, fontWeight: '800' },
+    name: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+    meta: { marginTop: 2, fontSize: 12, color: '#64748B' },
+    actions: { gap: 8 },
+    iconBtn: { width: 30, height: 30, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+    modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' },
+    modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: Platform.OS === 'ios' ? 28 : 16 },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 10 },
+    input: { marginTop: 8, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A' },
+    modalActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
+    cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+    cancelText: { fontSize: 14, fontWeight: '700', color: '#334155' },
+    saveBtn: { flex: 1, backgroundColor: COLOR, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+    saveText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+});

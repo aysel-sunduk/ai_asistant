@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { blogService } from '../../services/blog.service';
-import type { BlogPost } from '../models/blog.model';
+import type { BlogPostRequest } from '../models/blog.model';
 import { useBlogStore } from '../store/blog.store';
 
 export function useBlog() {
@@ -9,8 +9,8 @@ export function useBlog() {
     const fetchPosts = useCallback(async () => {
         store.setLoading(true);
         try {
-            const posts = await blogService.getPosts();
-            store.setPosts(posts);
+            const page = await blogService.getPosts();
+            store.setPosts(page.content || []);
         } finally {
             store.setLoading(false);
         }
@@ -22,7 +22,7 @@ export function useBlog() {
         return post;
     }, []);
 
-    const createPost = useCallback(async (data: Partial<BlogPost>) => {
+    const createPost = useCallback(async (data: BlogPostRequest) => {
         const post = await blogService.createPost(data);
         store.addPost(post);
         return post;
@@ -33,24 +33,11 @@ export function useBlog() {
         store.removePost(id);
     }, []);
 
-    const fetchComments = useCallback(async (postId: string) => {
-        const comments = await blogService.getComments(postId);
-        store.setComments(comments);
-    }, []);
-
-    const addComment = useCallback(async (postId: string, content: string) => {
-        const comment = await blogService.addComment(postId, content);
-        store.addComment(comment);
-        return comment;
-    }, []);
-
     return {
         ...store,
         fetchPosts,
         fetchPost,
         createPost,
         deletePost,
-        fetchComments,
-        addComment,
     };
 }

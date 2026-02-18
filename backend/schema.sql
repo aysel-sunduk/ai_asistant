@@ -265,7 +265,8 @@ CREATE TABLE IF NOT EXISTS "contacts" (
   "email"           text,
   "important_dates" jsonb,       -- ek önemli tarihler
   "notes"           text,
-  "created_at"      timestamptz DEFAULT (now())
+  "created_at"      timestamptz DEFAULT (now()),
+  "updated_at"      timestamptz DEFAULT (now())
 );
 
 CREATE INDEX IF NOT EXISTS "idx_contacts_user" ON "contacts" ("user_id");
@@ -349,6 +350,7 @@ CREATE TABLE IF NOT EXISTS "blog_posts" (
   "tags"          text[],
   "like_count"    int         DEFAULT 0,
   "comments"      jsonb       DEFAULT '[]',
+  "liked_user_ids" jsonb      DEFAULT '[]',
   "created_at"    timestamptz DEFAULT (now()),
   "updated_at"    timestamptz DEFAULT (now())
 );

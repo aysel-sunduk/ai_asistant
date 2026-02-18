@@ -87,6 +87,15 @@ public class ReminderController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @GetMapping("/notifications")
+    public ResponseEntity<ApiResponse<List<ReminderDto.Response>>> getNotificationFeed(
+        Authentication authentication,
+        @RequestParam(defaultValue = "1440") int withinMinutes
+    ) {
+        List<ReminderDto.Response> response = reminderService.getNotificationFeed(authentication.getName(), withinMinutes);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @GetMapping("/date-range")
     public ResponseEntity<ApiResponse<List<ReminderDto.Response>>> getRemindersByDateRange(
         Authentication authentication,
@@ -126,6 +135,24 @@ public class ReminderController {
     ) {
         ReminderDto.Response response = reminderService.updateReminderStatus(authentication.getName(), id, status);
         return ResponseEntity.ok(ApiResponse.ok(response, "Hatirlatici durumu guncellendi"));
+    }
+
+    @PatchMapping("/notifications/{id}/dismiss")
+    public ResponseEntity<ApiResponse<ReminderDto.Response>> dismissNotification(
+        Authentication authentication,
+        @PathVariable UUID id
+    ) {
+        ReminderDto.Response response = reminderService.dismissNotification(authentication.getName(), id);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Bildirim temizlendi"));
+    }
+
+    @PatchMapping("/notifications/clear-all")
+    public ResponseEntity<ApiResponse<Void>> clearNotifications(
+        Authentication authentication,
+        @RequestParam(defaultValue = "1440") int withinMinutes
+    ) {
+        int cleared = reminderService.clearNotifications(authentication.getName(), withinMinutes);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Temizlenen bildirim: " + cleared));
     }
 
     @DeleteMapping("/{id}")

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -263,6 +264,35 @@ public class SocialFollowService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<FollowDto.DiscoverUserResponse> getDiscoverUsers(String userEmail, String q, Pageable pageable) {
+        Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
+        UUID userId = userService.getUserIdByEmail(userEmail);
+
+        String normalizedQ = q == null ? null : q.trim();
+        Page<User> page;
+        if (normalizedQ == null || normalizedQ.isBlank()) {
+            page = userRepository.findByIdNotAndIsActiveTrueAndDeletedAtIsNullAndVisibilityIn(
+                userId,
+                Arrays.asList("public", "private"),
+                safePageable
+            );
+        } else {
+            page = userRepository.findDiscoverablePublicUsers(userId, normalizedQ, safePageable);
+        }
+        Page<FollowDto.DiscoverUserResponse> mapped = page.map(target -> {
+            FollowDto.DiscoverUserResponse response = new FollowDto.DiscoverUserResponse();
+            response.setUser(toUserSummary(target));
+
+            boolean following = followRepository.existsByIdFollowerIdAndIdFollowingId(userId, target.getId());
+            response.setFollowing(following);
+            response.setRelationStatus(resolveRelationStatus(userId, target.getId(), following));
+            response.setPrivateProfile(PRIVATE.equalsIgnoreCase(target.getVisibility()));
+            return response;
+        });
+        return PageResponse.of(mapped);
+    }
+
+    @Transactional(readOnly = true)
     public FollowDto.RequestStatsResponse getRequestStats(String userEmail) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FollowDto.RequestStatsResponse response = new FollowDto.RequestStatsResponse();
@@ -381,5 +411,18 @@ public class SocialFollowService {
         response.setFollowing(following);
         response.setRelationStatus(relationStatus);
         return response;
+    }
+
+    private String resolveRelationStatus(UUID userId, UUID targetUserId, boolean following) {
+        if (following) {
+            return "following";
+        }
+        if (hasPendingRequest(userId, targetUserId)) {
+            return "pending_outgoing";
+        }
+        if (hasPendingRequest(targetUserId, userId)) {
+            return "pending_incoming";
+        }
+        return "not_following";
     }
 }

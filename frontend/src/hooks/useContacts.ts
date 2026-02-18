@@ -9,8 +9,8 @@ export function useContacts() {
     const fetchContacts = useCallback(async () => {
         store.setLoading(true);
         try {
-            const contacts = await contactsService.getAll();
-            store.setContacts(contacts);
+            const page = await contactsService.getAll();
+            store.setContacts(page.content || []);
         } finally {
             store.setLoading(false);
         }

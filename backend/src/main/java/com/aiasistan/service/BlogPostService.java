@@ -1,15 +1,23 @@
 package com.aiasistan.service;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.BlogPostDto;
@@ -20,6 +28,7 @@ import com.aiasistan.repository.BlogPostRepository;
 
 @Service
 public class BlogPostService {
+    private static final Logger logger = LoggerFactory.getLogger(BlogPostService.class);
 
     private static final Set<String> ALLOWED_VISIBILITY = Set.of("private", "followers", "public");
     private static final Set<String> ALLOWED_STATUS = Set.of("draft", "published", "archived");
@@ -27,6 +36,11 @@ public class BlogPostService {
     private final BlogPostRepository blogPostRepository;
     private final UserService userService;
     private final SocialFollowService socialFollowService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private volatile boolean blogSchemaEnsured;
+    private volatile Boolean likedUserIdsColumnAvailable;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, SocialFollowService socialFollowService) {
         this.blogPostRepository = blogPostRepository;
@@ -36,6 +50,7 @@ public class BlogPostService {
 
     @Transactional
     public BlogPostDto.Response createPost(String userEmail, BlogPostDto.Request request) {
+        ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
 
         BlogPost post = new BlogPost();
@@ -50,20 +65,24 @@ public class BlogPostService {
 
     @Transactional(readOnly = true)
     public BlogPostDto.Response getPostById(String userEmail, UUID id) {
-        UUID userId = userService.getUserIdByEmail(userEmail);
-        BlogPost post = findOwnedPost(id, userId);
-        return BlogPostDto.Response.from(post);
+        ensureBlogSchemaForReactions();
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        BlogPost post = findAccessiblePost(id, viewerId);
+        return toResponseForViewer(post, viewerId);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<BlogPostDto.Response> getPosts(String userEmail, Pageable pageable) {
+        ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
-        Page<BlogPostDto.Response> page = blogPostRepository.findByUserId(userId, pageable).map(BlogPostDto.Response::from);
+        Page<BlogPostDto.Response> page = blogPostRepository.findByUserId(userId, pageable)
+            .map(post -> toResponseForViewer(post, userId));
         return PageResponse.of(page);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<BlogPostDto.Response> getVisiblePostsByUser(String userEmail, UUID targetUserId, Pageable pageable) {
+        ensureBlogSchemaForReactions();
         UUID viewerId = userService.getUserIdByEmail(userEmail);
         if (viewerId.equals(targetUserId)) {
             return getPosts(userEmail, pageable);
@@ -75,12 +94,13 @@ public class BlogPostService {
 
         Page<BlogPostDto.Response> page = blogPostRepository
             .findByUserIdAndStatusAndVisibilityIn(targetUserId, "published", allowedVisibility, pageable)
-            .map(BlogPostDto.Response::from);
+            .map(post -> toResponseForViewer(post, viewerId));
         return PageResponse.of(page);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<BlogPostDto.Response> getFollowingFeed(String userEmail, Pageable pageable) {
+        ensureBlogSchemaForReactions();
         UUID viewerId = userService.getUserIdByEmail(userEmail);
         List<UUID> followingIds = socialFollowService.getFollowingUserIds(viewerId);
         if (followingIds.isEmpty()) {
@@ -89,28 +109,121 @@ public class BlogPostService {
 
         Page<BlogPostDto.Response> page = blogPostRepository
             .findByUserIdInAndStatusAndVisibilityIn(followingIds, "published", List.of("public", "followers"), pageable)
-            .map(BlogPostDto.Response::from);
+            .map(post -> toResponseForViewer(post, viewerId));
         return PageResponse.of(page);
     }
 
     @Transactional
     public BlogPostDto.Response updatePost(String userEmail, UUID id, BlogPostDto.Request request) {
+        ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
         BlogPost post = findOwnedPost(id, userId);
 
         applyRequest(post, request);
         post.setCleanContent(cleanLanguage(post.getRawContent()));
 
-        return BlogPostDto.Response.from(blogPostRepository.save(post));
+        return toResponseForViewer(blogPostRepository.save(post), userId);
     }
 
     @Transactional
     public BlogPostDto.Response cleanPostContent(String userEmail, UUID id) {
+        ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
         BlogPost post = findOwnedPost(id, userId);
 
         post.setCleanContent(cleanLanguage(post.getRawContent()));
-        return BlogPostDto.Response.from(blogPostRepository.save(post));
+        return toResponseForViewer(blogPostRepository.save(post), userId);
+    }
+
+    @Transactional
+    public BlogPostDto.Response toggleLike(String userEmail, UUID id) {
+        ensureBlogSchemaForReactions();
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        BlogPost post = findAccessiblePost(id, viewerId);
+
+        if (!hasLikedUserIdsColumn()) {
+            throw new BadRequestException("Begeni ozelligi hazirlanirken kolon eksik. Backend'i yeniden baslatin.");
+        }
+        try {
+            Object raw = entityManager.createNativeQuery(
+                "SELECT COALESCE(liked_user_ids, '[]'::jsonb)::text FROM public.blog_posts WHERE id = CAST(:id AS uuid)"
+            ).setParameter("id", id.toString()).getSingleResult();
+            List<String> likedUserIds = objectMapper.readValue(String.valueOf(raw), new TypeReference<>() {});
+            String viewerIdText = viewerId.toString();
+            if (likedUserIds.contains(viewerIdText)) {
+                likedUserIds.remove(viewerIdText);
+            } else {
+                likedUserIds.add(viewerIdText);
+            }
+            entityManager.createNativeQuery(
+                "UPDATE public.blog_posts SET liked_user_ids = CAST(:liked AS jsonb), like_count = :cnt WHERE id = CAST(:id AS uuid)"
+            )
+                .setParameter("liked", objectMapper.writeValueAsString(likedUserIds))
+                .setParameter("cnt", likedUserIds.size())
+                .setParameter("id", id.toString())
+                .executeUpdate();
+            BlogPost updated = blogPostRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+            return toResponseForViewer(updated, viewerId);
+        } catch (Exception e) {
+            throw new BadRequestException("Begeni islemi sirasinda hata olustu");
+        }
+    }
+
+    @Transactional
+    public BlogPostDto.Response addComment(String userEmail, UUID id, String content) {
+        ensureBlogSchemaForReactions();
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        BlogPost post = findAccessiblePost(id, viewerId);
+
+        String normalizedContent = content == null ? "" : content.trim();
+        if (normalizedContent.isBlank()) {
+            throw new BadRequestException("Yorum icerigi bos olamaz");
+        }
+        if (normalizedContent.length() > 1000) {
+            throw new BadRequestException("Yorum 1000 karakteri gecemez");
+        }
+
+        List<Map<String, Object>> comments = post.getComments() == null ? new ArrayList<>() : new ArrayList<>(post.getComments());
+        Map<String, Object> comment = new HashMap<>();
+        comment.put("id", UUID.randomUUID().toString());
+        comment.put("userId", viewerId.toString());
+        comment.put("authorEmail", userEmail);
+        comment.put("content", normalizedContent);
+        comment.put("createdAt", java.time.OffsetDateTime.now().toString());
+        comments.add(comment);
+        post.setComments(comments);
+
+        return toResponseForViewer(blogPostRepository.save(post), viewerId);
+    }
+
+    @Transactional
+    public BlogPostDto.Response deleteComment(String userEmail, UUID id, UUID commentId) {
+        ensureBlogSchemaForReactions();
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        BlogPost post = findAccessiblePost(id, viewerId);
+
+        List<Map<String, Object>> comments = post.getComments() == null ? new ArrayList<>() : new ArrayList<>(post.getComments());
+        boolean removed = false;
+        for (int i = 0; i < comments.size(); i++) {
+            Map<String, Object> c = comments.get(i);
+            if (!commentId.toString().equals(String.valueOf(c.get("id")))) {
+                continue;
+            }
+            String commentUserId = String.valueOf(c.get("userId"));
+            boolean canDelete = viewerId.toString().equals(commentUserId) || viewerId.equals(post.getUserId());
+            if (!canDelete) {
+                throw new BadRequestException("Bu yorumu silme yetkiniz yok");
+            }
+            comments.remove(i);
+            removed = true;
+            break;
+        }
+        if (!removed) {
+            throw new NotFoundException("Yorum bulunamadi");
+        }
+        post.setComments(comments);
+        return toResponseForViewer(blogPostRepository.save(post), viewerId);
     }
 
     @Transactional(readOnly = true)
@@ -123,14 +236,96 @@ public class BlogPostService {
 
     @Transactional
     public void deletePost(String userEmail, UUID id) {
+        ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
         BlogPost post = findOwnedPost(id, userId);
         blogPostRepository.delete(post);
     }
 
+    private void ensureBlogSchemaForReactions() {
+        if (blogSchemaEnsured) {
+            return;
+        }
+        synchronized (this) {
+            if (blogSchemaEnsured) {
+                return;
+            }
+            try {
+                entityManager.createNativeQuery(
+                    "ALTER TABLE IF EXISTS public.blog_posts " +
+                    "ADD COLUMN IF NOT EXISTS liked_user_ids jsonb NOT NULL DEFAULT '[]'::jsonb"
+                ).executeUpdate();
+                entityManager.createNativeQuery(
+                    "UPDATE public.blog_posts SET liked_user_ids = '[]'::jsonb WHERE liked_user_ids IS NULL"
+                ).executeUpdate();
+                likedUserIdsColumnAvailable = true;
+            } catch (Exception ex) {
+                logger.warn("liked_user_ids column ensure skipped: {}", ex.getMessage());
+                likedUserIdsColumnAvailable = hasLikedUserIdsColumn();
+            }
+            blogSchemaEnsured = true;
+        }
+    }
+
+    private boolean hasLikedUserIdsColumn() {
+        if (likedUserIdsColumnAvailable != null) {
+            return likedUserIdsColumnAvailable;
+        }
+        Object count = entityManager.createNativeQuery(
+            "SELECT COUNT(*) FROM information_schema.columns " +
+            "WHERE table_schema = 'public' AND table_name = 'blog_posts' AND column_name = 'liked_user_ids'"
+        ).getSingleResult();
+        boolean exists = count != null && Integer.parseInt(String.valueOf(count)) > 0;
+        likedUserIdsColumnAvailable = exists;
+        return exists;
+    }
+
     private BlogPost findOwnedPost(UUID id, UUID userId) {
         return blogPostRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+    }
+
+    private BlogPost findAccessiblePost(UUID id, UUID viewerId) {
+        BlogPost post = blogPostRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+
+        if (viewerId.equals(post.getUserId())) {
+            return post;
+        }
+        if (!"published".equalsIgnoreCase(post.getStatus())) {
+            throw new NotFoundException("Blog yazisi bulunamadi");
+        }
+        String visibility = post.getVisibility() == null ? "private" : post.getVisibility().toLowerCase(Locale.ROOT);
+        if ("public".equals(visibility)) {
+            return post;
+        }
+        if ("followers".equals(visibility) && socialFollowService.isFollowing(viewerId, post.getUserId())) {
+            return post;
+        }
+        throw new NotFoundException("Blog yazisi bulunamadi");
+    }
+
+    private BlogPostDto.Response toResponseForViewer(BlogPost post, UUID viewerId) {
+        BlogPostDto.Response response = BlogPostDto.Response.from(post);
+        boolean likedByMe = false;
+        if (hasLikedUserIdsColumn()) {
+            try {
+                Object raw = entityManager.createNativeQuery(
+                    "SELECT COALESCE(liked_user_ids, '[]'::jsonb)::text FROM public.blog_posts WHERE id = CAST(:id AS uuid)"
+                ).setParameter("id", post.getId().toString()).getSingleResult();
+                List<String> likedUserIds = objectMapper.readValue(String.valueOf(raw), new TypeReference<>() {});
+                likedByMe = likedUserIds.contains(viewerId.toString());
+                if (post.getLikeCount() == null) {
+                    response.setLikeCount(likedUserIds.size());
+                }
+            } catch (Exception ignored) {
+                likedByMe = false;
+            }
+        }
+        response.setLikedByMe(likedByMe);
+        response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount() : 0);
+        response.setCommentCount(post.getComments() != null ? post.getComments().size() : 0);
+        return response;
     }
 
     private void applyRequest(BlogPost post, BlogPostDto.Request request) {

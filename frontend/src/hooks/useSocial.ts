@@ -5,24 +5,26 @@ import { useSocialStore } from '../store/social.store';
 export function useSocial() {
     const store = useSocialStore();
 
-    const fetchFollowers = useCallback(async (userId: string) => {
+    const fetchFollowers = useCallback(async () => {
         store.setLoading(true);
         try {
-            const followers = await socialService.getFollowers(userId);
-            store.setFollowers(followers);
+            const page = await socialService.getFollowers(0, 50);
+            store.setFollowers(page.content || []);
         } finally {
             store.setLoading(false);
         }
     }, []);
 
-    const fetchFollowing = useCallback(async (userId: string) => {
-        const following = await socialService.getFollowing(userId);
-        store.setFollowing(following);
+    const fetchFollowing = useCallback(async () => {
+        const page = await socialService.getFollowing(0, 50);
+        store.setFollowing(page.content || []);
     }, []);
 
     const follow = useCallback(async (userId: string) => {
-        const f = await socialService.follow(userId);
-        store.addFollowing(f);
+        const state = await socialService.follow(userId);
+        if (state.following) {
+            await fetchFollowing();
+        }
     }, []);
 
     const unfollow = useCallback(async (userId: string) => {

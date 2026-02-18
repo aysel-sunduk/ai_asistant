@@ -116,6 +116,45 @@ public class FollowDto {
         }
     }
 
+    public static class DiscoverUserResponse {
+        private UserSummary user;
+        private boolean following;
+        private String relationStatus;
+        private boolean privateProfile;
+
+        public UserSummary getUser() {
+            return user;
+        }
+
+        public void setUser(UserSummary user) {
+            this.user = user;
+        }
+
+        public boolean isFollowing() {
+            return following;
+        }
+
+        public void setFollowing(boolean following) {
+            this.following = following;
+        }
+
+        public String getRelationStatus() {
+            return relationStatus;
+        }
+
+        public void setRelationStatus(String relationStatus) {
+            this.relationStatus = relationStatus;
+        }
+
+        public boolean isPrivateProfile() {
+            return privateProfile;
+        }
+
+        public void setPrivateProfile(boolean privateProfile) {
+            this.privateProfile = privateProfile;
+        }
+    }
+
     public static class FollowRequestResponse {
         private UserSummary user;
         private String status;
