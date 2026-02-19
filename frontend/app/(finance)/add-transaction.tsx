@@ -36,7 +36,6 @@ const GOLD_TYPES = [
     { code: 'GOLD_YARIM', label: 'Yarım Altın' },
     { code: 'GOLD_CUMHURIYET', label: 'Cumhuriyet Altını' },
     { code: 'GOLD_ATA', label: 'Ata Altın' },
-    { code: 'GOLD_ATA', label: 'Ata Altın' },
 ];
 
 const CURRENCY_TYPES = [

@@ -202,7 +202,21 @@ export default function MembersScreen() {
                     <View style={styles.modalSheet}>
                         <Text style={styles.modalTitle}>{editing ? 'Kisi Duzenle' : 'Kisi Ekle'}</Text>
                         <TextInput placeholder="Isim" value={name} onChangeText={setName} style={styles.input} />
-                        <TextInput placeholder="Yakinlik" value={relationship} onChangeText={setRelationship} style={styles.input} />
+                        <Text style={styles.label}>Yakinlik Derecesi</Text>
+                        <View style={styles.chipRow}>
+                            {['Aile', 'Arkadaş', 'İş'].map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[styles.chip, relationship === type && styles.chipActive]}
+                                    onPress={() => setRelationship(type)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[styles.chipText, relationship === type && styles.chipTextActive]}>
+                                        {type}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
                             <Text style={{ color: '#0F172A' }}>
                                 {birthDate
@@ -273,4 +287,10 @@ const styles = StyleSheet.create({
     cancelText: { fontSize: 14, fontWeight: '700', color: '#334155' },
     saveBtn: { flex: 1, backgroundColor: COLOR, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     saveText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+    label: { fontSize: 13, fontWeight: '600', color: '#64748B', marginTop: 12, marginBottom: 8 },
+    chipRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+    chip: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+    chipActive: { backgroundColor: COLOR, borderColor: COLOR },
+    chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    chipTextActive: { color: '#fff' },
 });

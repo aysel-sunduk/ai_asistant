@@ -164,7 +164,6 @@ export default function CreateEventScreen() {
                 endTime: endAt.toISOString(),
             });
 
-            // Toplanti olusturulunca, secilen dakika kadar once otomatik hatirlatici uret.
             if (createdEvent?.id && reminderMinutesBefore > 0) {
                 const remindAt = new Date(startAt.getTime() - reminderMinutesBefore * 60 * 1000);
                 try {
@@ -177,7 +176,7 @@ export default function CreateEventScreen() {
                         channel: 'in_app',
                     });
                 } catch {
-                    // Toplanti olusturma basariliysa reminder hatasi akisi bozmasin.
+                    // Ignore reminder error
                 }
             }
             showToast('success', 'Toplanti basariyla olusturuldu.');
@@ -202,133 +201,208 @@ export default function CreateEventScreen() {
                 </View>
             </View>
 
-            <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 32 }}>
-                <Text style={styles.label}>Baslik</Text>
-                <TextInput value={title} onChangeText={setTitle} placeholder="Orn: Sprint Planning" style={styles.input} />
+            <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-                <Text style={styles.label}>Aciklama</Text>
-                <TextInput
-                    value={description}
-                    onChangeText={setDescription}
-                    placeholder="Toplanti notu"
-                    multiline
-                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                />
+                {/* Title & Description Card */}
+                <View style={styles.card}>
+                    <Text style={styles.label}>Baslik</Text>
+                    <TextInput
+                        value={title}
+                        onChangeText={setTitle}
+                        placeholder="Orn: Sprint Planning"
+                        placeholderTextColor="#94A3B8"
+                        style={styles.input}
+                    />
 
-                <Text style={styles.label}>Tarih ve Saat</Text>
-                <View style={styles.row2}>
-                    <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('startDate')}>
-                        <Ionicons name="calendar-outline" size={16} color={COLOR} />
-                        <Text style={styles.pickText}>{formatDate(startAt)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('startTime')}>
-                        <Ionicons name="time-outline" size={16} color={COLOR} />
-                        <Text style={styles.pickText}>{formatTime(startAt)}</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.row2}>
-                    <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('endDate')}>
-                        <Ionicons name="calendar-outline" size={16} color={COLOR} />
-                        <Text style={styles.pickText}>{formatDate(endAt)}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('endTime')}>
-                        <Ionicons name="time-outline" size={16} color={COLOR} />
-                        <Text style={styles.pickText}>{formatTime(endAt)}</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.label}>Aciklama</Text>
+                    <TextInput
+                        value={description}
+                        onChangeText={setDescription}
+                        placeholder="Toplanti notu (opsiyonel)"
+                        placeholderTextColor="#94A3B8"
+                        multiline
+                        style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                    />
                 </View>
 
-                <Text style={styles.label}>Toplanti Tipi</Text>
-                <View style={styles.chipsWrap}>
-                    {EVENT_TYPES.map((item) => (
-                        <Chip
-                            key={item}
-                            value={item}
-                            label={EVENT_TYPE_LABELS[item]}
-                            selected={eventType === item}
-                            onPress={() => setEventType(item)}
-                        />
-                    ))}
-                </View>
+                {/* Date & Time Card */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Zamanlama</Text>
 
-                <Text style={styles.label}>Oncelik</Text>
-                <View style={styles.chipsWrap}>
-                    {PRIORITIES.map((item) => (
-                        <Chip
-                            key={item}
-                            value={item}
-                            label={PRIORITY_LABELS[item]}
-                            selected={priority === item}
-                            onPress={() => setPriority(item)}
-                        />
-                    ))}
-                </View>
-
-                <Text style={styles.label}>Hatirlatma</Text>
-                <View style={styles.chipsWrap}>
-                    {REMINDERS.map((m) => (
-                        <Chip
-                            key={m}
-                            value={`${m} dk once`}
-                            selected={reminderMinutesBefore === m}
-                            onPress={() => setReminderMinutesBefore(m)}
-                        />
-                    ))}
-                </View>
-
-                <View style={styles.switchRow}>
-                    <Text style={styles.labelNoMargin}>Online toplanti</Text>
-                    <Switch value={isOnline} onValueChange={setIsOnline} trackColor={{ true: COLOR }} />
-                </View>
-
-                {!isOnline ? (
-                    <>
-                        <Text style={styles.label}>Konum</Text>
-                        <View style={styles.chipsWrap}>
-                            {LOCATION_OPTIONS.map((item) => (
-                                <Chip
-                                    key={item}
-                                    value={item}
-                                    selected={locationOption === item}
-                                    onPress={() => setLocationOption(item)}
-                                />
-                            ))}
+                    <View style={styles.timeRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.subLabel}>Baslangic</Text>
+                            <View style={styles.pickerGroup}>
+                                <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('startDate')}>
+                                    <Ionicons name="calendar-outline" size={18} color={COLOR} />
+                                    <Text style={styles.pickText}>{formatDate(startAt)}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('startTime')}>
+                                    <Ionicons name="time-outline" size={18} color={COLOR} />
+                                    <Text style={styles.pickText}>{formatTime(startAt)}</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        {locationOption === 'Diger' && (
-                            <TextInput
-                                value={customLocation}
-                                onChangeText={setCustomLocation}
-                                placeholder="Konum yaz"
-                                style={styles.input}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.timeRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.subLabel}>Bitis</Text>
+                            <View style={styles.pickerGroup}>
+                                <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('endDate')}>
+                                    <Ionicons name="calendar-outline" size={18} color={COLOR} />
+                                    <Text style={styles.pickText}>{formatDate(endAt)}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('endTime')}>
+                                    <Ionicons name="time-outline" size={18} color={COLOR} />
+                                    <Text style={styles.pickText}>{formatTime(endAt)}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Event Type & Priority */}
+                <View style={styles.card}>
+                    <Text style={styles.label}>Toplanti Tipi</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                        {EVENT_TYPES.map((item) => (
+                            <Chip
+                                key={item}
+                                value={item}
+                                label={EVENT_TYPE_LABELS[item]}
+                                selected={eventType === item}
+                                onPress={() => setEventType(item)}
                             />
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <Text style={styles.label}>Toplanti Linki</Text>
-                        <TextInput
-                            value={meetingUrl}
-                            onChangeText={setMeetingUrl}
-                            placeholder="https://meet.google.com/..."
-                            style={styles.input}
-                            autoCapitalize="none"
-                            keyboardType="url"
-                        />
-                    </>
-                )}
+                        ))}
+                    </ScrollView>
 
-                <Text style={styles.label}>Katilimci Sayisi (Opsiyonel)</Text>
-                <TextInput
-                    value={participantCount}
-                    onChangeText={setParticipantCount}
-                    placeholder="Orn: 6"
-                    style={styles.input}
-                    keyboardType="number-pad"
-                />
+                    <Text style={[styles.label, { marginTop: 16 }]}>Oncelik</Text>
+                    <View style={styles.chipsWrap}>
+                        {PRIORITIES.map((item) => (
+                            <Chip
+                                key={item}
+                                value={item}
+                                label={PRIORITY_LABELS[item]}
+                                selected={priority === item}
+                                onPress={() => setPriority(item)}
+                            />
+                        ))}
+                    </View>
+                </View>
 
-                <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={submit} disabled={submitting}>
-                    <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                    <Text style={styles.submitText}>{submitting ? 'Olusturuluyor...' : 'Toplantiyi Olustur'}</Text>
+                {/* Online/Physical Selection */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Konum & Detaylar</Text>
+
+                    <View style={styles.modeToggle}>
+                        <TouchableOpacity
+                            style={[styles.modeBtn, !isOnline && styles.modeBtnActive]}
+                            onPress={() => setIsOnline(false)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="business-outline" size={18} color={!isOnline ? '#fff' : '#64748B'} />
+                            <Text style={[styles.modeText, !isOnline && styles.modeTextActive]}>Fiziksel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modeBtn, isOnline && styles.modeBtnActive]}
+                            onPress={() => setIsOnline(true)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="videocam-outline" size={18} color={isOnline ? '#fff' : '#64748B'} />
+                            <Text style={[styles.modeText, isOnline && styles.modeTextActive]}>Online</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {!isOnline ? (
+                        <View style={{ marginTop: 16 }}>
+                            <Text style={styles.subLabel}>Konum Secin</Text>
+                            <View style={styles.chipsWrap}>
+                                {LOCATION_OPTIONS.map((item) => (
+                                    <Chip
+                                        key={item}
+                                        value={item}
+                                        selected={locationOption === item}
+                                        onPress={() => setLocationOption(item)}
+                                    />
+                                ))}
+                            </View>
+                            {locationOption === 'Diger' && (
+                                <TextInput
+                                    value={customLocation}
+                                    onChangeText={setCustomLocation}
+                                    placeholder="Konum yaziniz..."
+                                    placeholderTextColor="#94A3B8"
+                                    style={[styles.input, { marginTop: 12 }]}
+                                />
+                            )}
+                        </View>
+                    ) : (
+                        <View style={{ marginTop: 16 }}>
+                            <Text style={styles.subLabel}>Toplanti Linki</Text>
+                            <View style={styles.inputWithIcon}>
+                                <Ionicons name="link-outline" size={20} color="#94A3B8" style={{ marginRight: 8 }} />
+                                <TextInput
+                                    value={meetingUrl}
+                                    onChangeText={setMeetingUrl}
+                                    placeholder="https://meet.google.com/..."
+                                    placeholderTextColor="#94A3B8"
+                                    style={{ flex: 1, height: '100%', color: '#0F172A' }}
+                                    autoCapitalize="none"
+                                    keyboardType="url"
+                                />
+                            </View>
+                        </View>
+                    )}
+
+                    <Text style={[styles.label, { marginTop: 16 }]}>Katilimci Sayisi (Opsiyonel)</Text>
+                    <TextInput
+                        value={participantCount}
+                        onChangeText={setParticipantCount}
+                        placeholder="Orn: 6"
+                        placeholderTextColor="#94A3B8"
+                        style={styles.input}
+                        keyboardType="number-pad"
+                    />
+                </View>
+
+                {/* Reminder */}
+                <View style={styles.card}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <Ionicons name="notifications-outline" size={20} color={COLOR} />
+                        <Text style={styles.sectionTitleNoMargin}>Hatirlatma</Text>
+                    </View>
+                    <View style={styles.chipsWrap}>
+                        {REMINDERS.map((m) => (
+                            <Chip
+                                key={m}
+                                value={`${m} dk once`}
+                                selected={reminderMinutesBefore === m}
+                                onPress={() => setReminderMinutesBefore(m)}
+                            />
+                        ))}
+                    </View>
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+                    onPress={submit}
+                    disabled={submitting}
+                    activeOpacity={0.8}
+                >
+                    {submitting ? (
+                        <Text style={styles.submitText}>Olusturuluyor...</Text>
+                    ) : (
+                        <>
+                            <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                            <Text style={styles.submitText}>Toplantiyi Olustur</Text>
+                        </>
+                    )}
                 </TouchableOpacity>
+
+                <View style={{ height: 40 }} />
             </ScrollView>
 
             {pickerTarget && (
@@ -363,19 +437,29 @@ function Chip({
     onPress: () => void;
 }) {
     return (
-        <TouchableOpacity onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}>
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.7}
+            style={[styles.chip, selected && styles.chipSelected]}
+        >
             <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label || value}</Text>
         </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8F9FA' },
+    container: { flex: 1, backgroundColor: '#F1F5F9' },
     header: {
         backgroundColor: COLOR,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
-        paddingBottom: 16,
+        paddingBottom: 20,
+        shadowColor: COLOR,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 8,
+        zIndex: 10,
     },
     headerRow: {
         flexDirection: 'row',
@@ -390,62 +474,117 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-    form: { paddingHorizontal: 16, paddingTop: 16 },
-    label: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8, marginTop: 8 },
-    labelNoMargin: { fontSize: 13, fontWeight: '700', color: '#334155' },
-    input: {
+    form: { paddingHorizontal: 16, paddingTop: 20 },
+    card: {
         backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    label: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8 },
+    sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
+    sectionTitleNoMargin: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+    subLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 6 },
+    input: {
+        backgroundColor: '#F8FAFC',
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
         fontSize: 14,
         color: '#0F172A',
     },
-    row2: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+    inputWithIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 14,
+        height: 48,
+    },
+    timeRow: { marginBottom: 12 },
+    pickerGroup: { flexDirection: 'row', gap: 10 },
     pickBtn: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#F8FAFC',
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingVertical: 12,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
     pickText: { fontSize: 13, fontWeight: '600', color: '#334155' },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
     chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chipScroll: { flexDirection: 'row', marginBottom: 4 },
     chip: {
-        backgroundColor: '#EEF2F7',
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginRight: 8, // for horizontal scroll
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-    chipSelected: { backgroundColor: COLOR },
-    chipText: { fontSize: 12, fontWeight: '700', color: '#334155' },
-    chipTextSelected: { color: '#fff' },
-    switchRow: {
-        marginTop: 12,
-        marginBottom: 4,
+    chipSelected: {
+        backgroundColor: '#EFF6FF',
+        borderColor: COLOR,
+    },
+    chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    chipTextSelected: { color: COLOR },
+    modeToggle: {
+        flexDirection: 'row',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 8,
+    },
+    modeBtn: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        gap: 8,
+        borderRadius: 10,
     },
-    submitBtn: {
-        marginTop: 20,
+    modeBtnActive: {
         backgroundColor: COLOR,
-        borderRadius: 12,
-        paddingVertical: 13,
+        shadowColor: COLOR,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    modeText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+    modeTextActive: { color: '#fff' },
+    submitBtn: {
+        backgroundColor: COLOR,
+        borderRadius: 16,
+        paddingVertical: 16,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
-        gap: 8,
+        gap: 10,
+        shadowColor: COLOR,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 6,
     },
-    submitText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+    submitText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
