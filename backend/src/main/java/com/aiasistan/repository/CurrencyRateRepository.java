@@ -19,6 +19,9 @@ public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, UUID
 
     Optional<CurrencyRate> findTopByCurrencyCodeAndBaseCurrencyOrderByRateDateDesc(
         String currencyCode, String baseCurrency);
+
+    Optional<CurrencyRate> findTopByCurrencyCodeAndBaseCurrencyAndMarketAndSourceOrderByRateDateDesc(
+        String currencyCode, String baseCurrency, String market, String source);
     
     List<CurrencyRate> findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(
         String currencyCode, LocalDateTime startDate, LocalDateTime endDate);

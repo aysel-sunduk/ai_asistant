@@ -39,6 +39,9 @@ public class GameScore {
     @Column(name = "duration_sec")
     private Integer durationSec;
 
+    @Column(name = "level")
+    private Integer level;
+
     @Type(JsonBinaryType.class)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
@@ -99,6 +102,14 @@ public class GameScore {
 
     public void setDurationSec(Integer durationSec) {
         this.durationSec = durationSec;
+    }
+
+    public Integer getLevel() {
+        return level;
+    }
+
+    public void setLevel(Integer level) {
+        this.level = level;
     }
 
     public Map<String, Object> getMetadata() {

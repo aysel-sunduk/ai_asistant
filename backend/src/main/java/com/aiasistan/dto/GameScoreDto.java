@@ -6,25 +6,45 @@ import java.util.UUID;
 
 import com.aiasistan.model.GameScore;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 
 public class GameScoreDto {
 
+    @Schema(name = "GameScoreCreateRequest")
     public static class Request {
-        @NotBlank(message = "Oyun anahtari bos olamaz")
+        @Schema(description = "Oyun anahtari (memory, quiz, sudoku)", example = "memory")
         private String gameKey;
+        @Schema(description = "gameKey alternatifi", example = "memory")
+        private String gameType;
 
         @NotNull(message = "Skor zorunludur")
         @Min(value = 0, message = "Skor negatif olamaz")
+        @Schema(example = "1200")
         private Integer score;
 
+        @Schema(description = "easy, medium, hard", example = "medium")
         private String difficulty;
 
         @Min(value = 0, message = "Sure negatif olamaz")
+        @Schema(example = "95")
         private Integer durationSec;
+        @Min(value = 0, message = "Sure negatif olamaz")
+        @Schema(example = "95")
+        private Integer duration;
 
+        @Min(value = 1, message = "Seviye 1 veya daha buyuk olmali")
+        @Schema(example = "3")
+        private Integer level;
+
+        @Schema(example = "2026-02-19T11:35:00Z")
+        private OffsetDateTime playedAt;
+        @Schema(example = "2026-02-19T11:35:00Z")
+        private OffsetDateTime createdAt;
+
+        @Schema(example = "{\"moves\":42}")
         private Map<String, Object> metadata;
 
         public String getGameKey() {
@@ -33,6 +53,14 @@ public class GameScoreDto {
 
         public void setGameKey(String gameKey) {
             this.gameKey = gameKey;
+        }
+
+        public String getGameType() {
+            return gameType;
+        }
+
+        public void setGameType(String gameType) {
+            this.gameType = gameType;
         }
 
         public Integer getScore() {
@@ -59,12 +87,64 @@ public class GameScoreDto {
             this.durationSec = durationSec;
         }
 
+        public Integer getDuration() {
+            return duration;
+        }
+
+        public void setDuration(Integer duration) {
+            this.duration = duration;
+        }
+
+        public Integer getLevel() {
+            return level;
+        }
+
+        public void setLevel(Integer level) {
+            this.level = level;
+        }
+
+        public OffsetDateTime getPlayedAt() {
+            return playedAt;
+        }
+
+        public void setPlayedAt(OffsetDateTime playedAt) {
+            this.playedAt = playedAt;
+        }
+
+        public OffsetDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(OffsetDateTime createdAt) {
+            this.createdAt = createdAt;
+        }
+
         public Map<String, Object> getMetadata() {
             return metadata;
         }
 
         public void setMetadata(Map<String, Object> metadata) {
             this.metadata = metadata;
+        }
+
+        public String resolveGameKey() {
+            if (gameKey != null && !gameKey.isBlank()) {
+                return gameKey;
+            }
+            return gameType;
+        }
+
+        public Integer resolveDurationSec() {
+            return durationSec != null ? durationSec : duration;
+        }
+
+        public OffsetDateTime resolvePlayedAt() {
+            return playedAt != null ? playedAt : createdAt;
+        }
+
+        @AssertTrue(message = "gameKey veya gameType zorunludur")
+        public boolean isGameKeyOrGameTypePresent() {
+            return resolveGameKey() != null && !resolveGameKey().isBlank();
         }
     }
 
@@ -75,6 +155,7 @@ public class GameScoreDto {
         private Integer score;
         private String difficulty;
         private Integer durationSec;
+        private Integer level;
         private Map<String, Object> metadata;
         private OffsetDateTime playedAt;
 
@@ -86,6 +167,7 @@ public class GameScoreDto {
             response.score = score.getScore();
             response.difficulty = score.getDifficulty();
             response.durationSec = score.getDurationSec();
+            response.level = score.getLevel();
             response.metadata = score.getMetadata();
             response.playedAt = score.getPlayedAt();
             return response;
@@ -139,6 +221,14 @@ public class GameScoreDto {
             this.durationSec = durationSec;
         }
 
+        public Integer getLevel() {
+            return level;
+        }
+
+        public void setLevel(Integer level) {
+            this.level = level;
+        }
+
         public Map<String, Object> getMetadata() {
             return metadata;
         }
@@ -165,6 +255,7 @@ public class GameScoreDto {
         private Integer score;
         private String difficulty;
         private Integer durationSec;
+        private Integer level;
         private OffsetDateTime playedAt;
 
         public int getRank() {
@@ -229,6 +320,14 @@ public class GameScoreDto {
 
         public void setDurationSec(Integer durationSec) {
             this.durationSec = durationSec;
+        }
+
+        public Integer getLevel() {
+            return level;
+        }
+
+        public void setLevel(Integer level) {
+            this.level = level;
         }
 
         public OffsetDateTime getPlayedAt() {

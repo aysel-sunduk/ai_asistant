@@ -23,6 +23,10 @@ import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.GameScoreDto;
 import com.aiasistan.service.GameScoreService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -40,6 +44,25 @@ public class GameScoreController {
     }
 
     @PostMapping
+    @Operation(
+        summary = "Oyun skoru olustur",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                schema = @Schema(implementation = GameScoreDto.Request.class),
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "gameType": "memory",
+                      "score": 1200,
+                      "level": 3,
+                      "duration": 95
+                    }
+                    """
+                )
+            )
+        )
+    )
     public ResponseEntity<ApiResponse<GameScoreDto.Response>> createScore(
         Authentication authentication,
         @Valid @RequestBody GameScoreDto.Request request

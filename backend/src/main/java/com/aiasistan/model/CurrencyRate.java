@@ -32,6 +32,9 @@ public class CurrencyRate {
     
     @Column(name = "source", length = 50)
     private String source;
+
+    @Column(name = "market", nullable = false, length = 32)
+    private String market;
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -93,6 +96,14 @@ public class CurrencyRate {
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getMarket() {
+        return market;
+    }
+
+    public void setMarket(String market) {
+        this.market = market;
     }
 
     public LocalDateTime getCreatedAt() {

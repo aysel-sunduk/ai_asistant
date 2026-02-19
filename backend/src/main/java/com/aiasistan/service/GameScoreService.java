@@ -49,10 +49,12 @@ public class GameScoreService {
 
         GameScore score = new GameScore();
         score.setUserId(userId);
-        score.setGameKey(normalizeGameKey(request.getGameKey()));
+        score.setGameKey(normalizeGameKey(request.resolveGameKey()));
         score.setScore(request.getScore());
         score.setDifficulty(normalizeDifficulty(request.getDifficulty()));
-        score.setDurationSec(request.getDurationSec());
+        score.setDurationSec(request.resolveDurationSec());
+        score.setLevel(request.getLevel());
+        score.setPlayedAt(request.resolvePlayedAt());
         score.setMetadata(request.getMetadata());
 
         return GameScoreDto.Response.from(gameScoreRepository.save(score));
@@ -80,6 +82,35 @@ public class GameScoreService {
             .findByGameKeyOrderByScoreDesc(normalizeGameKey(gameKey), pageable)
             .map(GameScoreDto.Response::from);
         return PageResponse.of(page);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getActiveGameKeys() {
+        return gameScoreRepository.findActiveGameKeys();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GameScoreDto.Response> getMyScoresList(String userEmail, String gameKey) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        if (gameKey == null || gameKey.isBlank()) {
+            return gameScoreRepository.findByUserIdOrderByPlayedAtDesc(userId).stream()
+                .map(GameScoreDto.Response::from)
+                .toList();
+        }
+        return gameScoreRepository.findByUserIdAndGameKeyOrderByPlayedAtDesc(userId, normalizeGameKey(gameKey)).stream()
+            .map(GameScoreDto.Response::from)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GameScoreDto.Response> getLeaderboardTopList(String gameKey, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 200);
+        return gameScoreRepository.findByGameKeyOrderByScoreDesc(
+                normalizeGameKey(gameKey),
+                org.springframework.data.domain.PageRequest.of(0, safeLimit)
+            ).getContent().stream()
+            .map(GameScoreDto.Response::from)
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -166,6 +197,9 @@ public class GameScoreService {
         if (normalized.isBlank()) {
             throw new BadRequestException("gameKey zorunludur");
         }
+        if (!gameScoreRepository.isSupportedGameKey(normalized)) {
+            throw new BadRequestException("Desteklenmeyen gameKey. Desteklenenler: memory, quiz, sudoku");
+        }
         return normalized;
     }
 
@@ -195,6 +229,7 @@ public class GameScoreService {
         row.setScore(score.getScore());
         row.setDifficulty(score.getDifficulty());
         row.setDurationSec(score.getDurationSec());
+        row.setLevel(score.getLevel());
         row.setPlayedAt(score.getPlayedAt());
         return row;
     }

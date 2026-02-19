@@ -53,6 +53,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class CurrencyService {
+    private static final String MARKET_FX = "fx";
+    private static final String MARKET_METALS = "metals";
     private static final List<String> SUPPORTED_FX_CODES = List.of(
         "USD", "EUR", "GBP", "TRY", "JPY", "CHF", "CAD", "AUD", "NZD",
         "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "RON", "BGN",
@@ -289,8 +291,6 @@ public class CurrencyService {
                 return getLatestRatesFromDatabaseOrThrow(base, requested, "Daily AlphaVantage quota exceeded");
             }
 
-            Map<String, BigDecimal> previousRates = previousRateByBase.getOrDefault(base + "::alpha", Map.of());
-            Map<String, BigDecimal> nextSnapshot = new LinkedHashMap<>();
             Map<String, Integer> orderByCode = new LinkedHashMap<>();
             OffsetDateTime screenRefreshedAt = OffsetDateTime.now(ZoneOffset.UTC);
             for (int i = 0; i < requested.size(); i++) {
@@ -306,13 +306,12 @@ public class CurrencyService {
                         code,
                         base,
                         BigDecimal.ONE.setScale(4, RoundingMode.HALF_UP),
-                        BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP),
                         nowTs,
                         "alphavantage-live",
+                        MARKET_FX,
                         screenRefreshedAt
                     );
                     out.add(persisted);
-                    nextSnapshot.put(code, BigDecimal.ONE.setScale(4, RoundingMode.HALF_UP));
                     continue;
                 }
 
@@ -347,20 +346,17 @@ public class CurrencyService {
 
                     BigDecimal rate = new BigDecimal(rateText).setScale(4, RoundingMode.HALF_UP);
                     OffsetDateTime providerTs = parseAlphaVantageTimestamp(fx.path("6. Last Refreshed").asText(null));
-                    BigDecimal previous = previousRates.get(code);
-                    BigDecimal changeRate = previous != null ? rate.subtract(previous).setScale(4, RoundingMode.HALF_UP) : null;
 
                     CurrencyRateResponse persisted = persistRateSnapshot(
                         code,
                         base,
                         rate,
-                        changeRate,
                         providerTs,
                         "alphavantage-live",
+                        MARKET_FX,
                         screenRefreshedAt
                     );
                     out.add(persisted);
-                    nextSnapshot.put(code, rate);
                 } catch (BadRequestException ex) {
                     throw ex;
                 } catch (Exception ex) {
@@ -369,11 +365,6 @@ public class CurrencyService {
             }
 
             out.sort(Comparator.comparingInt(r -> orderByCode.getOrDefault(r.getCurrencyCode(), Integer.MAX_VALUE)));
-            Map<String, BigDecimal> mergedAlphaSnapshot = new LinkedHashMap<>(
-                previousRateByBase.getOrDefault(base + "::alpha", Map.of())
-            );
-            mergedAlphaSnapshot.putAll(nextSnapshot);
-            previousRateByBase.put(base + "::alpha", mergedAlphaSnapshot);
             alphaCacheByBase.put(base, out);
             lastAlphaSyncByBase.put(base, System.currentTimeMillis());
             return out;
@@ -490,8 +481,6 @@ public class CurrencyService {
             boolean requestedMetal = requested.stream().anyMatch(activeMetalCodes::contains);
             Map<String, BigDecimal> metalRatesTry = requestedMetal ? getLiveMetalRatesTry() : Map.of();
             BigDecimal tryPerBase = resolveTryPerBase(base, ratesNode);
-            Map<String, BigDecimal> previousRates = previousRateByBase.getOrDefault(base, Map.of());
-            Map<String, BigDecimal> nextSnapshot = new LinkedHashMap<>();
             Map<String, Integer> orderByCode = new LinkedHashMap<>();
             for (int i = 0; i < requested.size(); i++) {
                 orderByCode.putIfAbsent(requested.get(i), i);
@@ -504,30 +493,25 @@ public class CurrencyService {
                     continue;
                 }
 
-                BigDecimal previous = previousRates.get(code);
-                BigDecimal changeRate = previous != null ? rate.subtract(previous).setScale(4, RoundingMode.HALF_UP) : null;
-                OffsetDateTime effectiveProviderTs = activeMetalCodes.contains(code) && metalsProviderTimestamp != null
+                boolean isMetal = activeMetalCodes.contains(code);
+                OffsetDateTime effectiveProviderTs = isMetal && metalsProviderTimestamp != null
                     ? metalsProviderTimestamp
                     : providerTimestamp;
-                nextSnapshot.put(code, rate);
+                String source = isMetal ? "collectapi-live" : "external-live";
+                String market = isMetal ? MARKET_METALS : MARKET_FX;
                 CurrencyRateResponse persisted = persistRateSnapshot(
                     code,
                     base,
                     rate,
-                    changeRate,
                     effectiveProviderTs,
-                    "external-live",
+                    source,
+                    market,
                     screenRefreshedAt
                 );
                 out.add(persisted);
             }
 
             out.sort(Comparator.comparingInt(r -> orderByCode.getOrDefault(r.getCurrencyCode(), Integer.MAX_VALUE)));
-            Map<String, BigDecimal> mergedSnapshot = new LinkedHashMap<>(
-                previousRateByBase.getOrDefault(base, Map.of())
-            );
-            mergedSnapshot.putAll(nextSnapshot);
-            previousRateByBase.put(base, mergedSnapshot);
             return out;
         } catch (BadRequestException ex) {
             throw ex;
@@ -553,18 +537,20 @@ public class CurrencyService {
         String currencyCode,
         String baseCurrency,
         BigDecimal rate,
-        BigDecimal changeRate,
         OffsetDateTime providerTimestamp,
         String source,
+        String market,
         OffsetDateTime screenRefreshedAt
     ) {
         LocalDateTime dbRecordedAt = LocalDateTime.now();
+        BigDecimal changeRate = resolveChangeRateFromHistory(baseCurrency, currencyCode, market, source, rate);
 
         CurrencyRateLatest latest = currencyRateLatestRepository
-            .findByBaseCurrencyAndCurrencyCode(baseCurrency, currencyCode)
+            .findByBaseCurrencyAndCurrencyCodeAndMarket(baseCurrency, currencyCode, market)
             .orElseGet(CurrencyRateLatest::new);
         latest.setCurrencyCode(currencyCode);
         latest.setBaseCurrency(baseCurrency);
+        latest.setMarket(market);
         latest.setRate(rate);
         latest.setChangeRate(changeRate);
         latest.setProviderTimestamp(providerTimestamp);
@@ -575,6 +561,7 @@ public class CurrencyService {
         CurrencyRate history = new CurrencyRate();
         history.setCurrencyCode(currencyCode);
         history.setBaseCurrency(baseCurrency);
+        history.setMarket(market);
         history.setRate(rate);
         history.setChangeRate(changeRate);
         history.setProviderTimestamp(providerTimestamp);
@@ -594,6 +581,25 @@ public class CurrencyService {
             screenRefreshedAt,
             dbRecordedAt
         );
+    }
+
+    private BigDecimal resolveChangeRateFromHistory(
+        String baseCurrency,
+        String currencyCode,
+        String market,
+        String source,
+        BigDecimal currentRate
+    ) {
+        return currencyRateRepository
+            .findTopByCurrencyCodeAndBaseCurrencyAndMarketAndSourceOrderByRateDateDesc(
+                currencyCode,
+                baseCurrency,
+                market,
+                source
+            )
+            .map(CurrencyRate::getRate)
+            .map(previous -> currentRate.subtract(previous).setScale(4, RoundingMode.HALF_UP))
+            .orElse(null);
     }
 
     private CurrencyRateResponse toResponseFromHistory(CurrencyRate rate) {

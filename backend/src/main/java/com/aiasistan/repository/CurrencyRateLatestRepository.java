@@ -13,8 +13,10 @@ import com.aiasistan.model.CurrencyRateLatest;
 public interface CurrencyRateLatestRepository extends JpaRepository<CurrencyRateLatest, UUID> {
 
     Optional<CurrencyRateLatest> findByBaseCurrencyAndCurrencyCode(String baseCurrency, String currencyCode);
+    Optional<CurrencyRateLatest> findByBaseCurrencyAndCurrencyCodeAndMarket(String baseCurrency, String currencyCode, String market);
 
     List<CurrencyRateLatest> findByBaseCurrencyOrderByCurrencyCodeAsc(String baseCurrency);
+    List<CurrencyRateLatest> findByBaseCurrencyAndMarketOrderByCurrencyCodeAsc(String baseCurrency, String market);
 
     Optional<CurrencyRateLatest> findTopByCurrencyCodeOrderByRateDateDesc(String currencyCode);
 }

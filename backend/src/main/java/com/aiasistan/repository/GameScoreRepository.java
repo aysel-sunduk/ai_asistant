@@ -17,6 +17,8 @@ import com.aiasistan.model.GameScore;
 public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
 
     Page<GameScore> findByUserId(UUID userId, Pageable pageable);
+    List<GameScore> findByUserIdOrderByPlayedAtDesc(UUID userId);
+    List<GameScore> findByUserIdAndGameKeyOrderByPlayedAtDesc(UUID userId, String gameKey);
 
     Optional<GameScore> findByIdAndUserId(UUID id, UUID userId);
 
@@ -26,6 +28,24 @@ public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
 
     @Query("SELECT MAX(g.score) FROM GameScore g WHERE g.gameKey = :gameKey AND g.userId = :userId")
     Integer findBestScoreByGameKeyAndUserId(@Param("gameKey") String gameKey, @Param("userId") UUID userId);
+
+    @Query(value = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM game_types gt
+            WHERE gt.game_key = :gameKey
+              AND gt.is_active = true
+        )
+        """, nativeQuery = true)
+    boolean isSupportedGameKey(@Param("gameKey") String gameKey);
+
+    @Query(value = """
+        SELECT gt.game_key
+        FROM game_types gt
+        WHERE gt.is_active = true
+        ORDER BY gt.sort_order ASC, gt.game_key ASC
+        """, nativeQuery = true)
+    List<String> findActiveGameKeys();
 
     @Query("""
         SELECT COUNT(DISTINCT g.userId)

@@ -35,6 +35,9 @@ public class CurrencyRateLatest extends BaseEntity {
     @Column(name = "source", length = 50)
     private String source;
 
+    @Column(name = "market", nullable = false, length = 32)
+    private String market;
+
     public String getCurrencyCode() {
         return currencyCode;
     }
@@ -89,5 +92,13 @@ public class CurrencyRateLatest extends BaseEntity {
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getMarket() {
+        return market;
+    }
+
+    public void setMarket(String market) {
+        this.market = market;
     }
 }
