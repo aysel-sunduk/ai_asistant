@@ -308,12 +308,21 @@ export default function ContactsScreen() {
                             onChangeText={setFullName}
                             style={styles.input}
                         />
-                        <TextInput
-                            placeholder="Kisi tipi (Orn: Arkadas, Kardes)"
-                            value={relationship}
-                            onChangeText={setRelationship}
-                            style={styles.input}
-                        />
+                        <Text style={styles.fieldLabel}>Yakinlik Derecesi</Text>
+                        <View style={styles.chipRow}>
+                            {['Aile', 'Arkadaş', 'İş'].map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[styles.chip, relationship === type && styles.chipActive]}
+                                    onPress={() => setRelationship(type)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[styles.chipText, relationship === type && styles.chipTextActive]}>
+                                        {type}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                         <Text style={styles.fieldLabel}>Dogum Gunu (Gun/Ay)</Text>
                         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
                             <Text style={styles.dateText}>
@@ -550,4 +559,18 @@ const styles = StyleSheet.create({
     },
     contactPickName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
     contactPickMeta: { marginTop: 2, fontSize: 12, color: '#64748B' },
+    chipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    chip: {
+        flex: 1,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 10,
+        paddingVertical: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    chipActive: { backgroundColor: COLOR, borderColor: COLOR },
+    chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    chipTextActive: { color: '#fff' },
 });
