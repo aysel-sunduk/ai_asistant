@@ -3,6 +3,11 @@ import type {
     FamilyBirthdayPage,
     FamilyBirthdayRequest,
     FamilyBirthdayResponse,
+    FamilyFinanceReportResponse,
+    FamilyFinanceSummaryResponse,
+    FamilyTransactionPage,
+    FamilyTransactionRequest,
+    FamilyTransactionResponse,
 } from '../src/models/family.model';
 
 export const familyService = {
@@ -23,5 +28,34 @@ export const familyService = {
 
     deleteBirthday: async (id: string): Promise<void> => {
         await familyApi.deleteBirthday(id);
+    },
+
+    getTransactions: async (page = 0, size = 100): Promise<FamilyTransactionPage> => {
+        const response = await familyApi.getTransactions(page, size);
+        return response.data.data;
+    },
+
+    createTransaction: async (data: FamilyTransactionRequest): Promise<FamilyTransactionResponse> => {
+        const response = await familyApi.createTransaction(data);
+        return response.data.data;
+    },
+
+    updateTransaction: async (id: string, data: FamilyTransactionRequest): Promise<FamilyTransactionResponse> => {
+        const response = await familyApi.updateTransaction(id, data);
+        return response.data.data;
+    },
+
+    deleteTransaction: async (id: string): Promise<void> => {
+        await familyApi.deleteTransaction(id);
+    },
+
+    getTransactionsSummary: async (startDate: string, endDate: string): Promise<FamilyFinanceSummaryResponse> => {
+        const response = await familyApi.getTransactionsSummary(startDate, endDate);
+        return response.data.data;
+    },
+
+    getTransactionsReport: async (period: 'WEEKLY' | 'MONTHLY'): Promise<FamilyFinanceReportResponse> => {
+        const response = await familyApi.getTransactionsReport(period);
+        return response.data.data;
     },
 };

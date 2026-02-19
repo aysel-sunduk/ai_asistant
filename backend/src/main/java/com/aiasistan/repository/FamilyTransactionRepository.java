@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,14 @@ public interface FamilyTransactionRepository extends JpaRepository<FamilyTransac
     Page<FamilyTransaction> findByUserIdOrderByOccurredOnDesc(UUID userId, Pageable pageable);
 
     Optional<FamilyTransaction> findByIdAndUserId(UUID id, UUID userId);
+
+    Optional<FamilyTransaction> findByUserIdAndNote(UUID userId, String note);
+
+    List<FamilyTransaction> findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(
+        UUID userId,
+        LocalDate startDate,
+        LocalDate endDate
+    );
 
     @Query("SELECT COALESCE(SUM(ft.amountMinor), 0) FROM FamilyTransaction ft WHERE ft.userId = :userId AND ft.type = :type AND ft.occurredOn BETWEEN :startDate AND :endDate")
     Long sumAmountMinorByTypeAndDateRange(

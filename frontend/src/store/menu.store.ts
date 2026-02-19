@@ -24,11 +24,15 @@ const DEFAULT_MODULES: MenuModule[] = [
 ];
 
 const STORAGE_KEY = 'menu_module_order';
+const SHORTCUTS_STORAGE_KEY = 'menu_shortcuts';
+const DEFAULT_SHORTCUTS = ['finance', 'health', 'blog'];
 
 interface MenuState {
     modules: MenuModule[];
+    shortcuts: string[];
     isLoaded: boolean;
     loadOrder: () => Promise<void>;
+    toggleShortcut: (id: string) => void;
     moveUp: (index: number) => void;
     moveDown: (index: number) => void;
     resetOrder: () => void;
@@ -43,13 +47,27 @@ const saveOrder = async (modules: MenuModule[]) => {
     }
 };
 
+const saveShortcuts = async (shortcuts: string[]) => {
+    try {
+        await AsyncStorage.setItem(SHORTCUTS_STORAGE_KEY, JSON.stringify(shortcuts));
+    } catch {
+        // silent
+    }
+};
+
 export const useMenuStore = create<MenuState>((set, get) => ({
     modules: DEFAULT_MODULES,
+    shortcuts: DEFAULT_SHORTCUTS,
     isLoaded: false,
 
     loadOrder: async () => {
         try {
-            const stored = await AsyncStorage.getItem(STORAGE_KEY);
+            const [stored, storedShortcuts] = await Promise.all([
+                AsyncStorage.getItem(STORAGE_KEY),
+                AsyncStorage.getItem(SHORTCUTS_STORAGE_KEY),
+            ]);
+
+            let modules = DEFAULT_MODULES;
             if (stored) {
                 const ids: string[] = JSON.parse(stored);
                 const lookup = new Map(DEFAULT_MODULES.map((m) => [m.id, m]));
@@ -65,13 +83,40 @@ export const useMenuStore = create<MenuState>((set, get) => ({
                 for (const mod of lookup.values()) {
                     ordered.push(mod);
                 }
-                set({ modules: ordered, isLoaded: true });
-            } else {
-                set({ isLoaded: true });
+                modules = ordered;
             }
+
+            const moduleIds = new Set(modules.map((m) => m.id));
+            let shortcuts = DEFAULT_SHORTCUTS.filter((id) => moduleIds.has(id));
+            if (storedShortcuts) {
+                const parsed = JSON.parse(storedShortcuts);
+                if (Array.isArray(parsed)) {
+                    shortcuts = parsed
+                        .filter((id): id is string => typeof id === 'string')
+                        .filter((id) => moduleIds.has(id))
+                        .slice(0, 3);
+                }
+            }
+
+            set({ modules, shortcuts, isLoaded: true });
         } catch {
-            set({ isLoaded: true });
+            set({ shortcuts: DEFAULT_SHORTCUTS, isLoaded: true });
         }
+    },
+
+    toggleShortcut: (id: string) => {
+        const moduleIds = new Set(get().modules.map((m) => m.id));
+        if (!moduleIds.has(id)) return;
+
+        const current = get().shortcuts;
+        let next: string[];
+        if (current.includes(id)) {
+            next = current.filter((s) => s !== id);
+        } else {
+            next = [...current, id].slice(0, 3);
+        }
+        set({ shortcuts: next });
+        saveShortcuts(next);
     },
 
     moveUp: (index: number) => {
@@ -91,7 +136,8 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     },
 
     resetOrder: () => {
-        set({ modules: DEFAULT_MODULES });
+        set({ modules: DEFAULT_MODULES, shortcuts: DEFAULT_SHORTCUTS });
         saveOrder(DEFAULT_MODULES);
+        saveShortcuts(DEFAULT_SHORTCUTS);
     },
 }));

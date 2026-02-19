@@ -8,9 +8,11 @@ interface ShoppingState {
 
     setLists: (lists: ShoppingList[]) => void;
     addList: (list: ShoppingList) => void;
+    updateList: (list: ShoppingList) => void;
     removeList: (id: string) => void;
     setSelectedListItems: (items: ShoppingItem[]) => void;
     addItem: (item: ShoppingItem) => void;
+    updateItem: (item: ShoppingItem) => void;
     toggleItem: (itemId: string) => void;
     removeItem: (itemId: string) => void;
     setLoading: (loading: boolean) => void;
@@ -23,11 +25,19 @@ export const useShoppingStore = create<ShoppingState>((set) => ({
 
     setLists: (lists) => set({ lists }),
     addList: (list) => set((state) => ({ lists: [list, ...state.lists] })),
+    updateList: (list) =>
+        set((state) => ({
+            lists: state.lists.map((l) => (l.id === list.id ? list : l)),
+        })),
     removeList: (id) =>
         set((state) => ({ lists: state.lists.filter((l) => l.id !== id) })),
     setSelectedListItems: (selectedListItems) => set({ selectedListItems }),
     addItem: (item) =>
         set((state) => ({ selectedListItems: [...state.selectedListItems, item] })),
+    updateItem: (item) =>
+        set((state) => ({
+            selectedListItems: state.selectedListItems.map((i) => (i.id === item.id ? item : i)),
+        })),
     toggleItem: (itemId) =>
         set((state) => ({
             selectedListItems: state.selectedListItems.map((i) =>

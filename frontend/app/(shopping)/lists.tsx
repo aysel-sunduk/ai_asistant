@@ -1,87 +1,232 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Toast from '../../components/ui/Toast';
+import { useShopping } from '../../src/hooks/useShopping';
 
 const COLOR = '#F472B6';
 
-const LISTS = [
-    {
-        id: '1', title: 'Market Listesi', count: 12, done: 8, icon: 'cart-outline' as const,
-        items: ['Süt', 'Ekmek', 'Yumurta', 'Peynir'],
-    },
-    {
-        id: '2', title: 'Teknoloji', count: 5, done: 1, icon: 'laptop-outline' as const,
-        items: ['Kulaklık', 'Şarj kablosu', 'Mouse'],
-    },
-    {
-        id: '3', title: 'Ev Dekorasyonu', count: 7, done: 3, icon: 'home-outline' as const,
-        items: ['Perde', 'Yastık kılıfı'],
-    },
-];
-
 export default function ListsScreen() {
     const router = useRouter();
+    const { lists, isLoading, fetchLists, createList, deleteList, updateListArchive } = useShopping();
+
+    const [newListName, setNewListName] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+    const [toastMessage, setToastMessage] = useState('');
+
+    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+        setToastType(type);
+        setToastMessage(message);
+        setToastVisible(true);
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            void fetchLists();
+        }, [fetchLists]),
+    );
+
+    const stats = useMemo(() => {
+        const archived = lists.filter((l) => l.isArchived).length;
+        return {
+            total: lists.length,
+            active: lists.length - archived,
+            archived,
+        };
+    }, [lists]);
+
+    const onCreateList = async () => {
+        const name = newListName.trim();
+        if (name.length < 2) {
+            showToast('error', 'Liste adi en az 2 karakter olmali.');
+            return;
+        }
+
+        setCreating(true);
+        try {
+            await createList({ name });
+            setNewListName('');
+            showToast('success', 'Liste olusturuldu.');
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Liste olusturulamadi.');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const onDeleteList = (id: string) => {
+        Alert.alert('Liste sil', 'Bu listeyi silmek istiyor musun?', [
+            { text: 'Iptal', style: 'cancel' },
+            {
+                text: 'Sil',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await deleteList(id);
+                        showToast('success', 'Liste silindi.');
+                    } catch (error: any) {
+                        showToast('error', error?.response?.data?.message || 'Liste silinemedi.');
+                    }
+                },
+            },
+        ]);
+    };
+
+    const onToggleArchive = async (id: string, archived: boolean) => {
+        try {
+            await updateListArchive(id, archived);
+            showToast('success', archived ? 'Liste arsive alindi.' : 'Liste arsivden cikarildi.');
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Arsiv durumu guncellenemedi.');
+        }
+    };
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
+
             <View style={styles.header}>
                 <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Alışveriş</Text>
-                    <TouchableOpacity style={styles.backBtn}>
-                        <Ionicons name="add" size={24} color="#fff" />
+                    <Text style={styles.headerTitle}>Alisveris</Text>
+                    <TouchableOpacity onPress={() => void fetchLists()} style={styles.headerBtn}>
+                        <Ionicons name="refresh" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
+
                 <View style={styles.statsRow}>
                     <View style={styles.stat}>
-                        <Text style={styles.statNum}>3</Text>
-                        <Text style={styles.statLabel}>Liste</Text>
+                        <Text style={styles.statNum}>{stats.total}</Text>
+                        <Text style={styles.statLabel}>Toplam</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.stat}>
-                        <Text style={styles.statNum}>24</Text>
-                        <Text style={styles.statLabel}>Ürün</Text>
+                        <Text style={styles.statNum}>{stats.active}</Text>
+                        <Text style={styles.statLabel}>Aktif</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.stat}>
-                        <Text style={styles.statNum}>12</Text>
-                        <Text style={styles.statLabel}>Tamamlanan</Text>
+                        <Text style={styles.statNum}>{stats.archived}</Text>
+                        <Text style={styles.statLabel}>Arsiv</Text>
                     </View>
+                </View>
+
+                <View style={styles.createRow}>
+                    <TextInput
+                        value={newListName}
+                        onChangeText={setNewListName}
+                        placeholder="Yeni liste adi"
+                        placeholderTextColor="rgba(255,255,255,0.75)"
+                        style={styles.createInput}
+                    />
+                    <TouchableOpacity
+                        onPress={onCreateList}
+                        disabled={creating}
+                        style={[styles.createButton, creating && { opacity: 0.7 }]}
+                    >
+                        <Text style={styles.createButtonText}>{creating ? '...' : 'Ekle'}</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                {LISTS.map((list) => (
-                    <TouchableOpacity key={list.id} style={styles.card} activeOpacity={0.7}>
-                        <View style={styles.cardTop}>
-                            <View style={styles.iconBox}>
-                                <Ionicons name={list.icon} size={22} color={COLOR} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle}>{list.title}</Text>
-                                <Text style={styles.cardSub}>{list.done}/{list.count} tamamlandı</Text>
-                            </View>
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>{list.count - list.done}</Text>
-                            </View>
+            {isLoading ? (
+                <View style={styles.loadingWrap}>
+                    <ActivityIndicator size="large" color={COLOR} />
+                </View>
+            ) : (
+                <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                    {lists.length === 0 ? (
+                        <View style={styles.emptyCard}>
+                            <Text style={styles.emptyTitle}>Henuz liste yok</Text>
+                            <Text style={styles.emptySub}>Yukaridan yeni bir alisveris listesi olusturabilirsin.</Text>
                         </View>
-                        <View style={styles.progressBar}>
-                            <View style={[styles.progressFill, { width: `${(list.done / list.count) * 100}%` }]} />
-                        </View>
-                        <View style={styles.itemsRow}>
-                            {list.items.map((item, i) => (
-                                <View key={i} style={styles.itemChip}>
-                                    <Text style={styles.itemText}>{item}</Text>
+                    ) : (
+                        lists.map((list) => (
+                            <TouchableOpacity
+                                key={list.id}
+                                style={styles.card}
+                                activeOpacity={0.75}
+                                onPress={() =>
+                                    router.push({
+                                        pathname: '/(shopping)/list-detail',
+                                        params: { listId: list.id, name: list.name },
+                                    })
+                                }
+                            >
+                                <View style={styles.cardTop}>
+                                    <View style={styles.iconBox}>
+                                        <Ionicons name="cart-outline" size={20} color={COLOR} />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.cardTitle}>{list.name}</Text>
+                                        <Text style={styles.cardSub}>
+                                            {new Date(list.createdAt).toLocaleString('tr-TR')}
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.statusBadge, list.isArchived && styles.statusBadgeMuted]}>
+                                        <Text style={[styles.statusBadgeText, list.isArchived && styles.statusBadgeTextMuted]}>
+                                            {list.isArchived ? 'Arsiv' : 'Aktif'}
+                                        </Text>
+                                    </View>
                                 </View>
-                            ))}
-                        </View>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+
+                                <View style={styles.cardActions}>
+                                    <TouchableOpacity
+                                        style={styles.actionBtn}
+                                        onPress={() =>
+                                            router.push({
+                                                pathname: '/(shopping)/list-detail',
+                                                params: { listId: list.id, name: list.name },
+                                            })
+                                        }
+                                    >
+                                        <Ionicons name="open-outline" size={14} color="#475569" />
+                                        <Text style={styles.actionText}>Ac</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.actionBtn}
+                                        onPress={() => void onToggleArchive(list.id, !list.isArchived)}
+                                    >
+                                        <Ionicons
+                                            name={list.isArchived ? 'archive-outline' : 'file-tray-outline'}
+                                            size={14}
+                                            color="#475569"
+                                        />
+                                        <Text style={styles.actionText}>{list.isArchived ? 'Cikar' : 'Arsivle'}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.actionBtnDanger} onPress={() => onDeleteList(list.id)}>
+                                        <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                                        <Text style={styles.actionDangerText}>Sil</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    )}
+                </ScrollView>
+            )}
+
+            <Toast
+                visible={toastVisible}
+                type={toastType}
+                message={toastMessage}
+                onHide={() => setToastVisible(false)}
+            />
         </View>
     );
 }
@@ -89,35 +234,123 @@ export default function ListsScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
     header: {
-        backgroundColor: COLOR, borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-        paddingBottom: 20, shadowColor: COLOR, shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
+        backgroundColor: COLOR,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+        paddingBottom: 18,
+        shadowColor: COLOR,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
     },
     headerRow: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
-    backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
+    headerBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-    statsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 20 },
+    statsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 14, gap: 18 },
     stat: { alignItems: 'center' },
-    statNum: { fontSize: 22, fontWeight: '800', color: '#fff' },
-    statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-    statDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.2)' },
-    scroll: { padding: 20, paddingBottom: 40 },
-    card: {
-        backgroundColor: '#fff', borderRadius: 18, padding: 18, marginBottom: 12,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    statNum: { fontSize: 20, fontWeight: '800', color: '#fff' },
+    statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.2)' },
+    createRow: {
+        marginTop: 14,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    iconBox: { width: 48, height: 48, borderRadius: 14, backgroundColor: COLOR + '15', alignItems: 'center', justifyContent: 'center' },
-    cardTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
-    cardSub: { fontSize: 12, color: '#9BA1A6', marginTop: 2 },
-    badge: { backgroundColor: COLOR, width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-    badgeText: { fontSize: 12, fontWeight: '800', color: '#fff' },
-    progressBar: { height: 5, borderRadius: 3, backgroundColor: '#F0F0F0', marginTop: 14 },
-    progressFill: { height: 5, borderRadius: 3, backgroundColor: COLOR },
-    itemsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-    itemChip: { backgroundColor: '#FDF2F8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    itemText: { fontSize: 11, fontWeight: '600', color: COLOR },
+    createInput: {
+        flex: 1,
+        height: 42,
+        borderRadius: 11,
+        paddingHorizontal: 12,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    createButton: {
+        height: 42,
+        minWidth: 66,
+        borderRadius: 11,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 14,
+    },
+    createButtonText: { color: COLOR, fontWeight: '800', fontSize: 13 },
+    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scroll: { padding: 16, paddingBottom: 28 },
+    emptyCard: {
+        marginTop: 8,
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 14,
+    },
+    emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+    emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    iconBox: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        backgroundColor: '#FDF2F8',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+    cardSub: { marginTop: 2, fontSize: 12, color: '#64748B' },
+    statusBadge: {
+        borderRadius: 999,
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    statusBadgeMuted: { backgroundColor: '#F1F5F9' },
+    statusBadgeText: { fontSize: 11, color: '#047857', fontWeight: '700' },
+    statusBadgeTextMuted: { color: '#475569' },
+    cardActions: { marginTop: 12, flexDirection: 'row', gap: 8 },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+    },
+    actionBtnDanger: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderRadius: 10,
+        backgroundColor: '#FEF2F2',
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+    },
+    actionText: { fontSize: 12, color: '#475569', fontWeight: '700' },
+    actionDangerText: { fontSize: 12, color: '#DC2626', fontWeight: '700' },
 });

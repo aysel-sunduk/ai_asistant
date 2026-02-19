@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.aiasistan.common.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 
 /**
  * Uygulama genelinde fırlatılan istisnaları JSON olarak döner.
@@ -94,6 +95,14 @@ public class GlobalExceptionHandler {
                 message = "Gecersiz remindAt formati. Ornek: 2026-02-20T10:30:00+03:00";
             }
         }
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Validation hatasi";
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(message));

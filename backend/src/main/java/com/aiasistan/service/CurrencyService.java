@@ -369,7 +369,11 @@ public class CurrencyService {
             }
 
             out.sort(Comparator.comparingInt(r -> orderByCode.getOrDefault(r.getCurrencyCode(), Integer.MAX_VALUE)));
-            previousRateByBase.put(base + "::alpha", nextSnapshot);
+            Map<String, BigDecimal> mergedAlphaSnapshot = new LinkedHashMap<>(
+                previousRateByBase.getOrDefault(base + "::alpha", Map.of())
+            );
+            mergedAlphaSnapshot.putAll(nextSnapshot);
+            previousRateByBase.put(base + "::alpha", mergedAlphaSnapshot);
             alphaCacheByBase.put(base, out);
             lastAlphaSyncByBase.put(base, System.currentTimeMillis());
             return out;
@@ -519,7 +523,11 @@ public class CurrencyService {
             }
 
             out.sort(Comparator.comparingInt(r -> orderByCode.getOrDefault(r.getCurrencyCode(), Integer.MAX_VALUE)));
-            previousRateByBase.put(base, nextSnapshot);
+            Map<String, BigDecimal> mergedSnapshot = new LinkedHashMap<>(
+                previousRateByBase.getOrDefault(base, Map.of())
+            );
+            mergedSnapshot.putAll(nextSnapshot);
+            previousRateByBase.put(base, mergedSnapshot);
             return out;
         } catch (BadRequestException ex) {
             throw ex;

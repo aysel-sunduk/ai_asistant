@@ -15,21 +15,18 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { familyService } from '../../services/family.service';
 import { remindersService } from '../../services/reminders.service';
 import { socialService } from '../../services/social.service';
 import { userApi } from '../../src/api/user.api';
+import type { FamilyFinanceReportResponse } from '../../src/models/family.model';
 import type { Reminder } from '../../src/models/reminder.model';
 import type { FollowRequestItem } from '../../src/models/social.model';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMenuStore } from '../../src/store/menu.store';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
-
-const SHORTCUTS = [
-    { title: 'Finans', icon: 'wallet' as const, route: '/(tabs)/finance', color: '#4ECDC4' },
-    { title: 'Saglik', icon: 'heart' as const, route: '/(tabs)/health', color: '#FF6B6B' },
-    { title: 'Blog', icon: 'book' as const, route: '/(tabs)/blog', color: '#6C63FF' },
-];
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -37,6 +34,18 @@ export default function DashboardScreen() {
     const profile = useAuthStore((s) => s.profile);
     const setProfile = useAuthStore((s) => s.setProfile);
     const logout = useAuthStore((s) => s.logout);
+    const menuModules = useMenuStore((s) => s.modules);
+    const shortcutsIds = useMenuStore((s) => s.shortcuts);
+    const toggleShortcut = useMenuStore((s) => s.toggleShortcut);
+
+    const shortcuts = useMemo(() => {
+        const safeShortcutIds = shortcutsIds || [];
+        const safeModules = menuModules || [];
+        return safeShortcutIds
+            .map((id) => safeModules.find((m) => m.id === id))
+            .filter(Boolean) as typeof safeModules;
+    }, [shortcutsIds, menuModules]);
+
     const displayName = profile?.fullName?.trim()
         || `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim()
         || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '')
@@ -45,8 +54,10 @@ export default function DashboardScreen() {
         || 'Kullanici';
 
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [incomingFollowRequests, setIncomingFollowRequests] = useState<FollowRequestItem[]>([]);
+    const [financeReport, setFinanceReport] = useState<FamilyFinanceReportResponse | null>(null);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
     const [requestActionUserId, setRequestActionUserId] = useState<string | null>(null);
 
@@ -57,7 +68,7 @@ export default function DashboardScreen() {
                 setProfile(res.data.data);
             }
         } catch {
-            // Silent fallback: store'daki mevcut user/profile ile devam et
+            // Silent fallback
         }
     }, [setProfile]);
 
@@ -78,11 +89,21 @@ export default function DashboardScreen() {
         }
     }, []);
 
+    const loadFinanceSnapshot = useCallback(async () => {
+        try {
+            const report = await familyService.getTransactionsReport('MONTHLY');
+            setFinanceReport(report);
+        } catch {
+            setFinanceReport(null);
+        }
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             void loadProfile();
             void loadNotifications();
-        }, [loadNotifications, loadProfile]),
+            void loadFinanceSnapshot();
+        }, [loadNotifications, loadProfile, loadFinanceSnapshot]),
     );
 
     const pendingReminders = useMemo(
@@ -131,6 +152,15 @@ export default function DashboardScreen() {
         ]);
     };
 
+    const handleToggleShortcut = (id: string) => {
+        const safeShortcutIds = shortcutsIds || [];
+        if (!safeShortcutIds.includes(id) && safeShortcutIds.length >= 3) {
+            Alert.alert('Limit Dolu', 'Anasayfaya en fazla 3 hizli erisim ekleyebilirsiniz.');
+            return;
+        }
+        toggleShortcut(id);
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -172,21 +202,60 @@ export default function DashboardScreen() {
                     </Text>
                 </View>
 
-                <Text style={styles.sectionTitle}>Hizli Erisim</Text>
+                {financeReport && (
+                    <View style={styles.financeCard}>
+                        <View style={styles.financeHeader}>
+                            <Text style={styles.financeTitle}>Aylik Gelir/Gider</Text>
+                            <TouchableOpacity onPress={() => router.push('/(finance)/transactions')}>
+                                <Text style={styles.financeLink}>Detay</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.financeStatsRow}>
+                            <View style={styles.financeStat}>
+                                <Text style={styles.financeLabel}>Gelir</Text>
+                                <Text style={styles.financeIncome}>?{Number(financeReport.totalIncome || 0).toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.financeStat}>
+                                <Text style={styles.financeLabel}>Gider</Text>
+                                <Text style={styles.financeExpense}>?{Number(financeReport.totalExpense || 0).toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.financeStat}>
+                                <Text style={styles.financeLabel}>Net</Text>
+                                <Text style={[styles.financeNet, Number(financeReport.balance || 0) >= 0 ? styles.financeIncome : styles.financeExpense]}>
+                                    ?{Number(financeReport.balance || 0).toFixed(2)}
+                                </Text>
+                            </View>
+                        </View>
+                        <Text style={styles.financeCompare}>
+                            Onceki aya gore net: %{Number(financeReport.balanceChangePct || 0).toFixed(1)}
+                        </Text>
+                    </View>
+                )}
+
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Hizli Erisim</Text>
+                    <TouchableOpacity onPress={() => setShortcutsModalOpen(true)}>
+                        <Text style={styles.editLink}>Duzenle</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.shortcutsRow}>
-                    {SHORTCUTS.map((item) => (
+                    {shortcuts.map((item) => (
                         <TouchableOpacity
-                            key={item.title}
+                            key={item.id}
                             style={styles.shortcutCard}
                             activeOpacity={0.7}
                             onPress={() => router.push(item.route as any)}
                         >
                             <View style={[styles.shortcutIcon, { backgroundColor: item.color + '18' }]}>
-                                <Ionicons name={item.icon} size={26} color={item.color} />
+                                <Ionicons name={item.icon as any} size={26} color={item.color} />
                             </View>
                             <Text style={styles.shortcutTitle}>{item.title}</Text>
                         </TouchableOpacity>
                     ))}
+                    {shortcuts.length === 0 && (
+                        <Text style={styles.emptyShortcuts}>Hizli erisim eklemek icin Duzenle butonuna tiklayin.</Text>
+                    )}
                 </View>
 
                 <Text style={styles.sectionTitle}>Yaklasan Hatirlaticilar</Text>
@@ -308,6 +377,47 @@ export default function DashboardScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            <Modal visible={shortcutsModalOpen} transparent animationType="slide" onRequestClose={() => setShortcutsModalOpen(false)}>
+                <Pressable style={styles.modalBackdrop} onPress={() => setShortcutsModalOpen(false)}>
+                    <Pressable style={styles.modalCard} onPress={() => undefined}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>Hizli Erisim Duzenle</Text>
+                                <Text style={styles.modalSub}>En fazla 3 adet secilebilir</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShortcutsModalOpen(false)}>
+                                <Ionicons name="close" size={20} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                            {menuModules.map((module) => {
+                                const isSelected = (shortcutsIds || []).includes(module.id);
+                                return (
+                                    <TouchableOpacity
+                                        key={module.id}
+                                        style={[styles.moduleOption, isSelected && styles.moduleOptionSelected]}
+                                        onPress={() => handleToggleShortcut(module.id)}
+                                    >
+                                        <View style={[styles.moduleIcon, { backgroundColor: module.color + '20' }]}>
+                                            <Ionicons name={module.icon as any} size={20} color={module.color} />
+                                        </View>
+                                        <Text style={styles.moduleName}>{module.title}</Text>
+                                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <TouchableOpacity style={styles.modalAction} onPress={() => setShortcutsModalOpen(false)}>
+                            <Text style={styles.modalActionText}>Tamam</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -371,7 +481,32 @@ const styles = StyleSheet.create({
     aiCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
     aiCardTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
     aiCardText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 20 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E', marginBottom: 16 },
+    financeCard: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 14,
+        marginBottom: 22,
+    },
+    financeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    financeTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+    financeLink: { fontSize: 12, fontWeight: '700', color: PURPLE },
+    financeStatsRow: { flexDirection: 'row', gap: 8 },
+    financeStat: { flex: 1 },
+    financeLabel: { fontSize: 11, color: '#64748B', marginBottom: 4 },
+    financeIncome: { fontSize: 13, fontWeight: '800', color: '#16A34A' },
+    financeExpense: { fontSize: 13, fontWeight: '800', color: '#DC2626' },
+    financeNet: { fontSize: 13, fontWeight: '800' },
+    financeCompare: { marginTop: 10, fontSize: 12, color: '#475569' },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A2E' },
+    editLink: { fontSize: 14, color: PURPLE, fontWeight: '600' },
     shortcutsRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
     shortcutCard: {
         flex: 1,
@@ -383,6 +518,7 @@ const styles = StyleSheet.create({
     },
     shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     shortcutTitle: { fontSize: 13, fontWeight: '600', color: '#1A1A2E' },
+    emptyShortcuts: { fontSize: 14, color: GRAY, fontStyle: 'italic', flex: 1, textAlign: 'center', paddingVertical: 10 },
     emptyCard: {
         backgroundColor: '#F8F9FA',
         borderRadius: 18,
@@ -408,24 +544,23 @@ const styles = StyleSheet.create({
     modalBackdrop: {
         flex: 1,
         backgroundColor: 'rgba(15,23,42,0.35)',
-        justifyContent: 'flex-start',
-        paddingTop: Platform.OS === 'ios' ? 80 : 60,
-        paddingHorizontal: 16,
+        justifyContent: 'center',
+        padding: 20,
     },
     modalCard: {
         backgroundColor: '#fff',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        padding: 14,
+        borderRadius: 20,
+        padding: 20,
+        maxHeight: '80%',
     },
     modalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 8,
+        marginBottom: 16,
     },
-    modalTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A2E' },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A2E' },
+    modalSub: { fontSize: 12, color: GRAY, marginTop: 2 },
     modalEmpty: { color: '#64748B', fontSize: 13, paddingVertical: 8 },
     modalLoadingWrap: { paddingVertical: 18, alignItems: 'center' },
     notificationSection: { marginBottom: 6 },
@@ -464,23 +599,55 @@ const styles = StyleSheet.create({
     },
     notificationTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
     notificationSub: { fontSize: 12, color: '#64748B', marginTop: 2 },
-    modalActionsRow: { marginTop: 10, flexDirection: 'row', gap: 8 },
+    modalActionsRow: { marginTop: 16, flexDirection: 'row', gap: 8 },
     modalActionGhost: {
         flex: 1,
-        borderRadius: 10,
-        paddingVertical: 10,
+        borderRadius: 12,
+        paddingVertical: 12,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#CBD5E1',
         backgroundColor: '#fff',
     },
-    modalActionGhostText: { color: '#334155', fontSize: 13, fontWeight: '800' },
+    modalActionGhostText: { color: '#334155', fontSize: 14, fontWeight: '800' },
     modalAction: {
-        flex: 1,
-        borderRadius: 10,
-        paddingVertical: 10,
+        borderRadius: 12,
+        paddingVertical: 12,
         alignItems: 'center',
         backgroundColor: PURPLE,
+        marginTop: 10,
     },
-    modalActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+    modalActionText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+    moduleOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    moduleOptionSelected: {
+        backgroundColor: '#F8F9FA',
+    },
+    moduleIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    moduleName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: PURPLE,
+        borderColor: PURPLE,
+    },
 });

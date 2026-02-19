@@ -1,5 +1,6 @@
 package com.aiasistan.service;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -11,8 +12,10 @@ import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.ShoppingItemDto;
 import com.aiasistan.dto.ShoppingListDto;
 import com.aiasistan.exception.NotFoundException;
+import com.aiasistan.model.FamilyTransaction;
 import com.aiasistan.model.ShoppingItem;
 import com.aiasistan.model.ShoppingList;
+import com.aiasistan.repository.FamilyTransactionRepository;
 import com.aiasistan.repository.ShoppingItemRepository;
 import com.aiasistan.repository.ShoppingListRepository;
 
@@ -21,15 +24,18 @@ public class ShoppingService {
 
     private final ShoppingListRepository shoppingListRepository;
     private final ShoppingItemRepository shoppingItemRepository;
+    private final FamilyTransactionRepository familyTransactionRepository;
     private final UserService userService;
 
     public ShoppingService(
         ShoppingListRepository shoppingListRepository,
         ShoppingItemRepository shoppingItemRepository,
+        FamilyTransactionRepository familyTransactionRepository,
         UserService userService
     ) {
         this.shoppingListRepository = shoppingListRepository;
         this.shoppingItemRepository = shoppingItemRepository;
+        this.familyTransactionRepository = familyTransactionRepository;
         this.userService = userService;
     }
 
@@ -79,6 +85,9 @@ public class ShoppingService {
     public void deleteList(String userEmail, UUID listId) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         ShoppingList list = findOwnedList(userId, listId);
+        for (ShoppingItem item : shoppingItemRepository.findByList_Id(listId, Pageable.unpaged()).getContent()) {
+            deleteOrphanedShoppingExpense(userId, item.getId());
+        }
         shoppingItemRepository.deleteByList_Id(listId);
         shoppingListRepository.delete(list);
     }
@@ -91,8 +100,9 @@ public class ShoppingService {
         ShoppingItem item = new ShoppingItem();
         item.setList(list);
         applyItemRequest(item, request);
-
-        return ShoppingItemDto.Response.from(shoppingItemRepository.save(item));
+        ShoppingItem saved = shoppingItemRepository.save(item);
+        syncShoppingExpense(userId, saved);
+        return ShoppingItemDto.Response.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -121,8 +131,9 @@ public class ShoppingService {
 
         ShoppingItem item = findItemInList(listId, itemId);
         applyItemRequest(item, request);
-
-        return ShoppingItemDto.Response.from(shoppingItemRepository.save(item));
+        ShoppingItem saved = shoppingItemRepository.save(item);
+        syncShoppingExpense(userId, saved);
+        return ShoppingItemDto.Response.from(saved);
     }
 
     @Transactional
@@ -132,8 +143,9 @@ public class ShoppingService {
 
         ShoppingItem item = findItemInList(listId, itemId);
         item.setIsChecked(Boolean.TRUE.equals(checked));
-
-        return ShoppingItemDto.Response.from(shoppingItemRepository.save(item));
+        ShoppingItem saved = shoppingItemRepository.save(item);
+        syncShoppingExpense(userId, saved);
+        return ShoppingItemDto.Response.from(saved);
     }
 
     @Transactional
@@ -142,6 +154,7 @@ public class ShoppingService {
         findOwnedList(userId, listId);
 
         ShoppingItem item = findItemInList(listId, itemId);
+        deleteOrphanedShoppingExpense(userId, itemId);
         shoppingItemRepository.delete(item);
     }
 
@@ -189,5 +202,36 @@ public class ShoppingService {
         item.setEstimatedPriceMinor(request.getEstimatedPriceMinor());
         item.setIsChecked(request.getIsChecked() != null ? request.getIsChecked() : Boolean.FALSE);
         item.setNote(request.getNote());
+    }
+
+    private void syncShoppingExpense(UUID userId, ShoppingItem item) {
+        String noteKey = shoppingExpenseNote(item.getId());
+        Long estimated = item.getEstimatedPriceMinor();
+
+        if (estimated == null || estimated <= 0) {
+            deleteOrphanedShoppingExpense(userId, item.getId());
+            return;
+        }
+
+        FamilyTransaction tx = familyTransactionRepository.findByUserIdAndNote(userId, noteKey)
+            .orElseGet(FamilyTransaction::new);
+
+        tx.setUserId(userId);
+        tx.setType("EXPENSE");
+        tx.setAmountMinor(estimated);
+        tx.setCurrency("TRY");
+        tx.setCategory("shopping");
+        tx.setOccurredOn(LocalDate.now());
+        tx.setNote(noteKey);
+        familyTransactionRepository.save(tx);
+    }
+
+    private void deleteOrphanedShoppingExpense(UUID userId, UUID itemId) {
+        familyTransactionRepository.findByUserIdAndNote(userId, shoppingExpenseNote(itemId))
+            .ifPresent(familyTransactionRepository::delete);
+    }
+
+    private String shoppingExpenseNote(UUID itemId) {
+        return "shopping_item:" + itemId;
     }
 }

@@ -5,6 +5,7 @@ import com.aiasistan.dto.request.FamilyTransactionRequest;
 import com.aiasistan.dto.response.CurrencyRateResponse;
 import com.aiasistan.dto.response.FamilyBirthdayResponse;
 import com.aiasistan.dto.response.FamilyFinanceSummaryResponse;
+import com.aiasistan.dto.response.FamilyFinanceReportResponse;
 import com.aiasistan.dto.response.FamilyTransactionResponse;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.FamilyBirthday;
@@ -25,9 +26,11 @@ import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.temporal.WeekFields;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -120,6 +123,65 @@ public class FamilyService {
         response.setTotalIncome(income);
         response.setTotalExpense(expense);
         response.setBalance(income.subtract(expense).setScale(2, RoundingMode.HALF_UP));
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public FamilyFinanceReportResponse getFinanceReport(String userEmail, String period) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        String normalized = period == null ? "MONTHLY" : period.trim().toUpperCase(Locale.ROOT);
+        if (!"WEEKLY".equals(normalized) && !"MONTHLY".equals(normalized)) {
+            normalized = "MONTHLY";
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate;
+        LocalDate endDate;
+        LocalDate previousStartDate;
+        LocalDate previousEndDate;
+
+        if ("WEEKLY".equals(normalized)) {
+            LocalDate weekStart = today.with(WeekFields.ISO.dayOfWeek(), 1);
+            startDate = weekStart;
+            endDate = weekStart.plusDays(6);
+            previousStartDate = startDate.minusWeeks(1);
+            previousEndDate = endDate.minusWeeks(1);
+        } else {
+            startDate = today.withDayOfMonth(1);
+            endDate = today.withDayOfMonth(today.lengthOfMonth());
+            LocalDate prevMonth = startDate.minusMonths(1);
+            previousStartDate = prevMonth.withDayOfMonth(1);
+            previousEndDate = prevMonth.withDayOfMonth(prevMonth.lengthOfMonth());
+        }
+
+        Long incomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "INCOME", startDate, endDate);
+        Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "EXPENSE", startDate, endDate);
+        Long previousIncomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
+            userId, "INCOME", previousStartDate, previousEndDate);
+        Long previousExpenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
+            userId, "EXPENSE", previousStartDate, previousEndDate);
+
+        BigDecimal income = minorToAmount(incomeMinor);
+        BigDecimal expense = minorToAmount(expenseMinor);
+        BigDecimal previousIncome = minorToAmount(previousIncomeMinor);
+        BigDecimal previousExpense = minorToAmount(previousExpenseMinor);
+        BigDecimal balance = income.subtract(expense).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal previousBalance = previousIncome.subtract(previousExpense).setScale(2, RoundingMode.HALF_UP);
+
+        FamilyFinanceReportResponse response = new FamilyFinanceReportResponse();
+        response.setPeriod(normalized);
+        response.setStartDate(startDate);
+        response.setEndDate(endDate);
+        response.setTotalIncome(income);
+        response.setTotalExpense(expense);
+        response.setBalance(balance);
+        response.setPreviousIncome(previousIncome);
+        response.setPreviousExpense(previousExpense);
+        response.setPreviousBalance(previousBalance);
+        response.setIncomeChangePct(calculateChangePct(previousIncome, income));
+        response.setExpenseChangePct(calculateChangePct(previousExpense, expense));
+        response.setBalanceChangePct(calculateChangePct(previousBalance, balance));
+        response.setBuckets(buildBuckets(userId, startDate, endDate, normalized));
         return response;
     }
 
@@ -237,6 +299,84 @@ public class FamilyService {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return BigDecimal.valueOf(minor).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateChangePct(BigDecimal previous, BigDecimal current) {
+        if (previous == null || previous.compareTo(BigDecimal.ZERO) == 0) {
+            return current.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP);
+        }
+        return current.subtract(previous)
+            .multiply(BigDecimal.valueOf(100))
+            .divide(previous.abs(), 2, RoundingMode.HALF_UP);
+    }
+
+    private List<FamilyFinanceReportResponse.Bucket> buildBuckets(
+        UUID userId,
+        LocalDate startDate,
+        LocalDate endDate,
+        String period
+    ) {
+        List<FamilyTransaction> transactions = transactionRepository
+            .findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(userId, startDate, endDate);
+
+        List<FamilyFinanceReportResponse.Bucket> buckets = new java.util.ArrayList<>();
+
+        if ("WEEKLY".equals(period)) {
+            for (int i = 0; i < 7; i++) {
+                LocalDate date = startDate.plusDays(i);
+                buckets.add(buildBucket(date.toString(), date, date, transactions));
+            }
+            return buckets;
+        }
+
+        LocalDate cursor = startDate;
+        int index = 1;
+        while (!cursor.isAfter(endDate)) {
+            LocalDate bucketEnd = cursor.plusDays(6);
+            if (bucketEnd.isAfter(endDate)) {
+                bucketEnd = endDate;
+            }
+            String label = "W" + index++;
+            buckets.add(buildBucket(label, cursor, bucketEnd, transactions));
+            cursor = bucketEnd.plusDays(1);
+        }
+
+        return buckets;
+    }
+
+    private FamilyFinanceReportResponse.Bucket buildBucket(
+        String label,
+        LocalDate startDate,
+        LocalDate endDate,
+        List<FamilyTransaction> transactions
+    ) {
+        long incomeMinor = 0L;
+        long expenseMinor = 0L;
+        for (FamilyTransaction tx : transactions) {
+            if (tx.getOccurredOn().isBefore(startDate) || tx.getOccurredOn().isAfter(endDate)) {
+                continue;
+            }
+            if ("INCOME".equalsIgnoreCase(tx.getType())) {
+                incomeMinor += tx.getAmountMinor() == null ? 0L : tx.getAmountMinor();
+            } else {
+                expenseMinor += tx.getAmountMinor() == null ? 0L : tx.getAmountMinor();
+            }
+        }
+
+        BigDecimal income = minorToAmount(incomeMinor);
+        BigDecimal expense = minorToAmount(expenseMinor);
+        BigDecimal balance = income.subtract(expense).setScale(2, RoundingMode.HALF_UP);
+
+        FamilyFinanceReportResponse.Bucket bucket = new FamilyFinanceReportResponse.Bucket();
+        bucket.setLabel(label);
+        bucket.setStartDate(startDate);
+        bucket.setEndDate(endDate);
+        bucket.setIncome(income);
+        bucket.setExpense(expense);
+        bucket.setBalance(balance);
+        return bucket;
     }
 
     private boolean isUpcoming(LocalDate birthDate, LocalDate now, LocalDate limit) {

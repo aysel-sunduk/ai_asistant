@@ -29,6 +29,7 @@ import com.aiasistan.dto.request.FamilyTransactionRequest;
 import com.aiasistan.dto.response.CurrencyRateResponse;
 import com.aiasistan.dto.response.FamilyBirthdayResponse;
 import com.aiasistan.dto.response.FamilyFinanceSummaryResponse;
+import com.aiasistan.dto.response.FamilyFinanceReportResponse;
 import com.aiasistan.dto.response.FamilyTransactionResponse;
 import com.aiasistan.service.FamilyService;
 
@@ -99,6 +100,15 @@ public ResponseEntity<ApiResponse<Page<FamilyTransactionResponse>>> getTransacti
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         FamilyFinanceSummaryResponse response = familyService.getFinanceSummary(authentication.getName(), startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/transactions/report")
+    public ResponseEntity<ApiResponse<FamilyFinanceReportResponse>> getReport(
+        Authentication authentication,
+        @RequestParam(defaultValue = "MONTHLY") String period
+    ) {
+        FamilyFinanceReportResponse response = familyService.getFinanceReport(authentication.getName(), period);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
