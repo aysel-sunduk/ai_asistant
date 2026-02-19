@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Platform,
@@ -22,6 +22,24 @@ const GRAY = '#9BA1A6';
 const getPnlColor = (val: number) => (val >= 0 ? '#34D399' : '#FF6B6B');
 const getPnlPrefix = (val: number) => (val >= 0 ? '+' : '');
 
+const formatServerTime = (isoString?: string) => {
+    if (!isoString) return '';
+    try {
+        // Extract time part directly from ISO string (HH:mm:ss) to match server time text
+        // Format: 2026-02-19T07:53:03.840Z -> 07:53:03
+        if (isoString.includes('T')) {
+            const timePart = isoString.split('T')[1];
+            if (timePart) {
+                return timePart.split('.')[0];
+            }
+        }
+        // Fallback to local time if parsing fails
+        return new Date(isoString).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+        return '';
+    }
+};
+
 export default function ExchangeRatesScreen() {
     const router = useRouter();
 
@@ -34,7 +52,9 @@ export default function ExchangeRatesScreen() {
 
     // Cache for latest rates of searched items to avoid refetching
     const [searchedRates, setSearchedRates] = useState<Record<string, CurrencyRateResponse>>({});
-    const [loadingRate, setLoadingRate] = useState<string | null>(null);
+
+    // UseRef to track in-flight requests without triggering re-renders
+    const fetchingCodes = React.useRef<Set<string>>(new Set());
 
     const loadData = useCallback(async () => {
         setError(null);
@@ -44,8 +64,40 @@ export default function ExchangeRatesScreen() {
                 financeService.getSupportedCurrencies(),
             ]);
 
-            setFavorites(Array.isArray(favRes) ? favRes : []);
-            setSupportedInfo(Array.isArray(supRes) ? supRes : []);
+            let initialFavs = Array.isArray(favRes) ? favRes : [];
+            const supported = Array.isArray(supRes) ? supRes : [];
+
+            // Enrich favorites with latest live data to ensure accurate lastUpdatedAt
+            if (initialFavs.length > 0) {
+                try {
+                    // Use bulk fetch to avoid rate limits and getting "current time" from backend on failures
+                    // Assuming 'TRY' base is what we want for these
+                    const allRates = await financeService.getLatestRates('TRY');
+
+                    // Create a lookup map
+                    const ratesMap = new Map(allRates.map(r => [r.currencyCode, r]));
+
+                    initialFavs = initialFavs.map((fav, index) => {
+                        const live = ratesMap.get(fav.currencyCode);
+                        if (live) {
+                            return {
+                                ...fav,
+                                rate: live.rate,
+                                changeRate: live.changeRate,
+                                lastUpdatedAt: live.lastUpdatedAt,
+                                providerTimestamp: live.providerTimestamp,
+                                currencyName: live.currencyName || fav.currencyName,
+                            };
+                        }
+                        return fav;
+                    });
+                } catch (innerErr) {
+                    console.warn('Failed to enrich favorites with live rates:', innerErr);
+                }
+            }
+
+            setFavorites(initialFavs);
+            setSupportedInfo(supported);
         } catch (err: any) {
             console.warn('Exchange rates error:', err?.message || err);
             setError(err?.response?.data?.message || err?.message || 'Veriler yüklenemedi');
@@ -57,13 +109,7 @@ export default function ExchangeRatesScreen() {
 
     useEffect(() => {
         loadData();
-    }, []);
-
-    useEffect(() => {
-        if (favorites.length > 0) {
-            console.log('First favorite debug:', JSON.stringify(favorites[0], null, 2));
-        }
-    }, [favorites]);
+    }, [loadData]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -71,17 +117,17 @@ export default function ExchangeRatesScreen() {
     };
 
     const fetchRateForCode = async (code: string) => {
-        // If we already have it or it's loading, skip
-        if (searchedRates[code] || loadingRate === code) return;
+        // If we already have it or it's actively fetching, skip
+        if (searchedRates[code] || fetchingCodes.current.has(code)) return;
 
-        setLoadingRate(code);
+        fetchingCodes.current.add(code);
         try {
             const rate = await financeService.getLatestRate(code);
             setSearchedRates(prev => ({ ...prev, [code]: rate }));
         } catch (e) {
             console.warn(`Failed to fetch rate for ${code}`, e);
         } finally {
-            setLoadingRate(null);
+            fetchingCodes.current.delete(code);
         }
     };
 
@@ -102,8 +148,9 @@ export default function ExchangeRatesScreen() {
                 rate: rate?.rate || 0,
                 changeRate: rate?.changeRate || 0,
                 baseCurrency: 'TRY',
-                rateDate: new Date().toISOString(),
-                lastUpdatedAt: rate?.lastUpdatedAt
+                rateDate: rate?.lastUpdatedAt || new Date().toISOString(),
+                lastUpdatedAt: rate?.lastUpdatedAt,
+                providerTimestamp: rate?.providerTimestamp
             });
         }
         setFavorites(newFavs);
@@ -114,9 +161,8 @@ export default function ExchangeRatesScreen() {
             } else {
                 await financeService.addFavorite({ currencyCode });
             }
-            // Refresh favorites to get real IDs/data
-            const updatedFavs = await financeService.getFavorites();
-            setFavorites(updatedFavs);
+            // Reload all data to ensure consistency and fresh rates
+            loadData();
         } catch (err) {
             console.error('Toggle favorite error:', err);
             // Revert on error
@@ -129,9 +175,9 @@ export default function ExchangeRatesScreen() {
     // If search is active, show matching supported currencies
     const isSearching = search.trim().length > 0;
 
-    const filteredSupported = isSearching
+    const filteredSupported = useMemo(() => isSearching
         ? supportedInfo.filter(code => code.toLowerCase().includes(search.toLowerCase()))
-        : [];
+        : [], [isSearching, supportedInfo, search]);
 
     // Trigger fetch for visible search results if missing
     useEffect(() => {
@@ -233,8 +279,8 @@ export default function ExchangeRatesScreen() {
                                             />
                                         </TouchableOpacity>
                                         <View style={{ flex: 1, marginLeft: 12 }}>
-                                            <Text style={styles.currencyCode}>{code}</Text>
-                                            <Text style={styles.currencyName}>{displayName || code}</Text>
+                                            <Text style={styles.currencyCode}>{displayName || code}</Text>
+                                            <Text style={styles.currencyName}>{code}</Text>
                                         </View>
                                         <View style={styles.currencyRight}>
                                             {displayRate ? (
@@ -245,9 +291,9 @@ export default function ExchangeRatesScreen() {
                                                             {getPnlPrefix(displayChange)}{Number(displayChange).toFixed(2)}%
                                                         </Text>
                                                     )}
-                                                    {(favData?.lastUpdatedAt || rateInfo?.lastUpdatedAt) && (
+                                                    {(favData?.providerTimestamp || favData?.lastUpdatedAt || rateInfo?.providerTimestamp || rateInfo?.lastUpdatedAt) && (
                                                         <Text style={styles.lastUpdatedText}>
-                                                            {new Date(favData?.lastUpdatedAt || rateInfo?.lastUpdatedAt || '').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                            {formatServerTime(favData?.providerTimestamp || favData?.lastUpdatedAt || rateInfo?.providerTimestamp || rateInfo?.lastUpdatedAt)}
                                                         </Text>
                                                     )}
                                                 </>
@@ -290,8 +336,8 @@ export default function ExchangeRatesScreen() {
                                                 </Text>
                                             </View>
                                             <View style={{ flex: 1, marginLeft: 12 }}>
-                                                <Text style={styles.currencyCode}>{fav.currencyCode}</Text>
-                                                <Text style={styles.currencyName}>{fav.currencyName}</Text>
+                                                <Text style={styles.currencyCode}>{fav.currencyName || fav.currencyCode}</Text>
+                                                <Text style={styles.currencyName}>{fav.currencyCode}</Text>
                                             </View>
                                             <View style={styles.currencyRight}>
                                                 <Text style={styles.currencyRate}>{Number(fav.rate).toFixed(4)}</Text>
@@ -307,9 +353,9 @@ export default function ExchangeRatesScreen() {
                                                         </Text>
                                                     </View>
                                                 )}
-                                                {fav.lastUpdatedAt && (
+                                                {(fav.providerTimestamp || fav.lastUpdatedAt) && (
                                                     <Text style={styles.lastUpdatedText}>
-                                                        {new Date(fav.lastUpdatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                        {formatServerTime(fav.providerTimestamp || fav.lastUpdatedAt)}
                                                     </Text>
                                                 )}
                                             </View>

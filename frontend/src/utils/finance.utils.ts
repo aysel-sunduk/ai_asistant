@@ -9,3 +9,24 @@ export const formatCurrency = (val: number | null | undefined, currency = '₺')
 export const getPnlColor = (val: number) => (val >= 0 ? '#34D399' : '#FF6B6B');
 
 export const getPnlPrefix = (val: number) => (val >= 0 ? '+' : '');
+
+export const getInvestmentDisplayName = (symbol: string, assetType: string): string => {
+    if (!symbol) return '';
+
+    // Gold/Silver specific mappings
+    if (symbol === 'GOLD_GRAM') return 'Gram Altın';
+    if (symbol === 'SILVER_GRAM') return 'Gram Gümüş';
+    if (symbol === 'XAU/USD') return 'Ons Altın';
+    if (symbol === 'XAG/USD') return 'Ons Gümüş';
+    if (symbol === 'BTC') return 'Bitcoin';
+    if (symbol === 'ETH') return 'Ethereum';
+
+    // Common Currencies
+    if (symbol === 'USD') return 'Amerikan Doları';
+    if (symbol === 'EUR') return 'Euro';
+    if (symbol === 'GBP') return 'Sterlin';
+    if (symbol === 'CHF') return 'İsviçre Frangı';
+
+    // For others, use symbol or basic formatting
+    return symbol;
+};

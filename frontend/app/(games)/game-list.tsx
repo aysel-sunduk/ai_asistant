@@ -1,19 +1,59 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatTime, getBestResult, getGameResults, type GameResult } from '../../src/utils/game.utils';
 
 const COLOR = '#A78BFA';
 
-const GAMES = [
-    { id: '1', title: 'Hafıza Oyunu', desc: 'Kartları eşleştir', icon: 'grid-outline' as const, best: '32 sn', plays: 14 },
-    { id: '2', title: 'Bilgi Yarışması', desc: '10 soruluk quiz', icon: 'help-circle-outline' as const, best: '8/10', plays: 7 },
-    { id: '3', title: 'Sudoku', desc: 'Klasik bulmaca', icon: 'apps-outline' as const, best: '5:42', plays: 22 },
-    { id: '4', title: 'Kelime Avı', desc: 'Kelimeleri bul', icon: 'text-outline' as const, best: '—', plays: 0 },
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+interface GameInfo {
+    id: string;
+    key: string;
+    title: string;
+    desc: string;
+    icon: IoniconsName;
+    route: string;
+    bestLabel: string;
+}
+
+const GAMES: GameInfo[] = [
+    { id: '1', key: 'memory', title: 'Hafıza Oyunu', desc: 'Kartları eşleştir', icon: 'grid-outline', route: '/(games)/memory', bestLabel: 'süre' },
+    { id: '2', key: '2048', title: '2048', desc: 'Sayı bulmacası', icon: 'cube-outline', route: '/(games)/quiz', bestLabel: 'skor' },
+    { id: '3', key: 'sudoku', title: 'Sudoku', desc: 'Klasik bulmaca', icon: 'apps-outline', route: '/(games)/sudoku', bestLabel: 'süre' },
 ];
 
 export default function GameListScreen() {
     const router = useRouter();
+    const [bestResults, setBestResults] = useState<Record<string, GameResult | null>>({});
+    const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+
+    useFocusEffect(
+        useCallback(() => {
+            const loadData = async () => {
+                const bests: Record<string, GameResult | null> = {};
+                const counts: Record<string, number> = {};
+                for (const game of GAMES) {
+                    bests[game.key] = await getBestResult(game.key);
+                    const results = await getGameResults(game.key);
+                    counts[game.key] = results.length;
+                }
+                setBestResults(bests);
+                setPlayCounts(counts);
+            };
+            loadData();
+        }, [])
+    );
+
+    const getBestDisplay = (game: GameInfo): string => {
+        const best = bestResults[game.key];
+        if (!best) return '—';
+        if (game.key === '2048') return `${best.score || 0}`;
+        return formatTime(best.time);
+    };
+
+    const totalPlays = Object.values(playCounts).reduce((sum, c) => sum + c, 0);
 
     return (
         <View style={styles.container}>
@@ -24,26 +64,36 @@ export default function GameListScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>🎮 Oyunlar</Text>
-                    <View style={{ width: 40 }} />
+                    <TouchableOpacity
+                        onPress={() => router.push('/(games)/leaderboard' as any)}
+                        style={styles.backBtn}
+                    >
+                        <Ionicons name="podium-outline" size={22} color="#fff" />
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.statsRow}>
                     <View style={styles.stat}>
                         <Ionicons name="trophy" size={20} color="#FFD93D" />
-                        <Text style={styles.statNum}>43</Text>
+                        <Text style={styles.statNum}>{totalPlays}</Text>
                         <Text style={styles.statLabel}>Toplam Oynama</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.stat}>
-                        <Ionicons name="flame" size={20} color="#FF6B6B" />
-                        <Text style={styles.statNum}>5</Text>
-                        <Text style={styles.statLabel}>Gün Serisi</Text>
+                        <Ionicons name="game-controller" size={20} color="#4ADE80" />
+                        <Text style={styles.statNum}>{GAMES.length}</Text>
+                        <Text style={styles.statLabel}>Oyun</Text>
                     </View>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 {GAMES.map((g) => (
-                    <TouchableOpacity key={g.id} style={styles.card} activeOpacity={0.7}>
+                    <TouchableOpacity
+                        key={g.id}
+                        style={styles.card}
+                        activeOpacity={0.7}
+                        onPress={() => router.push(g.route as any)}
+                    >
                         <View style={styles.iconBox}>
                             <Ionicons name={g.icon} size={24} color={COLOR} />
                         </View>
@@ -53,11 +103,24 @@ export default function GameListScreen() {
                         </View>
                         <View style={styles.rightCol}>
                             <Text style={styles.bestLabel}>En iyi</Text>
-                            <Text style={styles.bestVal}>{g.best}</Text>
-                            <Text style={styles.playsText}>{g.plays} oynama</Text>
+                            <Text style={styles.bestVal}>{getBestDisplay(g)}</Text>
+                            <Text style={styles.playsText}>{playCounts[g.key] || 0} oynama</Text>
                         </View>
+                        <Ionicons name="chevron-forward" size={18} color="#C4C4C4" style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
                 ))}
+
+                {/* Daily Challenge Banner */}
+                <View style={styles.dailyBanner}>
+                    <View style={styles.dailyLeft}>
+                        <Text style={styles.dailyEmoji}>🔥</Text>
+                        <View>
+                            <Text style={styles.dailyTitle}>Günlük Meydan Okuma</Text>
+                            <Text style={styles.dailySub}>Her gün yeni bulmaca, sürenle yarış!</Text>
+                        </View>
+                    </View>
+                    <Ionicons name="arrow-forward-circle" size={28} color={COLOR} />
+                </View>
             </ScrollView>
         </View>
     );
@@ -94,4 +157,14 @@ const styles = StyleSheet.create({
     bestLabel: { fontSize: 10, color: '#9BA1A6' },
     bestVal: { fontSize: 16, fontWeight: '800', color: COLOR },
     playsText: { fontSize: 10, color: '#C4C4C4', marginTop: 2 },
+
+    dailyBanner: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: COLOR + '12', borderRadius: 18, padding: 18, marginTop: 8,
+        borderWidth: 1.5, borderColor: COLOR + '30',
+    },
+    dailyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+    dailyEmoji: { fontSize: 28 },
+    dailyTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
+    dailySub: { fontSize: 12, color: '#9BA1A6', marginTop: 2 },
 });

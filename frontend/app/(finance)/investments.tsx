@@ -8,19 +8,21 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Modal,
     Platform,
     RefreshControl,
     SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
 import type { CurrencyHoldingResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
-import { formatCurrency, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
+import { formatCurrency, getInvestmentDisplayName, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -34,9 +36,18 @@ export default function InvestmentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
+
+    // Favorites State
     const [favoriteInvestmentIds, setFavoriteInvestmentIds] = useState<string[]>([]);
 
-    // Load favorites from backend
+    // Editing State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingItem, setEditingItem] = useState<InvestmentResponse | null>(null);
+    const [editQuantity, setEditQuantity] = useState('');
+    const [editCost, setEditCost] = useState('');
+    const [savingEdit, setSavingEdit] = useState(false);
+
+    // Load favorites
     const loadFavorites = useCallback(async () => {
         try {
             const favs = await financeService.getFavoriteInvestments();
@@ -48,7 +59,6 @@ export default function InvestmentsScreen() {
 
     const toggleFavoriteInvestment = useCallback(async (investmentId: string) => {
         try {
-            // Optimistic update
             setFavoriteInvestmentIds((prev) => {
                 return prev.includes(investmentId)
                     ? prev.filter((id) => id !== investmentId)
@@ -61,26 +71,67 @@ export default function InvestmentsScreen() {
         }
     }, [loadFavorites]);
 
-    // ... (loadFavorites and toggleFavoriteInvestment remain unchanged)
+    // Editing Logic
+    const handleEdit = (item: InvestmentResponse) => {
+        setEditingItem(item);
+        setEditQuantity(item.quantity.toString());
+        // For investment response, cost is likely in avgCostMinor.
+        // If it was a currency originally, we mapped it.
+        const unitCost = item.avgCostMinor ? item.avgCostMinor / 100 : 0;
+        setEditCost(unitCost.toString());
+        setIsEditing(true); // Set editing mode to true
+    };
 
-    // Only show GOLD, SILVER, OTHER, and CURRENCY in the main list
-    const filteredInvestments = useMemo(
-        () => {
-            console.log('[InvestmentsScreen] Total investments before filter:', investments.length);
-            const filtered = investments.filter((investment) => {
-                const match = ['GOLD', 'SILVER', 'OTHER', 'CURRENCY'].includes(investment.assetType);
-                if (!match) console.log('[InvestmentsScreen] Filtered out:', investment.assetType, investment.symbol);
-                return match;
-            });
-            console.log('[InvestmentsScreen] Filtered investments count:', filtered.length);
-            return filtered;
-        },
-        [investments],
-    );
+    const handleSaveEdit = async () => {
+        if (!editingItem) return;
+        setSavingEdit(true);
+        try {
+            const qty = parseFloat(editQuantity.replace(',', '.'));
+            const cost = parseFloat(editCost.replace(',', '.'));
+
+            if (isNaN(qty) || qty <= 0) {
+                Alert.alert('Hata', 'Geçersiz miktar');
+                setSavingEdit(false);
+                return;
+            }
+
+            if (editingItem.assetType === 'CURRENCY') {
+                const realId = editingItem.id.replace('currency_', '');
+                await financeService.updateCurrencyHolding(realId, {
+                    currencyCode: editingItem.symbol,
+                    amount: qty,
+                    buyRate: cost,
+                    buyDate: new Date().toISOString(),
+                });
+            } else {
+                const originalQty = editingItem.quantity;
+                if (qty !== originalQty) {
+                    Alert.alert('Bilgi', 'Hisse/Emtia miktar güncellemesi şu an desteklenmemektedir. Sadece maliyet güncellendi.');
+                }
+                const costMinor = Math.round(cost * 100);
+                await financeService.updateInvestmentPrice(editingItem.id, costMinor);
+            }
+
+            setEditingItem(null);
+            setIsEditing(false); // Exit editing mode
+            loadInvestments(0, true);
+        } catch (error: any) {
+            console.error('Edit failed', error);
+            Alert.alert('Hata', 'Güncelleme başarısız: ' + (error.message || 'Bilinmeyen hata'));
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    // Filter Investments
+    const filteredInvestments = useMemo(() => {
+        return investments.filter((investment) =>
+            ['GOLD', 'SILVER', 'OTHER', 'CURRENCY'].includes(investment.assetType)
+        );
+    }, [investments]);
 
     const logGetInvestmentsError = useCallback((error: unknown, context: Record<string, unknown>) => {
         if (axios.isAxiosError(error)) {
-            // Downgrade 400/429 errors to warn to avoid Red Box in Expo
             if (error.response?.status === 400 || error.response?.status === 429) {
                 console.warn('[InvestmentsScreen] Fetch ignored (Rate Limit/Bad Request)', error.message);
             } else {
@@ -231,53 +282,62 @@ export default function InvestmentsScreen() {
 
         return (
             <TouchableOpacity
-                style={styles.card}
+                style={[styles.card, isEditing && styles.cardEditing]}
                 activeOpacity={0.7}
-            // Navigate to detail if implemented, for now just placeholder or edit
-            // onPress={() => router.push(`/(finance)/investment-detail?id=${item.id}`)}
+                disabled={!isEditing}
+                onPress={() => isEditing && handleEdit(item)}
             >
                 <View style={styles.cardHeader}>
                     <View style={styles.iconContainer}>
-                        <View style={[styles.iconBg, { backgroundColor: (ASSET_TYPE_COLORS[item.assetType] || GRAY) + '20' }]}>
-                            <Ionicons
-                                name={(ASSET_TYPE_ICONS[item.assetType] || 'ellipsis-horizontal') as IoniconsName}
-                                size={20}
-                                color={ASSET_TYPE_COLORS[item.assetType] || GRAY}
-                            />
-                        </View>
+                        {isEditing ? (
+                            <TouchableOpacity
+                                onPress={() => handleDelete(item)}
+                                style={styles.deleteActionBtn}
+                            >
+                                <Ionicons name="remove-circle" size={24} color="#EF4444" />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={[styles.iconBg, { backgroundColor: (ASSET_TYPE_COLORS[item.assetType] || GRAY) + '20' }]}>
+                                <Ionicons
+                                    name={(ASSET_TYPE_ICONS[item.assetType] || 'ellipsis-horizontal') as IoniconsName}
+                                    size={20}
+                                    color={ASSET_TYPE_COLORS[item.assetType] || GRAY}
+                                />
+                            </View>
+                        )}
                         <View>
-                            <Text style={styles.symbol}>{item.symbol}</Text>
-                            <Text style={styles.type}>{ASSET_TYPE_LABELS[item.assetType] || item.assetType}</Text>
+                            <Text style={styles.symbol}>{getInvestmentDisplayName(item.symbol, item.assetType) || item.symbol}</Text>
+                            <Text style={styles.type}>{item.symbol}</Text>
                         </View>
                     </View>
                     <View style={styles.rightContainer}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                            {!isCurrency && (
+                        {!isEditing && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                                 <TouchableOpacity
-                                    onPress={() => handleDelete(item)}
+                                    onPress={() => toggleFavoriteInvestment(item.id)}
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
-                                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                    <Ionicons
+                                        name={isFavorite ? 'star' : 'star-outline'}
+                                        size={18}
+                                        color={isFavorite ? '#F7B500' : '#C9CED6'}
+                                    />
                                 </TouchableOpacity>
+                            </View>
+                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={styles.value}>{formatCurrency(currentVal, item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '₺')}</Text>
+                                <Text style={styles.quantity}>{item.quantity} adet</Text>
+                            </View>
+                            {isEditing && (
+                                <Ionicons name="create-outline" size={20} color={PURPLE} />
                             )}
-                            <TouchableOpacity
-                                onPress={() => toggleFavoriteInvestment(item.id)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons
-                                    name={isFavorite ? 'star' : 'star-outline'}
-                                    size={18}
-                                    color={isFavorite ? '#F7B500' : '#C9CED6'}
-                                />
-                            </TouchableOpacity>
                         </View>
-                        <Text style={styles.value}>{formatCurrency(currentVal, item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : '₺')}</Text>
-                        <Text style={styles.quantity}>{item.quantity} adet</Text>
                     </View>
                 </View>
 
                 <View style={styles.divider} />
-
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
                         <Text style={styles.statLabel}>Maliyet</Text>
@@ -307,12 +367,22 @@ export default function InvestmentsScreen() {
                     <Ionicons name="chevron-back" size={24} color="#1A1A2E" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Yatırımlarım</Text>
-                <TouchableOpacity
-                    onPress={() => router.push('/(finance)/add-transaction')}
-                    style={styles.addBtn}
-                >
-                    <Ionicons name="add" size={24} color={PURPLE} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                        onPress={() => setIsEditing(!isEditing)}
+                        style={styles.addBtn}
+                    >
+                        <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={24} color={PURPLE} />
+                    </TouchableOpacity>
+                    {!isEditing && (
+                        <TouchableOpacity
+                            onPress={() => router.push('/(finance)/add-transaction')}
+                            style={styles.addBtn}
+                        >
+                            <Ionicons name="add" size={24} color={PURPLE} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             {loading && page === 0 ? (
@@ -343,12 +413,14 @@ export default function InvestmentsScreen() {
                         <View style={styles.emptyContainer}>
                             <Ionicons name="file-tray-outline" size={48} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Bu kategoride varlık bulunmuyor</Text>
-                            <TouchableOpacity
-                                style={styles.emptyBtn}
-                                onPress={() => router.push('/(finance)/add-transaction')}
-                            >
-                                <Text style={styles.emptyBtnText}>Yatırım Ekle</Text>
-                            </TouchableOpacity>
+                            {!isEditing && (
+                                <TouchableOpacity
+                                    style={styles.emptyBtn}
+                                    onPress={() => router.push('/(finance)/add-transaction')}
+                                >
+                                    <Text style={styles.emptyBtnText}>Yatırım Ekle</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     }
                     ListFooterComponent={
@@ -356,9 +428,67 @@ export default function InvestmentsScreen() {
                     }
                 />
             )}
-        </View >
+
+            {/* Edit Modal */}
+            {editingItem && (
+                <Modal
+                    visible={!!editingItem}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setEditingItem(null)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Düzenle</Text>
+                            <Text style={styles.modalSubtitle}>{getInvestmentDisplayName(editingItem.symbol, editingItem.assetType)} ({editingItem.symbol})</Text>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Miktar</Text>
+                                <TextInput
+                                    style={[styles.input, editingItem.assetType !== 'CURRENCY' && styles.disabledInput]}
+                                    value={editQuantity}
+                                    onChangeText={setEditQuantity}
+                                    keyboardType="decimal-pad"
+                                    editable={editingItem.assetType === 'CURRENCY'}
+                                />
+                                {editingItem.assetType !== 'CURRENCY' && (
+                                    <Text style={styles.helperText}>Sadece döviz miktarı düzenlenebilir.</Text>
+                                )}
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Birim Maliyet</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={editCost}
+                                    onChangeText={setEditCost}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={styles.cancelBtn}
+                                    onPress={() => setEditingItem(null)}
+                                >
+                                    <Text style={styles.cancelBtnText}>İptal</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.saveBtn}
+                                    onPress={handleSaveEdit}
+                                    disabled={savingEdit}
+                                >
+                                    {savingEdit ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Kaydet</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            )}
+        </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
@@ -385,9 +515,14 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     },
+    cardEditing: {
+        borderColor: PURPLE,
+        borderWidth: 1,
+    },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     iconContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconBg: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    deleteActionBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
     symbol: { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
     type: { fontSize: 12, color: GRAY, fontWeight: '500' },
     rightContainer: { alignItems: 'flex-end' },
@@ -423,4 +558,22 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     sectionContainer: { marginBottom: 16 },
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+    modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 24 },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A2E', marginBottom: 8, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: GRAY, marginBottom: 24, textAlign: 'center' },
+    inputGroup: { marginBottom: 16 },
+    label: { fontSize: 13, fontWeight: '600', color: '#1A1A2E', marginBottom: 8 },
+    input: { backgroundColor: '#F8F9FA', borderRadius: 12, padding: 14, fontSize: 16, color: '#1A1A2E', borderWidth: 1, borderColor: '#E0E0E0' },
+    disabledInput: { backgroundColor: '#F0F0F0', color: GRAY },
+    helperText: { fontSize: 11, color: '#EF4444', marginTop: 4 },
+    modalActions: { flexDirection: 'row', gap: 12, marginTop: 12 },
+    cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F5F5F5', alignItems: 'center' },
+    cancelBtnText: { color: '#1A1A2E', fontWeight: '600' },
+    saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: PURPLE, alignItems: 'center' },
+    saveBtnText: { color: '#fff', fontWeight: '600' },
+
+
 });

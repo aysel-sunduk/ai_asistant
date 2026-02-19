@@ -23,7 +23,7 @@ const GRAY = '#9BA1A6';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-import { formatCurrency, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
+import { formatCurrency, getInvestmentDisplayName, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
 
 export default function FinanceScreen() {
     const router = useRouter();
@@ -312,11 +312,9 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refres
                                                     color={ASSET_TYPE_COLORS[inv.assetType] || '#9BA1A6'}
                                                 />
                                             </View>
-                                            <Text style={styles.investmentType}>
-                                                {ASSET_TYPE_LABELS[inv.assetType] || inv.assetType}
-                                            </Text>
                                         </View>
-                                        <Text style={styles.investmentSymbol}>{inv.symbol}</Text>
+                                        <Text style={styles.investmentSymbol}>{getInvestmentDisplayName(inv.symbol, inv.assetType) || inv.symbol}</Text>
+
                                         <Text style={styles.investmentValue}>
                                             {formatCurrency(inv.currentValue)}
                                         </Text>
@@ -377,10 +375,10 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refres
                                             </Text>
                                         </View>
                                         <View>
-                                            <Text style={styles.currencyCode}>
+                                            <Text style={styles.currencyCode}>{cur.currencyName}</Text>
+                                            <Text style={styles.currencyName}>
                                                 {cur.currencyCode}/{cur.baseCurrency || 'TRY'}
                                             </Text>
-                                            <Text style={styles.currencyName}>{cur.currencyName}</Text>
                                         </View>
                                     </View>
                                     <View style={styles.currencyRight}>

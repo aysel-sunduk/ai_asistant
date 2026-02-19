@@ -73,6 +73,7 @@ export interface FavoriteCurrencyResponse {
     baseCurrency: string;
     rateDate: string;
     lastUpdatedAt?: string;
+    providerTimestamp?: string;
 }
 
 export interface FavoriteCurrencyRequest {
