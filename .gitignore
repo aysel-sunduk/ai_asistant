@@ -44,3 +44,8 @@ frontend/ios/
 # Spring Boot
 .m2/
 *.apk 
+
+*.aab
+frontend/*.apk
+frontend/eas-log-*.txt
+node_modules/
