@@ -96,8 +96,12 @@ export default function FeedScreen() {
         if (feedRes.status === 'fulfilled') {
             setPosts(feedRes.value.content || []);
         } else {
+            // Feed başarısız olursa sosyal keşif/istatistik akışını bloklama.
+            // Bu endpoint bazı ortamlarda yetki nedeniyle 403 dönebildiği için
+            // yalnızca feed'i boş gösteriyoruz.
             setPosts([]);
-            failed.push('feed');
+            const status = (feedRes.reason as any)?.response?.status;
+            console.warn('[Social] Following feed request failed', status || '', feedRes.reason);
         }
 
         if (failed.length > 0) {

@@ -1,5 +1,13 @@
 // DB şeması: health_log_type ENUM + JSONB data
-export type HealthLogType = 'daily_summary' | 'water' | 'exercise' | 'meal';
+export type HealthLogType =
+    | 'daily_summary'
+    | 'water'
+    | 'exercise'
+    | 'meal'
+    | 'steps'
+    | 'distance'
+    | 'active_calories'
+    | 'heart_rate';
 
 // ─── JSONB "data" tipleri (log_type'a göre) ───
 
@@ -32,6 +40,22 @@ export interface DailySummaryData {
     notes?: string;
 }
 
+export interface StepsData {
+    count: number;
+}
+
+export interface DistanceData {
+    kilometers: number;
+}
+
+export interface ActiveCaloriesData {
+    kcal: number;
+}
+
+export interface HeartRateData {
+    bpm: number;
+}
+
 // ─── Ana model ───
 
 export interface HealthLog {
@@ -39,6 +63,16 @@ export interface HealthLog {
     userId: string;
     logType: HealthLogType;
     logDate: string;            // YYYY-MM-DD
-    data: WaterData | ExerciseData | MealData | DailySummaryData;
+    data: WaterData | ExerciseData | MealData | DailySummaryData | StepsData | DistanceData | ActiveCaloriesData | HeartRateData;
+    source?: string;
+    externalRecordId?: string;
     loggedAt: string;
+}
+
+export interface HealthGoals {
+    userId: string;
+    waterMlTarget: number;
+    stepsTarget: number;
+    createdAt: string;
+    updatedAt: string;
 }

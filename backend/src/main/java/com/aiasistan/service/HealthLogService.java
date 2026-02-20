@@ -190,13 +190,10 @@ public class HealthLogService {
         }
 
         switch (logType) {
-            case "water" -> requirePositiveNumber(data, "amountMl");
-            case "exercise" -> requirePositiveNumber(data, "durationMin");
-            case "meal" -> requireNonBlankString(data, "mealType");
-            case "daily_summary" -> {
-                requirePositiveNumber(data, "calories");
-                requirePositiveNumber(data, "waterMl");
-            }
+            case "water" -> requirePositiveNumberAny(data, "amount_ml", "amountMl");
+            case "exercise" -> requirePositiveNumberAny(data, "duration_min", "durationMin");
+            case "meal" -> requireNonBlankStringAny(data, "meal_type", "mealType");
+            case "daily_summary" -> requireAnyPresent(data, "mood", "sleep_hours", "sleepHours", "weight_kg", "weightKg", "steps");
             case "steps" -> requirePositiveNumber(data, "count");
             case "distance" -> requirePositiveNumber(data, "kilometers");
             case "active_calories", "resting_calories" -> requirePositiveNumber(data, "kcal");
@@ -213,10 +210,43 @@ public class HealthLogService {
         }
     }
 
+    private void requirePositiveNumberAny(Map<String, Object> data, String... keys) {
+        for (String key : keys) {
+            Object value = data.get(key);
+            if (value instanceof Number number && number.doubleValue() > 0) {
+                return;
+            }
+        }
+        throw new BadRequestException(keys[0] + " pozitif sayi olmalidir");
+    }
+
     private void requireNonBlankString(Map<String, Object> data, String key) {
         Object value = data.get(key);
         if (!(value instanceof String text) || text.isBlank()) {
             throw new BadRequestException(key + " zorunludur");
         }
+    }
+
+    private void requireNonBlankStringAny(Map<String, Object> data, String... keys) {
+        for (String key : keys) {
+            Object value = data.get(key);
+            if (value instanceof String text && !text.isBlank()) {
+                return;
+            }
+        }
+        throw new BadRequestException(keys[0] + " zorunludur");
+    }
+
+    private void requireAnyPresent(Map<String, Object> data, String... keys) {
+        for (String key : keys) {
+            Object value = data.get(key);
+            if (value != null) {
+                if (value instanceof String text && text.isBlank()) {
+                    continue;
+                }
+                return;
+            }
+        }
+        throw new BadRequestException("daily_summary icin en az bir alan zorunludur");
     }
 }

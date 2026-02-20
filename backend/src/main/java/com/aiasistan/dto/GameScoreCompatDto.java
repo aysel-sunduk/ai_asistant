@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotNull;
 public class GameScoreCompatDto {
     private UUID id;
     private UUID userId;
+    private String firstName;
+    private String lastName;
     private String gameType;
     private Integer score;
     private Integer level;
@@ -50,6 +52,22 @@ public class GameScoreCompatDto {
 
     public void setGameType(String gameType) {
         this.gameType = gameType;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public Integer getScore() {

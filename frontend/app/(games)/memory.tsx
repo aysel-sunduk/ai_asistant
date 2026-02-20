@@ -38,6 +38,7 @@ export default function MemoryScreen() {
     const [elapsed, setElapsed] = useState(0);
     const [started, setStarted] = useState(false);
     const [finished, setFinished] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [bestTime, setBestTime] = useState<number | null>(null);
     const [locked, setLocked] = useState(false);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -55,6 +56,7 @@ export default function MemoryScreen() {
         elapsedRef.current = 0;
         setStarted(false);
         setFinished(false);
+        setIsPaused(false);
         setLocked(false);
         if (timerRef.current) clearInterval(timerRef.current);
     }, []);
@@ -68,7 +70,7 @@ export default function MemoryScreen() {
     const startTimer = () => {
         if (started) return;
         setStarted(true);
-        startTimeRef.current = Date.now();
+        startTimeRef.current = Date.now() - elapsedRef.current;
         timerRef.current = setInterval(() => {
             const now = Date.now() - startTimeRef.current;
             elapsedRef.current = now;
@@ -77,7 +79,7 @@ export default function MemoryScreen() {
     };
 
     const handleCardPress = (index: number) => {
-        if (locked || finished) return;
+        if (locked || finished || isPaused) return;
         const card = cards[index];
         if (card.flipped || card.matched) return;
 
@@ -142,6 +144,21 @@ export default function MemoryScreen() {
         }
     };
 
+    const handlePauseToggle = () => {
+        if (finished) return;
+        if (isPaused) {
+            setIsPaused(false);
+            startTimer();
+            return;
+        }
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        setStarted(false);
+        setIsPaused(true);
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
@@ -153,9 +170,14 @@ export default function MemoryScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>🧠 Hafıza Oyunu</Text>
-                    <TouchableOpacity onPress={initGame} style={styles.backBtn}>
-                        <Ionicons name="refresh" size={22} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={handlePauseToggle} style={styles.backBtn}>
+                            <Ionicons name={isPaused ? 'play' : 'pause'} size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={initGame} style={styles.backBtn}>
+                            <Ionicons name="refresh" size={22} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={styles.statsRow}>
                     <View style={styles.stat}>
@@ -243,6 +265,25 @@ export default function MemoryScreen() {
                     </View>
                 </View>
             )}
+
+            {isPaused && !finished && (
+                <View style={styles.overlay}>
+                    <View style={styles.modal}>
+                        <Text style={styles.modalEmoji}>⏸️</Text>
+                        <Text style={styles.modalTitle}>Oyun Duraklatildi</Text>
+                        <Text style={styles.modalSubtitle}>Devam et veya cikis yap</Text>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
+                                <Text style={styles.btnSecondaryText}>Oyundan Cik</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.btnPrimary} onPress={handlePauseToggle}>
+                                <Ionicons name="play" size={18} color="#fff" />
+                                <Text style={styles.btnPrimaryText}>Devam Et</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -259,6 +300,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
     backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
+    headerActions: { flexDirection: 'row', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
     statsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 24 },
     stat: { alignItems: 'center' },

@@ -11,9 +11,9 @@ export default function GoalCard({ goal, onPress }: Props) {
             <Card>
                 <Text style={styles.title}>{goal.title}</Text>
                 <View style={styles.barBg}>
-                    <View style={[styles.barFill, { width: `${goal.progress}%` }]} />
+                    <View style={[styles.barFill, { width: `${goal.progressPct}%` }]} />
                 </View>
-                <Text style={styles.progress}>{goal.progress}%</Text>
+                <Text style={styles.progress}>{goal.progressPct}%</Text>
             </Card>
         </TouchableOpacity>
     );

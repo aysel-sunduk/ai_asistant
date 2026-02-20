@@ -37,5 +37,10 @@ logs/
 .mvn/wrapper/maven-wrapper.jar
 *.jar
 
+# Frontend native generated folders (Expo prebuild output)
+frontend/android/
+frontend/ios/
+
 # Spring Boot
 .m2/
+*.apk 

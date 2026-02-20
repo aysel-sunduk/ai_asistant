@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { formatTime, getBestResult, getGameResults, type GameResult } from '../../src/utils/game.utils';
+import type { FrontendGameType } from '../../src/models/game.model';
 
 const COLOR = '#A78BFA';
 
@@ -10,7 +11,7 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface GameInfo {
     id: string;
-    key: string;
+    key: FrontendGameType;
     title: string;
     desc: string;
     icon: IoniconsName;

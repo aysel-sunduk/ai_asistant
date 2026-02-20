@@ -30,6 +30,7 @@ export default function SudokuScreen() {
     const [elapsed, setElapsed] = useState(0);
     const [started, setStarted] = useState(false);
     const [finished, setFinished] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [bestTime, setBestTime] = useState<number | null>(null);
     const [errors, setErrors] = useState(0);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -45,6 +46,7 @@ export default function SudokuScreen() {
         setElapsed(0);
         setStarted(false);
         setFinished(false);
+        setIsPaused(false);
         setErrors(0);
         if (timerRef.current) clearInterval(timerRef.current);
     }, []);
@@ -58,10 +60,25 @@ export default function SudokuScreen() {
     const startTimer = () => {
         if (started) return;
         setStarted(true);
-        startRef.current = Date.now();
+        startRef.current = Date.now() - elapsed;
         timerRef.current = setInterval(() => {
             setElapsed(Date.now() - startRef.current);
         }, 100);
+    };
+
+    const handlePauseToggle = () => {
+        if (finished) return;
+        if (isPaused) {
+            setIsPaused(false);
+            startTimer();
+            return;
+        }
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        setStarted(false);
+        setIsPaused(true);
     };
 
     const hasConflict = (board: number[][], row: number, col: number, num: number): boolean => {
@@ -86,7 +103,7 @@ export default function SudokuScreen() {
     };
 
     const handleNumberInput = (num: number) => {
-        if (!selectedCell || finished) return;
+        if (!selectedCell || finished || isPaused) return;
         const [r, c] = selectedCell;
         if (given[r][c]) return;
 
@@ -114,7 +131,7 @@ export default function SudokuScreen() {
     };
 
     const handleErase = () => {
-        if (!selectedCell || finished) return;
+        if (!selectedCell || finished || isPaused) return;
         const [r, c] = selectedCell;
         if (given[r][c]) return;
         const newBoard = board.map(row => [...row]);
@@ -167,9 +184,14 @@ export default function SudokuScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>🔢 Sudoku</Text>
-                    <TouchableOpacity onPress={initGame} style={styles.backBtn}>
-                        <Ionicons name="refresh" size={22} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={handlePauseToggle} style={styles.backBtn}>
+                            <Ionicons name={isPaused ? 'play' : 'pause'} size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={initGame} style={styles.backBtn}>
+                            <Ionicons name="refresh" size={22} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={styles.statsRow}>
                     <View style={styles.stat}>
@@ -203,6 +225,7 @@ export default function SudokuScreen() {
                                     style={getCellStyle(r, c)}
                                     activeOpacity={0.6}
                                     onPress={() => setSelectedCell([r, c])}
+                                    disabled={isPaused}
                                 >
                                     {val > 0 && (
                                         <Text style={getCellTextStyle(r, c)}>{val}</Text>
@@ -226,7 +249,7 @@ export default function SudokuScreen() {
                                 key={num}
                                 style={[styles.numBtn, allPlaced && styles.numBtnDone]}
                                 onPress={() => handleNumberInput(num)}
-                                disabled={allPlaced || finished}
+                                disabled={allPlaced || finished || isPaused}
                                 activeOpacity={0.6}
                             >
                                 <Text style={[styles.numText, allPlaced && styles.numTextDone]}>{num}</Text>
@@ -235,7 +258,7 @@ export default function SudokuScreen() {
                         );
                     })}
                 </View>
-                <TouchableOpacity style={styles.eraseBtn} onPress={handleErase}>
+                <TouchableOpacity style={styles.eraseBtn} onPress={handleErase} disabled={isPaused}>
                     <Ionicons name="backspace-outline" size={22} color={COLOR} />
                     <Text style={styles.eraseBtnText}>Sil</Text>
                 </TouchableOpacity>
@@ -247,7 +270,7 @@ export default function SudokuScreen() {
                     <View style={styles.modal}>
                         <Text style={styles.modalEmoji}>🎉</Text>
                         <Text style={styles.modalTitle}>Harika!</Text>
-                        <Text style={styles.modalSubtitle}>Sudoku'yu tamamladın</Text>
+                        <Text style={styles.modalSubtitle}>Sudokuyu tamamladin</Text>
 
                         <View style={styles.resultRow}>
                             <View style={styles.resultItem}>
@@ -276,6 +299,25 @@ export default function SudokuScreen() {
                     </View>
                 </View>
             )}
+
+            {isPaused && !finished && (
+                <View style={styles.overlay}>
+                    <View style={styles.modal}>
+                        <Text style={styles.modalEmoji}>⏸️</Text>
+                        <Text style={styles.modalTitle}>Oyun Duraklatildi</Text>
+                        <Text style={styles.modalSubtitle}>Devam et veya cikis yap</Text>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
+                                <Text style={styles.btnSecondaryText}>Oyundan Cik</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.btnPrimary} onPress={handlePauseToggle}>
+                                <Ionicons name="play" size={18} color="#fff" />
+                                <Text style={styles.btnPrimaryText}>Devam Et</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -292,6 +334,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
     backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
+    headerActions: { flexDirection: 'row', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
     statsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 24 },
     stat: { alignItems: 'center' },

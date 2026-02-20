@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Saglik verilerini okuyup gunluk ozet olusturmak icin izin gerekli.",
+        "NSHealthUpdateUsageDescription": "Saglik hedeflerini uygulama icinde guncellemek icin izin gerekli."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,8 +22,15 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE"
+      ],
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.aiassistantfrontend"
     },
     "web": {
       "output": "static",
@@ -27,6 +38,19 @@
     },
     "plugins": [
       "expo-router",
+      "react-native-health",
+      "expo-health-connect",
+      "./plugins/withHealthPermissions",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 26
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -43,6 +67,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e3444a76-562e-4311-9365-b350c43c726f"
+      }
+    },
+    "owner": "ai_asist"
   }
 }

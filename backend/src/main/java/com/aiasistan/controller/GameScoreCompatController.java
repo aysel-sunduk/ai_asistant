@@ -1,7 +1,10 @@
 package com.aiasistan.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aiasistan.dto.GameScoreCompatDto;
 import com.aiasistan.dto.GameScoreDto;
 import com.aiasistan.exception.BadRequestException;
+import com.aiasistan.model.User;
+import com.aiasistan.repository.UserRepository;
 import com.aiasistan.service.GameScoreService;
 
 import jakarta.validation.Valid;
@@ -31,9 +36,11 @@ import jakarta.validation.constraints.Min;
 @RequestMapping("/games")
 public class GameScoreCompatController {
     private final GameScoreService gameScoreService;
+    private final UserRepository userRepository;
 
-    public GameScoreCompatController(GameScoreService gameScoreService) {
+    public GameScoreCompatController(GameScoreService gameScoreService, UserRepository userRepository) {
         this.gameScoreService = gameScoreService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/scores")
@@ -75,8 +82,21 @@ public class GameScoreCompatController {
         @PathVariable String gameKey,
         @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
     ) {
-        List<GameScoreCompatDto> response = gameScoreService.getLeaderboardTopList(gameKey, limit).stream()
-            .map(GameScoreCompatDto::from)
+        List<GameScoreDto.Response> leaderboardRows = gameScoreService.getLeaderboardTopList(gameKey, limit);
+        Map<UUID, User> userMap = userRepository.findAllById(
+            leaderboardRows.stream().map(GameScoreDto.Response::getUserId).toList()
+        ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<GameScoreCompatDto> response = leaderboardRows.stream()
+            .map(row -> {
+                GameScoreCompatDto dto = GameScoreCompatDto.from(row);
+                User user = userMap.get(row.getUserId());
+                if (user != null) {
+                    dto.setFirstName(user.getFirstName());
+                    dto.setLastName(user.getLastName());
+                }
+                return dto;
+            })
             .toList();
         return ResponseEntity.ok(response);
     }

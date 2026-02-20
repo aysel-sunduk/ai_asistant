@@ -1,4 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { gamesService } from '../../services/games.service';
+import type { FrontendGameType } from '../models/game.model';
 
 // ─── Time Formatting ──────────────────────────────────────────
 export function formatTime(ms: number): string {
@@ -10,38 +11,54 @@ export function formatTime(ms: number): string {
 
 // ─── Score Persistence ────────────────────────────────────────
 export interface GameResult {
-    game: string;
+    game: FrontendGameType;
     time: number; // ms
     score?: number; // e.g. 8/10 for quiz
     date: string;
 }
 
-const RESULTS_KEY = '@game_results';
+function resolveScore(game: FrontendGameType, timeMs: number, score?: number): number {
+    if (game === '2048') {
+        return Math.max(0, score ?? 0);
+    }
+    const safeTimeMs = Math.max(1000, timeMs);
+    if (game === 'memory') {
+        return Math.max(1, Math.round(100000 / safeTimeMs));
+    }
+    return Math.max(1, Math.round(200000 / safeTimeMs));
+}
 
-export async function saveGameResult(game: string, time: number, score?: number): Promise<void> {
+export async function saveGameResult(game: FrontendGameType, time: number, score?: number): Promise<void> {
     try {
-        const existing = await getGameResults(game);
-        existing.push({ game, time, score, date: new Date().toISOString() });
-        // Keep last 50 results per game
-        const trimmed = existing.slice(-50);
-        const allResults = await getAllResults();
-        allResults[game] = trimmed;
-        await AsyncStorage.setItem(RESULTS_KEY, JSON.stringify(allResults));
+        await gamesService.submitScore({
+            gameType: game,
+            score: resolveScore(game, time, score),
+            duration: Math.max(0, Math.round(time / 1000)),
+            level: 1,
+            difficulty: 'medium',
+            metadata: score != null ? { rawScore: score } : undefined,
+            createdAt: new Date().toISOString(),
+        });
     } catch (e) {
         console.error('[GameUtils] Failed to save result', e);
     }
 }
 
-export async function getGameResults(game: string): Promise<GameResult[]> {
+export async function getGameResults(game: FrontendGameType): Promise<GameResult[]> {
     try {
-        const allResults = await getAllResults();
-        return allResults[game] || [];
+        const scores = await gamesService.getScores(game);
+        return scores.map((item) => ({
+            game,
+            time: (item.duration ?? 0) * 1000,
+            score: item.score,
+            date: item.createdAt,
+        }));
     } catch {
         return [];
     }
 }
 
-export async function getBestResult(game: string): Promise<GameResult | null> {
+export async function getBestResult(game: FrontendGameType): Promise<GameResult | null> {
     const results = await getGameResults(game);
     if (results.length === 0) return null;
     // Best = highest score then lowest time (2048) or lowest time (memory/sudoku)
@@ -54,15 +71,6 @@ export async function getBestResult(game: string): Promise<GameResult | null> {
         });
     }
     return results.reduce((best, r) => (r.time < best.time ? r : best));
-}
-
-async function getAllResults(): Promise<Record<string, GameResult[]>> {
-    try {
-        const raw = await AsyncStorage.getItem(RESULTS_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};
-    }
 }
 
 // ─── Sudoku Generator ─────────────────────────────────────────

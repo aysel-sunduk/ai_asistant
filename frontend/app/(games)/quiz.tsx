@@ -146,6 +146,7 @@ export default function Game2048Screen() {
     const [started, setStarted] = useState(false);
     const [gameOver, setGameOver] = useState(false);
     const [won, setWon] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [bestTime, setBestTime] = useState<number | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef(0);
@@ -162,6 +163,7 @@ export default function Game2048Screen() {
         setStarted(false);
         setGameOver(false);
         setWon(false);
+        setIsPaused(false);
         if (timerRef.current) clearInterval(timerRef.current);
     }, []);
 
@@ -179,7 +181,7 @@ export default function Game2048Screen() {
     const startTimer = () => {
         if (started) return;
         setStarted(true);
-        startTimeRef.current = Date.now();
+        startTimeRef.current = Date.now() - elapsedRef.current;
         timerRef.current = setInterval(() => {
             const now = Date.now() - startTimeRef.current;
             elapsedRef.current = now;
@@ -187,10 +189,25 @@ export default function Game2048Screen() {
         }, 100);
     };
 
+    const handlePauseToggle = () => {
+        if (gameOver || won) return;
+        if (isPaused) {
+            setIsPaused(false);
+            startTimer();
+            return;
+        }
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        setStarted(false);
+        setIsPaused(true);
+    };
+
     const handleMoveRef = useRef<(direction: 'left' | 'right' | 'up' | 'down') => void>(() => { });
 
     const handleMove = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
-        if (gameOver || won) return;
+        if (gameOver || won || isPaused) return;
 
         startTimer();
 
@@ -223,7 +240,7 @@ export default function Game2048Screen() {
                 }
             });
         }
-    }, [grid, score, gameOver, won, started]);
+    }, [grid, score, gameOver, won, started, isPaused]);
 
     useEffect(() => { handleMoveRef.current = handleMove; }, [handleMove]);
 
@@ -274,9 +291,14 @@ export default function Game2048Screen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>🧩 2048</Text>
-                    <TouchableOpacity onPress={initGame} style={styles.backBtn}>
-                        <Ionicons name="refresh" size={22} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={handlePauseToggle} style={styles.backBtn}>
+                            <Ionicons name={isPaused ? 'play' : 'pause'} size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={initGame} style={styles.backBtn}>
+                            <Ionicons name="refresh" size={22} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View style={styles.statsRow}>
@@ -321,19 +343,19 @@ export default function Game2048Screen() {
                 <View style={styles.controls}>
                     <View style={styles.controlRow}>
                         <View style={styles.controlSpacer} />
-                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('up')}>
+                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('up')} disabled={isPaused}>
                             <Ionicons name="chevron-up" size={28} color={COLOR} />
                         </TouchableOpacity>
                         <View style={styles.controlSpacer} />
                     </View>
                     <View style={styles.controlRow}>
-                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('left')}>
+                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('left')} disabled={isPaused}>
                             <Ionicons name="chevron-back" size={28} color={COLOR} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('down')}>
+                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('down')} disabled={isPaused}>
                             <Ionicons name="chevron-down" size={28} color={COLOR} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('right')}>
+                        <TouchableOpacity style={styles.controlBtn} onPress={() => handleMove('right')} disabled={isPaused}>
                             <Ionicons name="chevron-forward" size={28} color={COLOR} />
                         </TouchableOpacity>
                     </View>
@@ -377,6 +399,25 @@ export default function Game2048Screen() {
                     </View>
                 </View>
             )}
+
+            {isPaused && !won && !gameOver && (
+                <View style={styles.overlay}>
+                    <View style={styles.modal}>
+                        <Text style={styles.modalEmoji}>⏸️</Text>
+                        <Text style={styles.modalTitle}>Oyun Duraklatildi</Text>
+                        <Text style={styles.modalSubtitle}>Devam et veya cikis yap</Text>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
+                                <Text style={styles.btnSecondaryText}>Oyundan Cik</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.btnPrimary} onPress={handlePauseToggle}>
+                                <Ionicons name="play" size={18} color="#fff" />
+                                <Text style={styles.btnPrimaryText}>Devam Et</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -393,6 +434,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
     backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.15)' },
+    headerActions: { flexDirection: 'row', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
     statsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 24 },
     stat: { alignItems: 'center' },
