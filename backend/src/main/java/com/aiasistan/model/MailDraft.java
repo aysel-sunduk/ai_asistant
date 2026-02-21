@@ -8,6 +8,7 @@ import org.hibernate.annotations.Type;
 
 import com.aiasistan.common.BaseEntity;
 
+import io.hypersistence.utils.hibernate.type.array.StringArrayType;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,9 +25,11 @@ public class MailDraft extends BaseEntity {
     private String toEmail;
 
     @Column(name = "cc_emails", columnDefinition = "text[]")
+    @Type(StringArrayType.class)
     private String[] ccEmails;
 
     @Column(name = "bcc_emails", columnDefinition = "text[]")
+    @Type(StringArrayType.class)
     private String[] bccEmails;
 
     @Column(name = "subject", nullable = false)

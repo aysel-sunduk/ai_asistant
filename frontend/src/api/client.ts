@@ -1,8 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import Constants from 'expo-constants';
 
-const API_BASE_URL = 'http://192.168.234.217:8080/api';
-// const API_BASE_URL = 'http://localhost:8080/api';
+const DEFAULT_API_URL = 'http://localhost:8080/api';
+
+const resolveApiBaseUrl = (): string => {
+    const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+    if (envUrl) return envUrl.replace(/\/$/, '');
+
+    const hostUri =
+        Constants.expoConfig?.hostUri ??
+        // Fallbacks for older Expo runtime environments
+        (Constants as any)?.manifest?.hostUri ??
+        (Constants as any)?.manifest2?.extra?.expoClient?.hostUri;
+
+    if (typeof hostUri === 'string' && hostUri.length > 0) {
+        const host = hostUri.split(':')[0];
+        if (host) return `http://${host}:8080/api`;
+    }
+
+    return DEFAULT_API_URL;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+console.log('[ApiClient] Base URL:', API_BASE_URL);
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,

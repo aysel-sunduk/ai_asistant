@@ -7,6 +7,7 @@ import org.hibernate.annotations.Type;
 
 import com.aiasistan.common.UserOwnedEntity;
 
+import io.hypersistence.utils.hibernate.type.array.StringArrayType;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +33,7 @@ public class BlogPost extends UserOwnedEntity {
     private String status = "draft";
 
     @Column(name = "tags", columnDefinition = "text[]")
+    @Type(StringArrayType.class)
     private String[] tags;
 
     @Column(name = "like_count")

@@ -31,6 +31,8 @@ import jakarta.persistence.PersistenceContext;
 @Service
 public class BlogPostService {
     private static final Logger logger = LoggerFactory.getLogger(BlogPostService.class);
+    private static final boolean ENABLE_SCHEMA_ENSURE =
+        Boolean.parseBoolean(System.getProperty("BLOG_SCHEMA_ENSURE", "false"));
 
     private static final Set<String> ALLOWED_VISIBILITY = Set.of("private", "followers", "public");
     private static final Set<String> ALLOWED_STATUS = Set.of("draft", "published", "archived");
@@ -245,6 +247,9 @@ public class BlogPostService {
     }
 
     private void ensureBlogSchemaForReactions() {
+        if (!ENABLE_SCHEMA_ENSURE) {
+            return;
+        }
         if (blogSchemaEnsured) {
             return;
         }
@@ -263,7 +268,12 @@ public class BlogPostService {
                 likedUserIdsColumnAvailable = true;
             } catch (Exception ex) {
                 logger.warn("liked_user_ids column ensure skipped: {}", ex.getMessage());
-                likedUserIdsColumnAvailable = hasLikedUserIdsColumn();
+                try {
+                    likedUserIdsColumnAvailable = hasLikedUserIdsColumn();
+                } catch (Exception innerEx) {
+                    logger.warn("liked_user_ids column check failed: {}", innerEx.getMessage());
+                    likedUserIdsColumnAvailable = false;
+                }
             }
             blogSchemaEnsured = true;
         }
@@ -273,13 +283,19 @@ public class BlogPostService {
         if (likedUserIdsColumnAvailable != null) {
             return likedUserIdsColumnAvailable;
         }
-        Object count = entityManager.createNativeQuery(
-            "SELECT COUNT(*) FROM information_schema.columns " +
-            "WHERE table_schema = 'public' AND table_name = 'blog_posts' AND column_name = 'liked_user_ids'"
-        ).getSingleResult();
-        boolean exists = count != null && Integer.parseInt(String.valueOf(count)) > 0;
-        likedUserIdsColumnAvailable = exists;
-        return exists;
+        try {
+            Object count = entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = 'public' AND table_name = 'blog_posts' AND column_name = 'liked_user_ids'"
+            ).getSingleResult();
+            boolean exists = count != null && Integer.parseInt(String.valueOf(count)) > 0;
+            likedUserIdsColumnAvailable = exists;
+            return exists;
+        } catch (Exception ex) {
+            logger.warn("liked_user_ids column lookup failed: {}", ex.getMessage());
+            likedUserIdsColumnAvailable = false;
+            return false;
+        }
     }
 
     private BlogPost findOwnedPost(UUID id, UUID userId) {

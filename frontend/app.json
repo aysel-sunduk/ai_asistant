@@ -12,10 +12,14 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSHealthShareUsageDescription": "Saglik verilerini okuyup gunluk ozet olusturmak icin izin gerekli.",
-        "NSHealthUpdateUsageDescription": "Saglik hedeflerini uygulama icinde guncellemek icin izin gerekli."
+        "NSHealthUpdateUsageDescription": "Saglik hedeflerini uygulama icinde guncellemek icin izin gerekli.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

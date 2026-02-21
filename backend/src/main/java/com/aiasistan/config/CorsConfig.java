@@ -26,15 +26,30 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(
-                            "http://localhost:3000",      // React geliştirme
-                            "http://localhost:3001",      // Alternative React port
-                            "http://localhost:8081",      // React Native
-                            "http://localhost:8080",      // Backend same origin
-                            "http://127.0.0.1:3000",
-                            "http://127.0.0.1:3001",
-                            "http://127.0.0.1:8081",
-                            "http://127.0.0.1:8080"
+                        .allowedOriginPatterns(
+                            // Local dev (web)
+                            "http://localhost:*",
+                            "http://127.0.0.1:*",
+                            // LAN dev (Expo / device)
+                            "http://192.168.*.*:*",
+                            "http://10.*.*.*:*",
+                            // Docker / private networks
+                            "http://172.16.*.*:*",
+                            "http://172.17.*.*:*",
+                            "http://172.18.*.*:*",
+                            "http://172.19.*.*:*",
+                            "http://172.20.*.*:*",
+                            "http://172.21.*.*:*",
+                            "http://172.22.*.*:*",
+                            "http://172.23.*.*:*",
+                            "http://172.24.*.*:*",
+                            "http://172.25.*.*:*",
+                            "http://172.26.*.*:*",
+                            "http://172.27.*.*:*",
+                            "http://172.28.*.*:*",
+                            "http://172.29.*.*:*",
+                            "http://172.30.*.*:*",
+                            "http://172.31.*.*:*"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
@@ -44,3 +59,4 @@ public class CorsConfig {
         };
     }
 }
+
