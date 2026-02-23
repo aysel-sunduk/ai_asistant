@@ -1,6 +1,7 @@
 // Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback, useState } from 'react';
 import { authService } from '../../services/auth.service';
+import { userApi } from '../api/user.api';
 import type { LoginRequest, RegisterRequest } from '../models/auth.model';
 import { useAuthStore } from '../store/auth.store';
 
@@ -17,12 +18,20 @@ export function useAuth() {
                 accessToken: loginData.accessToken,
                 refreshToken: loginData.refreshToken,
             });
-            // Backend'den user bilgisi geldiğinde burayı güncelleyin
-            store.setUser({
-                id: '',
-                email: loginData.email,
-                username: loginData.email,
-            });
+
+            // Backend'den user bilgisi çekme (Ad/Soyad için)
+            try {
+                const meRes = await userApi.getMe();
+                store.setUser(meRes.data.data);
+            } catch (err) {
+                console.error('[useAuth] failed to getMe:', err);
+                // Fallback
+                store.setUser({
+                    id: '',
+                    email: loginData.email,
+                    username: loginData.email,
+                });
+            }
         } catch (err: any) {
             const msg = err?.response?.data?.message || 'Giriş başarısız';
             setError(msg);

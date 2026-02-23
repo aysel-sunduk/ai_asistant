@@ -1,7 +1,7 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Alert,
     Platform,
@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { userApi } from '../../src/api/user.api';
 import { useAuthStore } from '../../src/store/auth.store';
 
 const PURPLE = '#6C63FF';
@@ -35,6 +36,19 @@ export default function ProfileScreen() {
     const user = useAuthStore((s) => s.user);
     const profile = useAuthStore((s) => s.profile);
     const logout = useAuthStore((s) => s.logout);
+    const setUser = useAuthStore((s) => s.setUser);
+
+    useEffect(() => {
+        const fetchMe = async () => {
+            try {
+                const res = await userApi.getMe();
+                setUser(res.data.data);
+            } catch (err) {
+                console.log('[Profile] Failed to fetch user details:', err);
+            }
+        };
+        fetchMe();
+    }, []);
 
     const displayName = user?.firstName
         ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -68,15 +82,10 @@ export default function ProfileScreen() {
         },
         {
             icon: 'shield-checkmark-outline',
-            label: 'Güvenlik',
-            subtitle: 'Şifre, iki faktörlü doğrulama',
+            label: 'Şifre Değiştir',
+            subtitle: 'Hesap güvenliği ve şifre güncelleme',
             color: '#4ECDC4',
-        },
-        {
-            icon: 'notifications-outline',
-            label: 'Bildirimler',
-            subtitle: 'Push, e-posta bildirimleri',
-            color: '#FFB347',
+            onPress: () => router.push('/change-password'),
         },
     ];
 
@@ -153,17 +162,17 @@ export default function ProfileScreen() {
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
                                 <Text style={styles.statNumber}>0</Text>
-                                <Text style={styles.statLabel}>Görev</Text>
+                                <Text style={styles.statLabel}>Takipçi</Text>
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
                                 <Text style={styles.statNumber}>0</Text>
-                                <Text style={styles.statLabel}>Tamamlanan</Text>
+                                <Text style={styles.statLabel}>Takip Edilen</Text>
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
                                 <Text style={styles.statNumber}>0</Text>
-                                <Text style={styles.statLabel}>Rozet</Text>
+                                <Text style={styles.statLabel}>Blog Yazısı</Text>
                             </View>
                         </View>
                     </View>

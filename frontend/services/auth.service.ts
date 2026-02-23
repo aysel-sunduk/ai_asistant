@@ -1,6 +1,6 @@
 // Kisa aciklama: Servis akislarini yonetir.
 import { authApi } from '../src/api/auth.api';
-import type { LoginResponse, RegisterRequest, RegisterResponse, TokenResponse } from '../src/models/auth.model';
+import type { ChangePasswordRequest, ChangePasswordResponse, LoginResponse, RegisterRequest, RegisterResponse, TokenResponse } from '../src/models/auth.model';
 import { storage } from '../src/utils/storage';
 
 // ─── Mock Ayarları ───
@@ -43,7 +43,10 @@ export const authService = {
             throw error;
         }
 
-        const response = await authApi.login(data);
+        const response = await authApi.login(data).catch((err) => {
+            console.error('[authService] login error details:', JSON.stringify(err, null, 2), err.message, err.response?.data);
+            throw err;
+        });
         const loginData = response.data.data;
         await storage.setItem('accessToken', loginData.accessToken);
         await storage.setItem('refreshToken', loginData.refreshToken);
@@ -98,4 +101,17 @@ export const authService = {
         }
         await authApi.resetPassword(data);
     },
+<<<<<<< Updated upstream
 };
+=======
+
+    changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+        if (USE_MOCK) {
+            await new Promise((r) => setTimeout(r, 500));
+            return { message: 'Şifre başarıyla değiştirildi', timestamp: new Date().toISOString() };
+        }
+        const response = await authApi.changePassword(data);
+        return response.data.data;
+    },
+};
+>>>>>>> Stashed changes
