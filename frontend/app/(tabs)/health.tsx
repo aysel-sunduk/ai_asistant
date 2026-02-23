@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -12,6 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { healthDeviceService } from '../../services/health-device.service';
+import { healthService } from '../../services/health.service';
 import { useHealth } from '../../src/hooks/useHealth';
 import type {
     ActiveCaloriesData,
@@ -25,8 +28,6 @@ import type {
     StepsData,
     WaterData,
 } from '../../src/models/health.model';
-import { healthDeviceService } from '../../services/health-device.service';
-import { healthService } from '../../services/health.service';
 
 const PURPLE = '#6C63FF';
 const RED = '#FF6B6B';
@@ -236,53 +237,71 @@ export default function HealthTabScreen() {
         try {
             setIsDeviceSyncing(true);
             const snapshot = await healthDeviceService.syncToday();
+            // Debug: cihazdan gelen anlık özet
+            // (geçici) Senkron sırasında hangi veri olduğu burada görülecek
+            // örn: { stepsCount: 1234, distanceKm: 2.3, ... }
+            // Bu log, sunucuya hangi kayıtların gönderildiğini anlamamıza yardımcı olur.
+            // Kısa ve tek satırlık.
+            // eslint-disable-next-line no-console
+            console.log('Device snapshot:', snapshot);
             let inserted = 0;
 
             if (snapshot.stepsCount > 0) {
-                await createLog({
+                const created = await createLog({
                     logType: 'steps',
                     logDate: todayStr,
                     source: snapshot.source,
                     externalRecordId: `${snapshot.source}-${todayStr}-steps`,
                     data: { count: snapshot.stepsCount } as StepsData,
                 });
-                inserted += 1;
+                // eslint-disable-next-line no-console
+                console.log('createLog(steps) =>', created);
+                if (created && (created as any).id) inserted += 1;
             }
 
             if (snapshot.distanceKm > 0) {
-                await createLog({
+                const created = await createLog({
                     logType: 'distance',
                     logDate: todayStr,
                     source: snapshot.source,
                     externalRecordId: `${snapshot.source}-${todayStr}-distance`,
                     data: { kilometers: snapshot.distanceKm } as DistanceData,
                 });
-                inserted += 1;
+                // eslint-disable-next-line no-console
+                console.log('createLog(distance) =>', created);
+                if (created && (created as any).id) inserted += 1;
             }
 
             if (snapshot.activeKcal > 0) {
-                await createLog({
+                const created = await createLog({
                     logType: 'active_calories',
                     logDate: todayStr,
                     source: snapshot.source,
                     externalRecordId: `${snapshot.source}-${todayStr}-active-kcal`,
                     data: { kcal: snapshot.activeKcal } as ActiveCaloriesData,
                 });
-                inserted += 1;
+                // eslint-disable-next-line no-console
+                console.log('createLog(active_calories) =>', created);
+                if (created && (created as any).id) inserted += 1;
             }
 
             if (snapshot.avgHeartRate > 0) {
-                await createLog({
+                const created = await createLog({
                     logType: 'heart_rate',
                     logDate: todayStr,
                     source: snapshot.source,
                     externalRecordId: `${snapshot.source}-${todayStr}-heart-rate`,
                     data: { bpm: snapshot.avgHeartRate } as HeartRateData,
                 });
-                inserted += 1;
+                // eslint-disable-next-line no-console
+                console.log('createLog(heart_rate) =>', created);
+                if (created && (created as any).id) inserted += 1;
             }
 
             await fetchLogs();
+            // Debug: senkron sonucu
+            // eslint-disable-next-line no-console
+            console.log('Device sync completed, inserted:', inserted);
             Alert.alert('Senkron tamam', inserted > 0 ? 'Cihaz verileri guncellendi.' : 'Bugun icin yeni veri bulunamadi.');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Cihaz verileri alinamadi.';

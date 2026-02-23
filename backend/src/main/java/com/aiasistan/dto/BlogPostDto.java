@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -10,6 +14,9 @@ import com.aiasistan.model.BlogPost;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO: Blog gönderisi verilerini taşır.
+ */
 public class BlogPostDto {
 
     public static class Request {

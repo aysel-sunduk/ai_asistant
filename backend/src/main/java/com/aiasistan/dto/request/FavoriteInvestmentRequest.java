@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import java.util.UUID;
 
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * DTO: Favori yatırım ekleme/kaldırma isteği.
+ */
 public class FavoriteInvestmentRequest {
 
     @NotNull(message = "Investment id is required")

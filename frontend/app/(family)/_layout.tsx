@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Stack } from 'expo-router';
 export default function FamilyLayout() {
     return (

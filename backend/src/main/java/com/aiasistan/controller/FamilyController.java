@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import java.time.LocalDate;
@@ -34,153 +38,169 @@ import com.aiasistan.dto.response.FamilyTransactionResponse;
 import com.aiasistan.service.FamilyService;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
 @RequestMapping("/v1/family")
 public class FamilyController {
 
-    private final FamilyService familyService;
+  private final FamilyService familyService;
 
-    public FamilyController(FamilyService familyService) {
-        this.familyService = familyService;
-    }
+  public FamilyController(FamilyService familyService) {
+    this.familyService = familyService;
+  }
 
-    @PostMapping("/transactions")
-    public ResponseEntity<ApiResponse<FamilyTransactionResponse>> createTransaction(
-        Authentication authentication,
-        @Valid @RequestBody FamilyTransactionRequest request
-    ) {
-        FamilyTransactionResponse response = familyService.createTransaction(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Transaction created"));
-    }
+  @PostMapping("/transactions")
+  @Operation(summary = "İslem olustur")
+  public ResponseEntity<ApiResponse<FamilyTransactionResponse>> createTransaction(
+    Authentication authentication,
+    @Valid @RequestBody FamilyTransactionRequest request
+  ) {
+    FamilyTransactionResponse response = familyService.createTransaction(authentication.getName(), request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Transaction created"));
+  }
 
 @GetMapping("/transactions")
+@Operation(summary = "Islemleri listele")
 public ResponseEntity<ApiResponse<Page<FamilyTransactionResponse>>> getTransactions(
-        Authentication authentication,
-        @ParameterObject Pageable pageable
+    Authentication authentication,
+    @ParameterObject Pageable pageable
 ) {
-    Page<FamilyTransactionResponse> response =
-            familyService.getTransactions(authentication.getName(), pageable);
+  Page<FamilyTransactionResponse> response =
+      familyService.getTransactions(authentication.getName(), pageable);
 
-    return ResponseEntity.ok(ApiResponse.ok(response));
+  return ResponseEntity.ok(ApiResponse.ok(response));
 }
 
 
-    @GetMapping("/transactions/{id}")
-    public ResponseEntity<ApiResponse<FamilyTransactionResponse>> getTransaction(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(familyService.getTransaction(authentication.getName(), id)));
-    }
+  @GetMapping("/transactions/{id}")
+  @Operation(summary = "İslem getir")
+  public ResponseEntity<ApiResponse<FamilyTransactionResponse>> getTransaction(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(familyService.getTransaction(authentication.getName(), id)));
+  }
 
-    @PutMapping("/transactions/{id}")
-    public ResponseEntity<ApiResponse<FamilyTransactionResponse>> updateTransaction(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody FamilyTransactionRequest request
-    ) {
-        FamilyTransactionResponse response = familyService.updateTransaction(authentication.getName(), id, request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Transaction updated"));
-    }
+  @PutMapping("/transactions/{id}")
+  @Operation(summary = "İslem guncelle")
+  public ResponseEntity<ApiResponse<FamilyTransactionResponse>> updateTransaction(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody FamilyTransactionRequest request
+  ) {
+    FamilyTransactionResponse response = familyService.updateTransaction(authentication.getName(), id, request);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Transaction updated"));
+  }
 
-    @DeleteMapping("/transactions/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteTransaction(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        familyService.deleteTransaction(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Transaction deleted"));
-    }
+  @DeleteMapping("/transactions/{id}")
+  @Operation(summary = "İslem sil")
+  public ResponseEntity<ApiResponse<Void>> deleteTransaction(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    familyService.deleteTransaction(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Transaction deleted"));
+  }
 
-    @GetMapping("/transactions/summary")
-    public ResponseEntity<ApiResponse<FamilyFinanceSummaryResponse>> getSummary(
-        Authentication authentication,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) {
-        FamilyFinanceSummaryResponse response = familyService.getFinanceSummary(authentication.getName(), startDate, endDate);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/transactions/summary")
+  @Operation(summary = "Ozet getir")
+  public ResponseEntity<ApiResponse<FamilyFinanceSummaryResponse>> getSummary(
+    Authentication authentication,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+  ) {
+    FamilyFinanceSummaryResponse response = familyService.getFinanceSummary(authentication.getName(), startDate, endDate);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/transactions/report")
-    public ResponseEntity<ApiResponse<FamilyFinanceReportResponse>> getReport(
-        Authentication authentication,
-        @RequestParam(defaultValue = "MONTHLY") String period
-    ) {
-        FamilyFinanceReportResponse response = familyService.getFinanceReport(authentication.getName(), period);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/transactions/report")
+    @Operation(summary = "Raporu getir")
+  public ResponseEntity<ApiResponse<FamilyFinanceReportResponse>> getReport(
+    Authentication authentication,
+    @RequestParam(defaultValue = "MONTHLY") String period
+  ) {
+    FamilyFinanceReportResponse response = familyService.getFinanceReport(authentication.getName(), period);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PostMapping("/birthdays")
-    public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> createBirthday(
-        Authentication authentication,
-        @Valid @RequestBody FamilyBirthdayRequest request
-    ) {
-        FamilyBirthdayResponse response = familyService.createBirthday(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Birthday created"));
-    }
+  @PostMapping("/birthdays")
+  @Operation(summary = "Dogum gunu olustur")
+  public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> createBirthday(
+    Authentication authentication,
+    @Valid @RequestBody FamilyBirthdayRequest request
+  ) {
+    FamilyBirthdayResponse response = familyService.createBirthday(authentication.getName(), request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Birthday created"));
+  }
 
-   @GetMapping("/birthdays")
+  @GetMapping("/birthdays")
+  @Operation(summary = "Dogum gunleri listele")
 public ResponseEntity<ApiResponse<Page<FamilyBirthdayResponse>>> getBirthdays(
-        Authentication authentication,
-        @ParameterObject @PageableDefault(size = 20) Pageable pageable
+    Authentication authentication,
+    @ParameterObject @PageableDefault(size = 20) Pageable pageable
 ) {
-    Page<FamilyBirthdayResponse> response =
-            familyService.getBirthdays(authentication.getName(), pageable);
+  Page<FamilyBirthdayResponse> response =
+      familyService.getBirthdays(authentication.getName(), pageable);
 
-    return ResponseEntity.ok(ApiResponse.ok(response));
+  return ResponseEntity.ok(ApiResponse.ok(response));
 }
 
 
-    @GetMapping("/birthdays/{id}")
-    public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> getBirthday(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(familyService.getBirthday(authentication.getName(), id)));
-    }
+  @GetMapping("/birthdays/{id}")
+  @Operation(summary = "Dogum gunu getir")
+  public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> getBirthday(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(familyService.getBirthday(authentication.getName(), id)));
+  }
 
-    @PutMapping("/birthdays/{id}")
-    public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> updateBirthday(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody FamilyBirthdayRequest request
-    ) {
-        FamilyBirthdayResponse response = familyService.updateBirthday(authentication.getName(), id, request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Birthday updated"));
-    }
+  @PutMapping("/birthdays/{id}")
+  @Operation(summary = "Dogum gunu guncelle")
+  public ResponseEntity<ApiResponse<FamilyBirthdayResponse>> updateBirthday(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody FamilyBirthdayRequest request
+  ) {
+    FamilyBirthdayResponse response = familyService.updateBirthday(authentication.getName(), id, request);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Birthday updated"));
+  }
 
-    @DeleteMapping("/birthdays/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteBirthday(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        familyService.deleteBirthday(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Birthday deleted"));
-    }
+  @DeleteMapping("/birthdays/{id}")
+  @Operation(summary = "Dogum gunu sil")
+  public ResponseEntity<ApiResponse<Void>> deleteBirthday(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    familyService.deleteBirthday(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Birthday deleted"));
+  }
 
-    @GetMapping("/birthdays/upcoming")
-    public ResponseEntity<ApiResponse<List<FamilyBirthdayResponse>>> getUpcomingBirthdays(
-        Authentication authentication,
-        @RequestParam(defaultValue = "30") int days
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(familyService.getUpcomingBirthdays(authentication.getName(), days)));
-    }
+  @GetMapping("/birthdays/upcoming")
+  @Operation(summary = "Yaklasan dogum gunleri listele")
+  public ResponseEntity<ApiResponse<List<FamilyBirthdayResponse>>> getUpcomingBirthdays(
+    Authentication authentication,
+    @RequestParam(defaultValue = "30") int days
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(familyService.getUpcomingBirthdays(authentication.getName(), days)));
+  }
 
-    @GetMapping("/fx/latest/{code}")
-    public ResponseEntity<ApiResponse<CurrencyRateResponse>> getLatestFx(
-        @PathVariable String code
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(familyService.getLatestFxRate(code)));
-    }
+  @GetMapping("/fx/latest/{code}")
+  @Operation(summary = "Guncel doviz getir")
+  public ResponseEntity<ApiResponse<CurrencyRateResponse>> getLatestFx(
+    @PathVariable String code
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(familyService.getLatestFxRate(code)));
+  }
 
-    @GetMapping("/fx/historical/{code}")
-    public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getHistoricalFx(
-        @PathVariable String code,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(familyService.getHistoricalFxRates(code, startDate, endDate)));
-    }
+  @GetMapping("/fx/historical/{code}")
+  @Operation(summary = "Gecmis doviz getir")
+  public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getHistoricalFx(
+    @PathVariable String code,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(familyService.getHistoricalFxRates(code, startDate, endDate)));
+  }
 }

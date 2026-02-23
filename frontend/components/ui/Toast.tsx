@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
 

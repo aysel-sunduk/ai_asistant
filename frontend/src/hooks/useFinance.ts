@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { financeService } from '../../services/finance.service';
 import type { FinanceTransaction } from '../models/finance.model';

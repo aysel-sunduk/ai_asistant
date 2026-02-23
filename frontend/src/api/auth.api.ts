@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type {
     ApiResponse,
     LoginRequest,

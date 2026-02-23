@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { StyleSheet, Text, View } from 'react-native';
 export default function MealLogScreen() {
     return (<View style={styles.container}><Text style={styles.title}>Öğün Takip</Text></View>);

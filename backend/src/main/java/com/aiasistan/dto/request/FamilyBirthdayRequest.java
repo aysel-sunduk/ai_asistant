@@ -1,10 +1,17 @@
+   /**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
+
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDate;
-
+/**
+ * DTO: Aile doğum günü (ekleme/güncelleme) isteği.
+ */
 public class FamilyBirthdayRequest {
 
     @NotBlank(message = "Full name is required")

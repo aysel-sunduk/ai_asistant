@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export type BackendGameType = 'sudoku' | 'quiz' | 'memory';
 export type FrontendGameType = BackendGameType | '2048';
 

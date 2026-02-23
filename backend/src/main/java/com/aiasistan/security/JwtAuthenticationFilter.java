@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.security;
 
 import java.io.IOException;

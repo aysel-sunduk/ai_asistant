@@ -1,14 +1,22 @@
-package com.aiasistan.dto;
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
 
-import com.aiasistan.model.Reminder;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.aiasistan.model.Reminder;
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+/**
+ * DTO: Hatırlatıcı (reminder) verilerini taşır.
+ */
 public class ReminderDto {
 
     @Schema(name = "ReminderRequest")

@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { workApi } from '../src/api/work.api';
 import type {
     WorkEvent,

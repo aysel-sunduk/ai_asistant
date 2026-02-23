@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -8,6 +12,9 @@ import com.aiasistan.model.HealthGoal;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * DTO: Sağlık hedefleri (health goals) bilgileri.
+ */
 public class HealthGoalDto {
 
     public static class Request {

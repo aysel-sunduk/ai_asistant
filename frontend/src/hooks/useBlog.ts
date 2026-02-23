@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { blogService } from '../../services/blog.service';
 import type { BlogPostRequest } from '../models/blog.model';

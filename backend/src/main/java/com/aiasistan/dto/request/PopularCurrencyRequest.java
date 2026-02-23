@@ -1,7 +1,14 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * DTO: Popüler döviz isteği için parametreler.
+ */
 public class PopularCurrencyRequest {
 
     @NotBlank(message = "Currency code is required")

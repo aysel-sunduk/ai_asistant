@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { socialApi } from '../src/api/social.api';
 import type {
     DiscoverUserItem,

@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import type { GameType } from '../../src/models/game.model';

@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.security;
 
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -86,5 +90,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-
-

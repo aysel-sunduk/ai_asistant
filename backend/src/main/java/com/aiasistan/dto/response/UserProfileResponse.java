@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
@@ -6,6 +10,9 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * DTO: Kullanıcı profili bilgileri için yanıt.
+ */
 public class UserProfileResponse {
     private UUID userId;
     private String email;

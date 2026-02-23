@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { userApi } from '../src/api/user.api';
 import type { User, UserProfile } from '../src/models/user.model';
 

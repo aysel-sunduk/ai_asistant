@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -11,6 +15,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO: Taslak e-posta (mail draft) verileri.
+ */
 public class MailDraftDto {
 
     public static class Request {

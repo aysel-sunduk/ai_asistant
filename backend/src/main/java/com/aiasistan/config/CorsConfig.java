@@ -1,3 +1,6 @@
+/**
+ * Kisa aciklama: Bu dosya modulin ortak parcasidir.
+ */
 package com.aiasistan.config;
 
 import org.springframework.context.annotation.Bean;
@@ -59,4 +62,3 @@ public class CorsConfig {
         };
     }
 }
-

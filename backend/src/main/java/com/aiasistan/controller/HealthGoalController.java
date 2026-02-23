@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import org.springframework.http.ResponseEntity;
@@ -14,30 +18,33 @@ import com.aiasistan.dto.HealthGoalDto;
 import com.aiasistan.service.HealthGoalService;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
 
 @Validated
 @RestController
 @RequestMapping("/v1/health/goals")
 public class HealthGoalController {
 
-    private final HealthGoalService healthGoalService;
+  private final HealthGoalService healthGoalService;
 
-    public HealthGoalController(HealthGoalService healthGoalService) {
-        this.healthGoalService = healthGoalService;
-    }
+  public HealthGoalController(HealthGoalService healthGoalService) {
+    this.healthGoalService = healthGoalService;
+  }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<HealthGoalDto.Response>> getGoals(Authentication authentication) {
-        HealthGoalDto.Response response = healthGoalService.getOrCreateGoals(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping
+  @Operation(summary = "Hedefler listele")
+  public ResponseEntity<ApiResponse<HealthGoalDto.Response>> getGoals(Authentication authentication) {
+    HealthGoalDto.Response response = healthGoalService.getOrCreateGoals(authentication.getName());
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PutMapping
-    public ResponseEntity<ApiResponse<HealthGoalDto.Response>> updateGoals(
-        Authentication authentication,
-        @Valid @RequestBody HealthGoalDto.Request request
-    ) {
-        HealthGoalDto.Response response = healthGoalService.upsertGoals(authentication.getName(), request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Saglik hedefleri guncellendi"));
-    }
+  @PutMapping
+  @Operation(summary = "Hedefler guncelle")
+  public ResponseEntity<ApiResponse<HealthGoalDto.Response>> updateGoals(
+    Authentication authentication,
+    @Valid @RequestBody HealthGoalDto.Request request
+  ) {
+    HealthGoalDto.Response response = healthGoalService.upsertGoals(authentication.getName(), request);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Saglik hedefleri guncellendi"));
+  }
 }

@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { goalsApi } from '../src/api/goals.api';
 import type { Goal, GoalRequest } from '../src/models/goal.model';
 

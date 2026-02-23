@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 // ─── Genel API Response Wrapper ───
 export interface ApiResponse<T> {
     success: boolean;

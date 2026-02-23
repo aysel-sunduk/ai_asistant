@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
@@ -5,6 +9,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DTO: Aile finans raporu yanıtı.
+ */
 public class FamilyFinanceReportResponse {
     private String period;
     private LocalDate startDate;
@@ -69,4 +76,3 @@ public class FamilyFinanceReportResponse {
     public List<Bucket> getBuckets() { return buckets; }
     public void setBuckets(List<Bucket> buckets) { this.buckets = buckets; }
 }
-

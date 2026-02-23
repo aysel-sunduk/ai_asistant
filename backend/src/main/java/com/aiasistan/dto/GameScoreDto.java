@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -7,10 +11,13 @@ import java.util.UUID;
 import com.aiasistan.model.GameScore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.AssertTrue;
 
+/**
+ * DTO: Oyun skorları (game scores) bilgisi.
+ */
 public class GameScoreDto {
 
     @Schema(name = "GameScoreCreateRequest")

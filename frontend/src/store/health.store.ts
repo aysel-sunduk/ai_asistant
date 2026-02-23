@@ -1,3 +1,4 @@
+// Kisa aciklama: Uygulama state yonetimini yapar.
 import { create } from 'zustand';
 import type { HealthLog, HealthLogType } from '../models/health.model';
 

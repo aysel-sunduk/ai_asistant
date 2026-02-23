@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import java.util.UUID;
@@ -28,147 +32,160 @@ import com.aiasistan.service.BlogPostService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.Operation;
 
 @Validated
 @RestController
 @RequestMapping("/v1/blog/posts")
 public class BlogPostController {
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("updatedAt", "createdAt", "title", "status", "visibility");
+  private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("updatedAt", "createdAt", "title", "status", "visibility");
 
-    private final BlogPostService blogPostService;
+  private final BlogPostService blogPostService;
 
-    public BlogPostController(BlogPostService blogPostService) {
-        this.blogPostService = blogPostService;
-    }
+  public BlogPostController(BlogPostService blogPostService) {
+    this.blogPostService = blogPostService;
+  }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> createPost(
-        Authentication authentication,
-        @Valid @RequestBody BlogPostDto.Request request
-    ) {
-        BlogPostDto.Response response = blogPostService.createPost(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.ok(response, "Blog yazisi olusturuldu"));
-    }
+  @PostMapping
+  @Operation(summary = "Gonderi olustur")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> createPost(
+    Authentication authentication,
+    @Valid @RequestBody BlogPostDto.Request request
+  ) {
+    BlogPostDto.Response response = blogPostService.createPost(authentication.getName(), request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+      .body(ApiResponse.ok(response, "Blog yazisi olusturuldu"));
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> getPostById(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        BlogPostDto.Response response = blogPostService.getPostById(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/{id}")
+  @Operation(summary = "Gonderi detayini getir")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> getPostById(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    BlogPostDto.Response response = blogPostService.getPostById(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getPosts(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-        @RequestParam(defaultValue = "updatedAt") String sortBy,
-        @RequestParam(defaultValue = "DESC") String sortDirection
-    ) {
-        var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "updatedAt");
-        PageResponse<BlogPostDto.Response> response = blogPostService.getPosts(
-            authentication.getName(),
-            PageRequest.of(page, size, sort)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping
+  @Operation(summary = "Gonderileri listele")
+  public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getPosts(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+    @RequestParam(defaultValue = "updatedAt") String sortBy,
+    @RequestParam(defaultValue = "DESC") String sortDirection
+  ) {
+    var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "updatedAt");
+    PageResponse<BlogPostDto.Response> response = blogPostService.getPosts(
+      authentication.getName(),
+      PageRequest.of(page, size, sort)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/users/{targetUserId}")
-    public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getUserVisiblePosts(
-        Authentication authentication,
-        @PathVariable UUID targetUserId,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-        @RequestParam(defaultValue = "updatedAt") String sortBy,
-        @RequestParam(defaultValue = "DESC") String sortDirection
-    ) {
-        var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "updatedAt");
-        PageResponse<BlogPostDto.Response> response = blogPostService.getVisiblePostsByUser(
-            authentication.getName(),
-            targetUserId,
-            PageRequest.of(page, size, sort)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/users/{targetUserId}")
+  @Operation(summary = "Kullanicinin gorunur gonderilerini getir")
+  public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getUserVisiblePosts(
+    Authentication authentication,
+    @PathVariable UUID targetUserId,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+    @RequestParam(defaultValue = "updatedAt") String sortBy,
+    @RequestParam(defaultValue = "DESC") String sortDirection
+  ) {
+    var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "updatedAt");
+    PageResponse<BlogPostDto.Response> response = blogPostService.getVisiblePostsByUser(
+      authentication.getName(),
+      targetUserId,
+      PageRequest.of(page, size, sort)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/feed/following")
-    public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getFollowingFeed(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<BlogPostDto.Response> response = blogPostService.getFollowingFeed(
-            authentication.getName(),
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/feed/following")
+  @Operation(summary = "Takip edilenlerin akisindaki gonderileri getir")
+  public ResponseEntity<ApiResponse<PageResponse<BlogPostDto.Response>>> getFollowingFeed(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<BlogPostDto.Response> response = blogPostService.getFollowingFeed(
+      authentication.getName(),
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> updatePost(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody BlogPostDto.Request request
-    ) {
-        BlogPostDto.Response response = blogPostService.updatePost(authentication.getName(), id, request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Blog yazisi guncellendi"));
-    }
+  @PutMapping("/{id}")
+  @Operation(summary = "Gonderi guncelle")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> updatePost(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody BlogPostDto.Request request
+  ) {
+    BlogPostDto.Response response = blogPostService.updatePost(authentication.getName(), id, request);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Blog yazisi guncellendi"));
+  }
 
-    @PatchMapping("/{id}/clean")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> cleanPostContent(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        BlogPostDto.Response response = blogPostService.cleanPostContent(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Icerik temizlendi"));
-    }
+  @PatchMapping("/{id}/clean")
+  @Operation(summary = "Gonderi icerigini temizle")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> cleanPostContent(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    BlogPostDto.Response response = blogPostService.cleanPostContent(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Icerik temizlendi"));
+  }
 
-    @PostMapping("/{id}/likes/toggle")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> toggleLike(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        BlogPostDto.Response response = blogPostService.toggleLike(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Begeni durumu guncellendi"));
-    }
+  @PostMapping("/{id}/likes/toggle")
+  @Operation(summary = "Begeni durumunu degistir")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> toggleLike(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    BlogPostDto.Response response = blogPostService.toggleLike(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Begeni durumu guncellendi"));
+  }
 
-    @PostMapping("/{id}/comments")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> addComment(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody BlogPostDto.CommentRequest request
-    ) {
-        BlogPostDto.Response response = blogPostService.addComment(authentication.getName(), id, request.getContent());
-        return ResponseEntity.ok(ApiResponse.ok(response, "Yorum eklendi"));
-    }
+  @PostMapping("/{id}/comments")
+  @Operation(summary = "Yorum ekle")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> addComment(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody BlogPostDto.CommentRequest request
+  ) {
+    BlogPostDto.Response response = blogPostService.addComment(authentication.getName(), id, request.getContent());
+    return ResponseEntity.ok(ApiResponse.ok(response, "Yorum eklendi"));
+  }
 
-    @DeleteMapping("/{id}/comments/{commentId}")
-    public ResponseEntity<ApiResponse<BlogPostDto.Response>> deleteComment(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @PathVariable UUID commentId
-    ) {
-        BlogPostDto.Response response = blogPostService.deleteComment(authentication.getName(), id, commentId);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Yorum silindi"));
-    }
+  @DeleteMapping("/{id}/comments/{commentId}")
+  @Operation(summary = "Yorum sil")
+  public ResponseEntity<ApiResponse<BlogPostDto.Response>> deleteComment(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @PathVariable UUID commentId
+  ) {
+    BlogPostDto.Response response = blogPostService.deleteComment(authentication.getName(), id, commentId);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Yorum silindi"));
+  }
 
-    @PostMapping("/clean-preview")
-    public ResponseEntity<ApiResponse<BlogPostDto.CleanResponse>> cleanPreview(
-        @Valid @RequestBody BlogPostDto.CleanRequest request
-    ) {
-        BlogPostDto.CleanResponse response = blogPostService.cleanTextPreview(request.getContent());
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @PostMapping("/clean-preview")
+  @Operation(summary = "Onizleme temizle")
+  public ResponseEntity<ApiResponse<BlogPostDto.CleanResponse>> cleanPreview(
+    @Valid @RequestBody BlogPostDto.CleanRequest request
+  ) {
+    BlogPostDto.CleanResponse response = blogPostService.cleanTextPreview(request.getContent());
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deletePost(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        blogPostService.deletePost(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Blog yazisi silindi"));
-    }
+  @DeleteMapping("/{id}")
+  @Operation(summary = "Gonderi sil")
+  public ResponseEntity<ApiResponse<Void>> deletePost(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    blogPostService.deletePost(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Blog yazisi silindi"));
+  }
 }

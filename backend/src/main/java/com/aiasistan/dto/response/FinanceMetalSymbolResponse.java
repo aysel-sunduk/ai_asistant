@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Finansal metal sembolü yanıtı (ör. altın, gümüş).
+ */
 public class FinanceMetalSymbolResponse {
 
     private String code;

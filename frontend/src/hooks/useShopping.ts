@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { shoppingService } from '../../services/shopping.service';
 import type {

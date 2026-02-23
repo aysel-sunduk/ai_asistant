@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FinanceTransaction } from '../../src/models/finance.model';

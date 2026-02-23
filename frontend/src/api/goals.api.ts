@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type { ApiResponse } from '../models/auth.model';
 import type { Goal, GoalPage, GoalRequest } from '../models/goal.model';
 import apiClient from './client';

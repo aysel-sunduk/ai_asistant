@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import java.util.UUID;
@@ -35,111 +39,117 @@ import jakarta.validation.constraints.Min;
 @RestController
 @RequestMapping("/v1/games/scores")
 public class GameScoreController {
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("playedAt", "score", "durationSec", "gameKey");
+  private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("playedAt", "score", "durationSec", "gameKey");
 
-    private final GameScoreService gameScoreService;
+  private final GameScoreService gameScoreService;
 
-    public GameScoreController(GameScoreService gameScoreService) {
-        this.gameScoreService = gameScoreService;
-    }
+  public GameScoreController(GameScoreService gameScoreService) {
+    this.gameScoreService = gameScoreService;
+  }
 
-    @PostMapping
-    @Operation(
-        summary = "Oyun skoru olustur",
-        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            required = true,
-            content = @Content(
-                schema = @Schema(implementation = GameScoreDto.Request.class),
-                examples = @ExampleObject(
-                    value = """
-                    {
-                      "gameType": "memory",
-                      "score": 1200,
-                      "level": 3,
-                      "duration": 95
-                    }
-                    """
-                )
-            )
+  @PostMapping
+  @Operation(
+    summary = "Puan olustur",
+    requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      required = true,
+      content = @Content(
+        schema = @Schema(implementation = GameScoreDto.Request.class),
+        examples = @ExampleObject(
+          value = """
+          {
+           "gameType": "memory",
+           "score": 1200,
+           "level": 3,
+           "duration": 95
+          }
+          """
         )
+      )
     )
-    public ResponseEntity<ApiResponse<GameScoreDto.Response>> createScore(
-        Authentication authentication,
-        @Valid @RequestBody GameScoreDto.Request request
-    ) {
-        GameScoreDto.Response response = gameScoreService.createScore(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.ok(response, "Skor kaydedildi"));
-    }
+  )
+  public ResponseEntity<ApiResponse<GameScoreDto.Response>> createScore(
+    Authentication authentication,
+    @Valid @RequestBody GameScoreDto.Request request
+  ) {
+    GameScoreDto.Response response = gameScoreService.createScore(authentication.getName(), request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+      .body(ApiResponse.ok(response, "Skor kaydedildi"));
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<GameScoreDto.Response>> getScoreById(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        GameScoreDto.Response response = gameScoreService.getScoreById(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/{id}")
+  @Operation(summary = "Benim puanlar listele")
+  public ResponseEntity<ApiResponse<GameScoreDto.Response>> getScoreById(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    GameScoreDto.Response response = gameScoreService.getScoreById(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.Response>>> getMyScores(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-        @RequestParam(defaultValue = "playedAt") String sortBy,
-        @RequestParam(defaultValue = "DESC") String sortDirection
-    ) {
-        var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "playedAt");
-        PageResponse<GameScoreDto.Response> response = gameScoreService.getMyScores(
-            authentication.getName(),
-            PageRequest.of(page, size, sort)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/me")
+  @Operation(summary = "Benim puanlar listele")
+  public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.Response>>> getMyScores(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+    @RequestParam(defaultValue = "playedAt") String sortBy,
+    @RequestParam(defaultValue = "DESC") String sortDirection
+  ) {
+    var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "playedAt");
+    PageResponse<GameScoreDto.Response> response = gameScoreService.getMyScores(
+      authentication.getName(),
+      PageRequest.of(page, size, sort)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/leaderboard")
-    public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.Response>>> getLeaderboard(
-        @RequestParam String gameKey,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<GameScoreDto.Response> response = gameScoreService.getLeaderboard(
-            gameKey,
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/leaderboard")
+  @Operation(summary = "Liderlik tablosu getir")
+  public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.Response>>> getLeaderboard(
+    @RequestParam String gameKey,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<GameScoreDto.Response> response = gameScoreService.getLeaderboard(
+      gameKey,
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/leaderboard/following")
-    public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.FollowingLeaderboardResponse>>> getFollowingLeaderboard(
-        Authentication authentication,
-        @RequestParam String gameKey,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<GameScoreDto.FollowingLeaderboardResponse> response = gameScoreService.getFollowingLeaderboard(
-            authentication.getName(),
-            gameKey,
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/leaderboard/following")
+  @Operation(summary = "Takip edilen liderlik tablosu getir")
+  public ResponseEntity<ApiResponse<PageResponse<GameScoreDto.FollowingLeaderboardResponse>>> getFollowingLeaderboard(
+    Authentication authentication,
+    @RequestParam String gameKey,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<GameScoreDto.FollowingLeaderboardResponse> response = gameScoreService.getFollowingLeaderboard(
+      authentication.getName(),
+      gameKey,
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/rank-summary")
-    public ResponseEntity<ApiResponse<GameScoreDto.RankSummaryResponse>> getRankSummary(
-        Authentication authentication,
-        @RequestParam String gameKey
-    ) {
-        GameScoreDto.RankSummaryResponse response = gameScoreService.getRankSummary(authentication.getName(), gameKey);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping("/rank-summary")
+  @Operation(summary = "Siralama ozet getir")
+  public ResponseEntity<ApiResponse<GameScoreDto.RankSummaryResponse>> getRankSummary(
+    Authentication authentication,
+    @RequestParam String gameKey
+  ) {
+    GameScoreDto.RankSummaryResponse response = gameScoreService.getRankSummary(authentication.getName(), gameKey);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteScore(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        gameScoreService.deleteScore(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Skor silindi"));
-    }
+  @DeleteMapping("/{id}")
+  @Operation(summary = "Puan sil")
+  public ResponseEntity<ApiResponse<Void>> deleteScore(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    gameScoreService.deleteScore(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Skor silindi"));
+  }
 }

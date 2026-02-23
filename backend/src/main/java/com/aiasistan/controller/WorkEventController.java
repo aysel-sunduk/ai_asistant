@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import java.time.OffsetDateTime;
@@ -41,260 +45,260 @@ import jakarta.validation.constraints.Min;
 @RequestMapping("/v1/business/events")
 @Tag(name = "Is Etkinlikleri", description = "Toplanti ve is etkinlikleri yonetimi")
 public class WorkEventController {
-    
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-        "startTime", "endTime", "createdAt", "updatedAt", "title", "priority", "status"
+  
+  private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+    "startTime", "endTime", "createdAt", "updatedAt", "title", "priority", "status"
+  );
+
+  private final WorkEventService workEventService;
+
+  public WorkEventController(WorkEventService workEventService) {
+    this.workEventService = workEventService;
+  }
+
+  @PostMapping
+  @Operation(
+    summary = "Is etkinligi olustur",
+    requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      required = true,
+      content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
+    )
+  )
+  public ResponseEntity<ApiResponse<WorkEventDto.Response>> createWorkEvent(
+    Authentication authentication,
+    @Valid @RequestBody WorkEventDto.Request request
+  ) {
+    WorkEventDto.Response response = workEventService.createWorkEvent(
+      authentication.getName(), request
     );
+    return ResponseEntity.status(HttpStatus.CREATED)
+      .body(ApiResponse.ok(response, "Toplanti basariyla olusturuldu"));
+  }
 
-    private final WorkEventService workEventService;
+  @GetMapping("/{id}")
+  @Operation(summary = "Etkinlik detayini getir")
+  public ResponseEntity<ApiResponse<WorkEventDto.Response>> getWorkEventById(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    WorkEventDto.Response response = workEventService.getWorkEventById(
+      authentication.getName(), id
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    public WorkEventController(WorkEventService workEventService) {
-        this.workEventService = workEventService;
-    }
+  @GetMapping
+  @Operation(summary = "Tum etkinlikleri listele")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getAllWorkEvents(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
+    @RequestParam(defaultValue = "startTime") String sortBy,
+    @RequestParam(defaultValue = "ASC") String sortDirection
+  ) {
+    var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "startTime");
+    PageResponse<WorkEventDto.Response> response = workEventService.getAllWorkEvents(
+      authentication.getName(),
+      PageRequest.of(page, size, sort)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PostMapping
-    @Operation(
-        summary = "Yeni toplanti olustur",
-        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            required = true,
-            content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
-        )
+  @GetMapping("/date-range")
+  @Operation(summary = "Tarih araligina gore etkinlikleri getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByDateRange(
+    Authentication authentication,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getEventsByDateRange(
+      authentication.getName(), startDate, endDate
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/upcoming")
+  @Operation(summary = "Yaklasan etkinlikleri getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getUpcomingEvents(
+    Authentication authentication
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getUpcomingEvents(
+      authentication.getName()
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Yaklasan toplantilar getirildi"));
+  }
+
+  @GetMapping("/ongoing")
+  @Operation(summary = "Devam eden etkinlikleri getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getOngoingEvents(
+    Authentication authentication
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getOngoingEvents(
+      authentication.getName()
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Devam eden toplantilar getirildi"));
+  }
+
+  @GetMapping("/today")
+  @Operation(summary = "Bugunun etkinliklerini getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getTodayEvents(
+    Authentication authentication
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getTodayEvents(
+      authentication.getName()
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Bugunun toplantilari getirildi"));
+  }
+
+  @GetMapping("/this-week")
+  @Operation(summary = "Bu haftaki etkinlikleri getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getThisWeekEvents(
+    Authentication authentication
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getThisWeekEvents(
+      authentication.getName()
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Bu haftanin toplantilari getirildi"));
+  }
+
+  @GetMapping("/by-status")
+  @Operation(summary = "Duruma gore etkinlikleri getir")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByStatus(
+    Authentication authentication,
+    @RequestParam String status,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<WorkEventDto.Response> response = workEventService.getEventsByStatus(
+      authentication.getName(),
+      status,
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/by-priority")
+  @Operation(summary = "Oncelige gore etkinlikleri getir")
+  public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByPriority(
+    Authentication authentication,
+    @RequestParam String priority
+  ) {
+    List<WorkEventDto.Response> response = workEventService.getEventsByPriority(
+      authentication.getName(), priority
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/by-type")
+  @Operation(summary = "Ture gore etkinlikleri getir")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByType(
+    Authentication authentication,
+    @RequestParam String eventType,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<WorkEventDto.Response> response = workEventService.getEventsByType(
+      authentication.getName(),
+      eventType,
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/online")
+  @Operation(summary = "Cevrimici etkinlikleri getir")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getOnlineEvents(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<WorkEventDto.Response> response = workEventService.getOnlineEvents(
+      authentication.getName(),
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/past")
+  @Operation(summary = "Gecmis etkinlikleri getir")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getPastEvents(
+    Authentication authentication,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<WorkEventDto.Response> response = workEventService.getPastEvents(
+      authentication.getName(),
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/search")
+  @Operation(summary = "Etkinlikler ara")
+  public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> searchEvents(
+    Authentication authentication,
+    @RequestParam String query,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+  ) {
+    PageResponse<WorkEventDto.Response> response = workEventService.searchEvents(
+      authentication.getName(),
+      query,
+      PageRequest.of(page, size)
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/summary")
+  @Operation(summary = "Etkinlik ozetini getir")
+  public ResponseEntity<ApiResponse<WorkEventDto.Summary>> getEventsSummary(
+    Authentication authentication
+  ) {
+    WorkEventDto.Summary response = workEventService.getEventsSummary(
+      authentication.getName()
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti ozeti getirildi"));
+  }
+
+  @PutMapping("/{id}")
+  @Operation(
+    summary = "Etkinligi guncelle",
+    requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      required = true,
+      content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
     )
-    public ResponseEntity<ApiResponse<WorkEventDto.Response>> createWorkEvent(
-        Authentication authentication,
-        @Valid @RequestBody WorkEventDto.Request request
-    ) {
-        WorkEventDto.Response response = workEventService.createWorkEvent(
-            authentication.getName(), request
-        );
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.ok(response, "Toplanti basariyla olusturuldu"));
-    }
+  )
+  public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateWorkEvent(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody WorkEventDto.Request request
+  ) {
+    WorkEventDto.Response response = workEventService.updateWorkEvent(
+      authentication.getName(), id, request
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti basariyla guncellendi"));
+  }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Toplanti detayini getir")
-    public ResponseEntity<ApiResponse<WorkEventDto.Response>> getWorkEventById(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        WorkEventDto.Response response = workEventService.getWorkEventById(
-            authentication.getName(), id
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @PatchMapping("/{id}/status")
+  @Operation(summary = "Etkinlik durumunu guncelle")
+  public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateEventStatus(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @RequestParam String status
+  ) {
+    WorkEventDto.Response response = workEventService.updateEventStatus(
+      authentication.getName(), id, status
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti durumu guncellendi"));
+  }
 
-    @GetMapping
-    @Operation(summary = "Tum toplantilari listele (sayfali)")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getAllWorkEvents(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
-        @RequestParam(defaultValue = "startTime") String sortBy,
-        @RequestParam(defaultValue = "ASC") String sortDirection
-    ) {
-        var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "startTime");
-        PageResponse<WorkEventDto.Response> response = workEventService.getAllWorkEvents(
-            authentication.getName(),
-            PageRequest.of(page, size, sort)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/date-range")
-    @Operation(summary = "Tarih araligina gore toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByDateRange(
-        Authentication authentication,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startDate,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endDate
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getEventsByDateRange(
-            authentication.getName(), startDate, endDate
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/upcoming")
-    @Operation(summary = "Yaklasan toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getUpcomingEvents(
-        Authentication authentication
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getUpcomingEvents(
-            authentication.getName()
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Yaklasan toplantilar getirildi"));
-    }
-
-    @GetMapping("/ongoing")
-    @Operation(summary = "Devam eden toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getOngoingEvents(
-        Authentication authentication
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getOngoingEvents(
-            authentication.getName()
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Devam eden toplantilar getirildi"));
-    }
-
-    @GetMapping("/today")
-    @Operation(summary = "Bugunku toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getTodayEvents(
-        Authentication authentication
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getTodayEvents(
-            authentication.getName()
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Bugunun toplantilari getirildi"));
-    }
-
-    @GetMapping("/this-week")
-    @Operation(summary = "Bu haftaki toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getThisWeekEvents(
-        Authentication authentication
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getThisWeekEvents(
-            authentication.getName()
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Bu haftanin toplantilari getirildi"));
-    }
-
-    @GetMapping("/by-status")
-    @Operation(summary = "Duruma gore toplantilari getir")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByStatus(
-        Authentication authentication,
-        @RequestParam String status,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<WorkEventDto.Response> response = workEventService.getEventsByStatus(
-            authentication.getName(),
-            status,
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/by-priority")
-    @Operation(summary = "Oncelige gore toplantilari getir")
-    public ResponseEntity<ApiResponse<List<WorkEventDto.Response>>> getEventsByPriority(
-        Authentication authentication,
-        @RequestParam String priority
-    ) {
-        List<WorkEventDto.Response> response = workEventService.getEventsByPriority(
-            authentication.getName(), priority
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/by-type")
-    @Operation(summary = "Toplanti tipine gore getir")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getEventsByType(
-        Authentication authentication,
-        @RequestParam String eventType,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<WorkEventDto.Response> response = workEventService.getEventsByType(
-            authentication.getName(),
-            eventType,
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/online")
-    @Operation(summary = "Online toplantilari getir")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getOnlineEvents(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<WorkEventDto.Response> response = workEventService.getOnlineEvents(
-            authentication.getName(),
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/past")
-    @Operation(summary = "Gecmis toplantilari getir")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> getPastEvents(
-        Authentication authentication,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<WorkEventDto.Response> response = workEventService.getPastEvents(
-            authentication.getName(),
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/search")
-    @Operation(summary = "Toplanti ara")
-    public ResponseEntity<ApiResponse<PageResponse<WorkEventDto.Response>>> searchEvents(
-        Authentication authentication,
-        @RequestParam String query,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        PageResponse<WorkEventDto.Response> response = workEventService.searchEvents(
-            authentication.getName(),
-            query,
-            PageRequest.of(page, size)
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/summary")
-    @Operation(summary = "Toplanti istatistikleri ve ozet")
-    public ResponseEntity<ApiResponse<WorkEventDto.Summary>> getEventsSummary(
-        Authentication authentication
-    ) {
-        WorkEventDto.Summary response = workEventService.getEventsSummary(
-            authentication.getName()
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti ozeti getirildi"));
-    }
-
-    @PutMapping("/{id}")
-    @Operation(
-        summary = "Toplantiyi guncelle",
-        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            required = true,
-            content = @Content(schema = @Schema(implementation = WorkEventDto.Request.class))
-        )
-    )
-    public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateWorkEvent(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody WorkEventDto.Request request
-    ) {
-        WorkEventDto.Response response = workEventService.updateWorkEvent(
-            authentication.getName(), id, request
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti basariyla guncellendi"));
-    }
-
-    @PatchMapping("/{id}/status")
-    @Operation(summary = "Toplanti durumunu guncelle")
-    public ResponseEntity<ApiResponse<WorkEventDto.Response>> updateEventStatus(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @RequestParam String status
-    ) {
-        WorkEventDto.Response response = workEventService.updateEventStatus(
-            authentication.getName(), id, status
-        );
-        return ResponseEntity.ok(ApiResponse.ok(response, "Toplanti durumu guncellendi"));
-    }
-
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Toplantiyi sil")
-    public ResponseEntity<ApiResponse<Void>> deleteWorkEvent(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        workEventService.deleteWorkEvent(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Toplanti basariyla silindi"));
-    }
+  @DeleteMapping("/{id}")
+  @Operation(summary = "Etkinligi sil")
+  public ResponseEntity<ApiResponse<Void>> deleteWorkEvent(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    workEventService.deleteWorkEvent(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Toplanti basariyla silindi"));
+  }
 }

@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type { GameRankSummary, GameScore } from '../models/game.model';
 import apiClient from './client';
 

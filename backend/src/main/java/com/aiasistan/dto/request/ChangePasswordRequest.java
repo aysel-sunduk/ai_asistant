@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -5,6 +9,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO: Şifre değiştirme isteği verileri.
+ */
 public class ChangePasswordRequest {
 
     @Schema(example = "123456")

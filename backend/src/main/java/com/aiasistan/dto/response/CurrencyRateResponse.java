@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
@@ -7,6 +11,9 @@ import java.util.UUID;
 
 /**
  * Lombok KULLANILMADI
+ */
+/**
+ * DTO: Döviz kuru (rate) yanıtı.
  */
 public class CurrencyRateResponse {
     private UUID id;

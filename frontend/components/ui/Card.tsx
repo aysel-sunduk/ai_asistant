@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 

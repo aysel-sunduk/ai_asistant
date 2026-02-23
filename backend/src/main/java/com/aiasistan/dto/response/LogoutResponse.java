@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Çıkış (logout) yanıtı.
+ */
 public class LogoutResponse {
     private String message;
 

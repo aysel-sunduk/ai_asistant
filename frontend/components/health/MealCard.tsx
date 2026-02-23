@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import type { HealthLog } from '../../src/models/health.model';

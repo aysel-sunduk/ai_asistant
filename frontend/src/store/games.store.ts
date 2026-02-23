@@ -1,3 +1,4 @@
+// Kisa aciklama: Uygulama state yonetimini yapar.
 import { create } from 'zustand';
 import type { GameScore } from '../models/game.model';
 

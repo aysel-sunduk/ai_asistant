@@ -1,3 +1,4 @@
+// Kisa aciklama: Uygulama state yonetimini yapar.
 import { create } from 'zustand';
 import type { Reminder } from '../models/reminder.model';
 

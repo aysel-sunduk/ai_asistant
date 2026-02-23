@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya modulin destek kodunu icerir.
 /**
  * İkon sabitleri – Tab bar ve navigasyon ikonları
  * @expo/vector-icons (Ionicons) isimleri

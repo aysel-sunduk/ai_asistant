@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya tekrar kullanilan hook mantigini tutar.
 import { useEffect, useState } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
 

@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
+/**
+ * DTO: Döviz çifti günlük detay yanıtı.
+ */
 public class CurrencyPairDailyDetailResponse {
 
     private String baseCurrency;

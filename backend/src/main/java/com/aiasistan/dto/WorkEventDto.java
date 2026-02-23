@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -5,15 +9,18 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.aiasistan.model.WorkEvent;
-import io.swagger.v3.oas.annotations.media.Schema;
 
-import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO: İş etkinlikleri (work events) ile ilgili veri taşıyıcı.
+ */
 public class WorkEventDto {
 
     @Schema(name = "WorkEventRequest")

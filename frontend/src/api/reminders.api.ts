@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type { ApiResponse } from '../models/auth.model';
 import type { Reminder, ReminderPage, ReminderRequest, ReminderStatus } from '../models/reminder.model';
 import apiClient from './client';

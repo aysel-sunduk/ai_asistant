@@ -1,7 +1,14 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
 
+/**
+ * DTO: İş paneli (dashboard) için özet veriler.
+ */
 public class BusinessDashboardDto {
 
     public static class Statistics {

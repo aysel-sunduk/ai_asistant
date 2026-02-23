@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 /**
  * API temel URL'si
  */

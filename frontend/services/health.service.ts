@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { healthApi } from '../src/api/health.api';
 import type { HealthGoals, HealthLog } from '../src/models/health.model';
 
@@ -8,8 +9,19 @@ export const healthService = {
     },
 
     createLog: async (data: Partial<HealthLog>): Promise<HealthLog> => {
-        const response = await healthApi.createLog(data);
-        return response.data.data;
+        // Debug: log outgoing payload and response for diagnosis
+        // eslint-disable-next-line no-console
+        console.log('[healthService] createLog request:', JSON.stringify(data));
+        try {
+            const response = await healthApi.createLog(data);
+            // eslint-disable-next-line no-console
+            console.log('[healthService] createLog response:', response?.data);
+            return response.data.data;
+        } catch (err: any) {
+            // eslint-disable-next-line no-console
+            console.warn('[healthService] createLog error:', err?.response?.data || err);
+            throw err;
+        }
     },
 
     deleteLog: async (id: string): Promise<void> => {

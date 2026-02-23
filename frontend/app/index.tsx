@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../src/store/auth.store';
 

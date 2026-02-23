@@ -1,9 +1,16 @@
-package com.aiasistan.dto.request;
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
 
-import jakarta.validation.constraints.NotBlank;
+package com.aiasistan.dto.request;
 
 import java.time.LocalDate;
 
+import jakarta.validation.constraints.NotBlank;
+
+/**
+ * DTO: Kişi/iletişim ekleme veya güncelleme isteği.
+ */
 public class ContactRequest {
 
     @NotBlank(message = "Name is required")

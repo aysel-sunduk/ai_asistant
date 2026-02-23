@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { Modal as RNModal, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
 

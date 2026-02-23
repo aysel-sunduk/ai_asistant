@@ -1,8 +1,15 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
+/**
+ * DTO: Yatırım performans verileri için yanıt.
+ */
 public class InvestmentPerformanceResponse {
     private BigDecimal totalCost;
     private BigDecimal estimatedCurrentValue;

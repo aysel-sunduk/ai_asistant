@@ -1,10 +1,18 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+/**
+ * DTO: Döviz kuru sorgulama isteği parametreleri.
+ */
 public class CurrencyRateRequest {
     
     @NotNull(message = "Currency code cannot be null")

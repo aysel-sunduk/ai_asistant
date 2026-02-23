@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.time.OffsetDateTime;
@@ -5,6 +9,9 @@ import java.util.List;
 
 import com.aiasistan.common.dto.PageResponse;
 
+/**
+ * DTO: Finans paneli (dashboard) verileri için yanıt.
+ */
 public class FinanceDashboardResponse {
 
     private String baseCurrency;

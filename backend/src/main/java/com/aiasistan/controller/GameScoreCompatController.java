@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import java.util.List;
@@ -30,121 +34,129 @@ import com.aiasistan.service.GameScoreService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.Operation;
 
 @Validated
 @RestController
 @RequestMapping("/games")
 public class GameScoreCompatController {
-    private final GameScoreService gameScoreService;
-    private final UserRepository userRepository;
+  private final GameScoreService gameScoreService;
+  private final UserRepository userRepository;
 
-    public GameScoreCompatController(GameScoreService gameScoreService, UserRepository userRepository) {
-        this.gameScoreService = gameScoreService;
-        this.userRepository = userRepository;
-    }
+  public GameScoreCompatController(GameScoreService gameScoreService, UserRepository userRepository) {
+    this.gameScoreService = gameScoreService;
+    this.userRepository = userRepository;
+  }
 
-    @GetMapping("/scores")
-    public ResponseEntity<List<GameScoreCompatDto>> getMyScores(
-        Authentication authentication,
-        @RequestParam(required = false) String gameType
-    ) {
-        List<GameScoreCompatDto> response = gameScoreService.getMyScoresList(authentication.getName(), gameType).stream()
-            .map(GameScoreCompatDto::from)
-            .toList();
-        return ResponseEntity.ok(response);
-    }
+  @GetMapping("/scores")
+  @Operation(summary = "Benim puanlar listele")
+  public ResponseEntity<List<GameScoreCompatDto>> getMyScores(
+    Authentication authentication,
+    @RequestParam(required = false) String gameType
+  ) {
+    List<GameScoreCompatDto> response = gameScoreService.getMyScoresList(authentication.getName(), gameType).stream()
+      .map(GameScoreCompatDto::from)
+      .toList();
+    return ResponseEntity.ok(response);
+  }
 
-    @GetMapping("/types")
-    public ResponseEntity<List<String>> getGameTypes() {
-        return ResponseEntity.ok(gameScoreService.getActiveGameKeys());
-    }
+  @GetMapping("/types")
+  @Operation(summary = "Oyun turler listele")
+  public ResponseEntity<List<String>> getGameTypes() {
+    return ResponseEntity.ok(gameScoreService.getActiveGameKeys());
+  }
 
-    @PostMapping("/scores")
-    public ResponseEntity<GameScoreCompatDto> submitScore(
-        Authentication authentication,
-        @Valid @RequestBody GameScoreCompatDto.SubmitRequest request
-    ) {
-        GameScoreDto.Request createRequest = new GameScoreDto.Request();
-        createRequest.setGameKey(resolveGameKey(request));
-        createRequest.setScore(request.getScore());
-        createRequest.setLevel(request.getLevel());
-        createRequest.setDurationSec(request.getDuration());
-        createRequest.setDifficulty(request.getDifficulty());
-        createRequest.setMetadata(request.getMetadata());
-        createRequest.setPlayedAt(request.getCreatedAt());
+  @PostMapping("/scores")
+  @Operation(summary = "Puan gonder")
+  public ResponseEntity<GameScoreCompatDto> submitScore(
+    Authentication authentication,
+    @Valid @RequestBody GameScoreCompatDto.SubmitRequest request
+  ) {
+    GameScoreDto.Request createRequest = new GameScoreDto.Request();
+    createRequest.setGameKey(resolveGameKey(request));
+    createRequest.setScore(request.getScore());
+    createRequest.setLevel(request.getLevel());
+    createRequest.setDurationSec(request.getDuration());
+    createRequest.setDifficulty(request.getDifficulty());
+    createRequest.setMetadata(request.getMetadata());
+    createRequest.setPlayedAt(request.getCreatedAt());
 
-        GameScoreDto.Response created = gameScoreService.createScore(authentication.getName(), createRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(GameScoreCompatDto.from(created));
-    }
+    GameScoreDto.Response created = gameScoreService.createScore(authentication.getName(), createRequest);
+    return ResponseEntity.status(HttpStatus.CREATED).body(GameScoreCompatDto.from(created));
+  }
 
-    @GetMapping("/leaderboard/{gameKey}")
-    public ResponseEntity<List<GameScoreCompatDto>> getLeaderboard(
-        @PathVariable String gameKey,
-        @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
-    ) {
-        List<GameScoreDto.Response> leaderboardRows = gameScoreService.getLeaderboardTopList(gameKey, limit);
-        Map<UUID, User> userMap = userRepository.findAllById(
-            leaderboardRows.stream().map(GameScoreDto.Response::getUserId).toList()
-        ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
+  @GetMapping("/leaderboard/{gameKey}")
+  @Operation(summary = "Liderlik tablosu getir")
+  public ResponseEntity<List<GameScoreCompatDto>> getLeaderboard(
+    @PathVariable String gameKey,
+    @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
+  ) {
+    List<GameScoreDto.Response> leaderboardRows = gameScoreService.getLeaderboardTopList(gameKey, limit);
+    Map<UUID, User> userMap = userRepository.findAllById(
+      leaderboardRows.stream().map(GameScoreDto.Response::getUserId).toList()
+    ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
-        List<GameScoreCompatDto> response = leaderboardRows.stream()
-            .map(row -> {
-                GameScoreCompatDto dto = GameScoreCompatDto.from(row);
-                User user = userMap.get(row.getUserId());
-                if (user != null) {
-                    dto.setFirstName(user.getFirstName());
-                    dto.setLastName(user.getLastName());
-                }
-                return dto;
-            })
-            .toList();
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/leaderboard/following/{gameKey}")
-    public ResponseEntity<List<GameScoreCompatDto.FollowingLeaderboardRow>> getFollowingLeaderboard(
-        Authentication authentication,
-        @PathVariable String gameKey,
-        @RequestParam(defaultValue = "0") @Min(0) int page,
-        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-    ) {
-        var response = gameScoreService.getFollowingLeaderboard(
-            authentication.getName(),
-            gameKey,
-            PageRequest.of(page, size)
-        ).getContent().stream()
-            .map(GameScoreCompatDto.FollowingLeaderboardRow::from)
-            .toList();
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/rank-summary/{gameKey}")
-    public ResponseEntity<GameScoreCompatDto.RankSummary> getRankSummary(
-        Authentication authentication,
-        @PathVariable String gameKey
-    ) {
-        GameScoreCompatDto.RankSummary response = GameScoreCompatDto.RankSummary.from(
-            gameScoreService.getRankSummary(authentication.getName(), gameKey)
-        );
-        return ResponseEntity.ok(response);
-    }
-
-    @DeleteMapping("/scores/{id}")
-    public ResponseEntity<Void> deleteScore(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        gameScoreService.deleteScore(authentication.getName(), id);
-        return ResponseEntity.noContent().build();
-    }
-
-    private String resolveGameKey(GameScoreCompatDto.SubmitRequest request) {
-        if (request.getGameType() != null && !request.getGameType().isBlank()) {
-            return request.getGameType();
+    List<GameScoreCompatDto> response = leaderboardRows.stream()
+      .map(row -> {
+        GameScoreCompatDto dto = GameScoreCompatDto.from(row);
+        User user = userMap.get(row.getUserId());
+        if (user != null) {
+          dto.setFirstName(user.getFirstName());
+          dto.setLastName(user.getLastName());
         }
-        if (request.getGameKey() != null && !request.getGameKey().isBlank()) {
-            return request.getGameKey();
-        }
-        throw new BadRequestException("gameType veya gameKey zorunludur");
+        return dto;
+      })
+      .toList();
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/leaderboard/following/{gameKey}")
+  @Operation(summary = "Takip edilen liderlik tablosu getir")
+  public ResponseEntity<List<GameScoreCompatDto.FollowingLeaderboardRow>> getFollowingLeaderboard(
+    Authentication authentication,
+    @PathVariable String gameKey,
+    @RequestParam(defaultValue = "0") @Min(0) int page,
+    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+  ) {
+    var response = gameScoreService.getFollowingLeaderboard(
+      authentication.getName(),
+      gameKey,
+      PageRequest.of(page, size)
+    ).getContent().stream()
+      .map(GameScoreCompatDto.FollowingLeaderboardRow::from)
+      .toList();
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/rank-summary/{gameKey}")
+  @Operation(summary = "Siralama ozet getir")
+  public ResponseEntity<GameScoreCompatDto.RankSummary> getRankSummary(
+    Authentication authentication,
+    @PathVariable String gameKey
+  ) {
+    GameScoreCompatDto.RankSummary response = GameScoreCompatDto.RankSummary.from(
+      gameScoreService.getRankSummary(authentication.getName(), gameKey)
+    );
+    return ResponseEntity.ok(response);
+  }
+
+  @DeleteMapping("/scores/{id}")
+  @Operation(summary = "Puan sil")
+  public ResponseEntity<Void> deleteScore(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    gameScoreService.deleteScore(authentication.getName(), id);
+    return ResponseEntity.noContent().build();
+  }
+
+  private String resolveGameKey(GameScoreCompatDto.SubmitRequest request) {
+    if (request.getGameType() != null && !request.getGameType().isBlank()) {
+      return request.getGameType();
     }
+    if (request.getGameKey() != null && !request.getGameKey().isBlank()) {
+      return request.getGameKey();
+    }
+    throw new BadRequestException("gameType veya gameKey zorunludur");
+  }
 }

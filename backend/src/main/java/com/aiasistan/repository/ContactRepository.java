@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Veri erisim sorgularini tanimlar.
+ */
+
 package com.aiasistan.repository;
 
 import com.aiasistan.model.Contact;

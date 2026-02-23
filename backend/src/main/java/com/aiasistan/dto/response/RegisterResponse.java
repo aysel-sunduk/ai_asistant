@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Kayıt (register) isteği yanıtı.
+ */
 public class RegisterResponse {
     private String email;
     private String message;

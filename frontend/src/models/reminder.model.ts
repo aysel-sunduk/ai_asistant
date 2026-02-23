@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export type ReminderSourceModule =
     | 'general'
     | 'business'

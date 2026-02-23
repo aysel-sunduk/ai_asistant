@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.exception;
 
 /**
@@ -9,4 +13,3 @@ public class NotFoundException extends RuntimeException {
         super(message);
     }
 }
-

@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Endpoint alir, servise yonlendirir.
+ */
+
 package com.aiasistan.controller;
 
 import com.aiasistan.common.ApiResponse;
@@ -21,59 +25,65 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
 @RequestMapping("/v1/family/contacts")
 public class ContactController {
 
-    private final ContactService contactService;
+  private final ContactService contactService;
 
-    public ContactController(ContactService contactService) {
-        this.contactService = contactService;
-    }
+  public ContactController(ContactService contactService) {
+    this.contactService = contactService;
+  }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<ContactResponse>> createContact(
-        Authentication authentication,
-        @Valid @RequestBody ContactRequest request
-    ) {
-        ContactResponse response = contactService.createContact(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Contact created"));
-    }
+  @PostMapping
+  @Operation(summary = "Kisi olustur")
+  public ResponseEntity<ApiResponse<ContactResponse>> createContact(
+    Authentication authentication,
+    @Valid @RequestBody ContactRequest request
+  ) {
+    ContactResponse response = contactService.createContact(authentication.getName(), request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response, "Contact created"));
+  }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<Page<ContactResponse>>> getContacts(
-        Authentication authentication,
-        @ParameterObject @PageableDefault(size = 50) org.springframework.data.domain.Pageable pageable
-    ) {
-        Page<ContactResponse> response = contactService.getContacts(authentication.getName(), pageable);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @GetMapping
+  @Operation(summary = "Kisiler listele")
+  public ResponseEntity<ApiResponse<Page<ContactResponse>>> getContacts(
+    Authentication authentication,
+    @ParameterObject @PageableDefault(size = 50) org.springframework.data.domain.Pageable pageable
+  ) {
+    Page<ContactResponse> response = contactService.getContacts(authentication.getName(), pageable);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ContactResponse>> getContact(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(contactService.getContact(authentication.getName(), id)));
-    }
+  @GetMapping("/{id}")
+  @Operation(summary = "Kisi getir")
+  public ResponseEntity<ApiResponse<ContactResponse>> getContact(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    return ResponseEntity.ok(ApiResponse.ok(contactService.getContact(authentication.getName(), id)));
+  }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ContactResponse>> updateContact(
-        Authentication authentication,
-        @PathVariable UUID id,
-        @Valid @RequestBody ContactRequest request
-    ) {
-        ContactResponse response = contactService.updateContact(authentication.getName(), id, request);
-        return ResponseEntity.ok(ApiResponse.ok(response, "Contact updated"));
-    }
+  @PutMapping("/{id}")
+  @Operation(summary = "Kisi guncelle")
+  public ResponseEntity<ApiResponse<ContactResponse>> updateContact(
+    Authentication authentication,
+    @PathVariable UUID id,
+    @Valid @RequestBody ContactRequest request
+  ) {
+    ContactResponse response = contactService.updateContact(authentication.getName(), id, request);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Contact updated"));
+  }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteContact(
-        Authentication authentication,
-        @PathVariable UUID id
-    ) {
-        contactService.deleteContact(authentication.getName(), id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Contact deleted"));
-    }
+  @DeleteMapping("/{id}")
+  @Operation(summary = "Kisi sil")
+  public ResponseEntity<ApiResponse<Void>> deleteContact(
+    Authentication authentication,
+    @PathVariable UUID id
+  ) {
+    contactService.deleteContact(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Contact deleted"));
+  }
 }

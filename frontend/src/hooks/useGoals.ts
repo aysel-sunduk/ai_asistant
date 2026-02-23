@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { goalsService } from '../../services/goals.service';
 import type { GoalRequest } from '../models/goal.model';

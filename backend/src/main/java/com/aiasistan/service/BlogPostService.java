@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Is kurallarini uygular.
+ */
+
 package com.aiasistan.service;
 
 import java.util.ArrayList;
@@ -36,6 +40,7 @@ public class BlogPostService {
 
     private static final Set<String> ALLOWED_VISIBILITY = Set.of("private", "followers", "public");
     private static final Set<String> ALLOWED_STATUS = Set.of("draft", "published", "archived");
+    private static final String ARCHIVED_STATUS = "archived";
 
     private final BlogPostRepository blogPostRepository;
     private final UserService userService;
@@ -79,7 +84,7 @@ public class BlogPostService {
     public PageResponse<BlogPostDto.Response> getPosts(String userEmail, Pageable pageable) {
         ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
-        Page<BlogPostDto.Response> page = blogPostRepository.findByUserId(userId, pageable)
+        Page<BlogPostDto.Response> page = blogPostRepository.findByUserIdAndStatusNot(userId, ARCHIVED_STATUS, pageable)
             .map(post -> toResponseForViewer(post, userId));
         return PageResponse.of(page);
     }
@@ -243,7 +248,9 @@ public class BlogPostService {
         ensureBlogSchemaForReactions();
         UUID userId = userService.getUserIdByEmail(userEmail);
         BlogPost post = findOwnedPost(id, userId);
-        blogPostRepository.delete(post);
+        post.setStatus(ARCHIVED_STATUS);
+        post.setVisibility("private");
+        blogPostRepository.save(post);
     }
 
     private void ensureBlogSchemaForReactions() {
@@ -299,13 +306,20 @@ public class BlogPostService {
     }
 
     private BlogPost findOwnedPost(UUID id, UUID userId) {
-        return blogPostRepository.findByIdAndUserId(id, userId)
+        BlogPost post = blogPostRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+        if (ARCHIVED_STATUS.equalsIgnoreCase(post.getStatus())) {
+            throw new NotFoundException("Blog yazisi bulunamadi");
+        }
+        return post;
     }
 
     private BlogPost findAccessiblePost(UUID id, UUID viewerId) {
         BlogPost post = blogPostRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+        if (ARCHIVED_STATUS.equalsIgnoreCase(post.getStatus())) {
+            throw new NotFoundException("Blog yazisi bulunamadi");
+        }
 
         if (viewerId.equals(post.getUserId())) {
             return post;

@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import type { ShoppingList } from '../../src/models/shopping.model';

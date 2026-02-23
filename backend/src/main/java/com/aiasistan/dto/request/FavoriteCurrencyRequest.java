@@ -1,7 +1,14 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * DTO: Favori döviz ekleme/kaldırma isteği.
+ */
 public class FavoriteCurrencyRequest {
 
     @NotBlank(message = "Currency code is required")

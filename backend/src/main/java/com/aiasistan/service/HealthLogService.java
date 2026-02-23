@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Is kurallarini uygular.
+ */
+
 package com.aiasistan.service;
 
 import java.time.LocalDate;
@@ -59,14 +63,32 @@ public class HealthLogService {
         String normalizedType = normalizeLogType(request.getLogType());
         String normalizedSource = normalizeSource(request.getSource());
         String externalRecordId = normalizeExternalRecordId(request.getExternalRecordId());
+        // Kısa debug: hangi alanların geldiğini logla (sunucu tarafı izleme için)
+        org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+            .debug("createLog: user={}, externalRecordId={}, type={}, source={}, dataKeys={}",
+                userEmail, externalRecordId, normalizedType, normalizedSource,
+                request.getData() != null ? request.getData().keySet() : null);
         validateDataByType(normalizedType, request.getData());
-
         if (externalRecordId != null) {
             return healthLogRepository.findByUserIdAndExternalRecordId(userId, externalRecordId)
-                .map(HealthLogDto.Response::from)
-                .orElseGet(() -> saveNewHealthLog(userId, normalizedType, request, normalizedSource, externalRecordId));
+                .map(existing -> {
+                    // Log ve geri dönüş: dış kayıt id'si zaten varsa yeni kayıt oluşturulmaz
+                    // Bu sayede istemcinin senkronize ederken neden "yeni veri yok" gördüğünü
+                    // sunucu loglarından takip edebiliriz.
+                    // Not: performans için sadece bilgi amaçlı log basılır.
+                    // (Kısa ve tek satırlık log)
+                    org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+                        .info("Existing health log for externalRecordId={}", externalRecordId);
+                    return HealthLogDto.Response.from(existing);
+                })
+                .orElseGet(() -> {
+                    org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+                        .info("Saving new health log for externalRecordId={}", externalRecordId);
+                    return saveNewHealthLog(userId, normalizedType, request, normalizedSource, externalRecordId);
+                });
         }
 
+        org.slf4j.LoggerFactory.getLogger(HealthLogService.class).info("Saving new health log without externalRecordId");
         return saveNewHealthLog(userId, normalizedType, request, normalizedSource, null);
     }
 

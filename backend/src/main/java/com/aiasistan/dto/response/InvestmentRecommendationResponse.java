@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * DTO: Yatırım önerisi yanıtı.
+ */
 public class InvestmentRecommendationResponse {
     private UUID id;
     private String recommendationType;

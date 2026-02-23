@@ -1,8 +1,15 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * DTO: Takip (follow) ilişkisi verileri.
+ */
 public class FollowDto {
 
     public static class UserSummary {

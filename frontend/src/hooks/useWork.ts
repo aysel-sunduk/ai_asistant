@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { workService } from '../../services/work.service';
 import type { WorkEvent } from '../models/work.model';

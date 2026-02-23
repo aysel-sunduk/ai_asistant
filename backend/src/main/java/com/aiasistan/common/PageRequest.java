@@ -1,3 +1,6 @@
+/**
+ * Kisa aciklama: Bu dosya modulin ortak parcasidir.
+ */
 package com.aiasistan.common;
 
 public class PageRequest {

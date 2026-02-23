@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export const formatCurrency = (val: number | null | undefined, currency = '₺'): string => {
     if (val == null) return `${currency}0`;
     const abs = Math.abs(val);

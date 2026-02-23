@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Şifremi unuttum isteği için yanıt.
+ */
 public class ForgotPasswordResponse {
     private String email;
     private String message;

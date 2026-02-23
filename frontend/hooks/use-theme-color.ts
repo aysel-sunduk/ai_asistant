@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya tekrar kullanilan hook mantigini tutar.
 /**
  * Learn more about light and dark modes:
  * https://docs.expo.dev/guides/color-schemes/

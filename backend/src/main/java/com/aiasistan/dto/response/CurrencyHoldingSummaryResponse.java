@@ -1,7 +1,14 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
 
+/**
+ * DTO: Döviz pozisyonu özet yanıtı.
+ */
 public class CurrencyHoldingSummaryResponse {
 
     private String baseCurrency;

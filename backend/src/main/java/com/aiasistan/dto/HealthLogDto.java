@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.LocalDate;
@@ -10,6 +14,9 @@ import com.aiasistan.model.HealthLog;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * DTO: Sağlık kayıtları (health logs) için veri taşıyıcı.
+ */
 public class HealthLogDto {
 
     public static class Request {

@@ -1,3 +1,6 @@
+/**
+ * Kisa aciklama: Bu dosya modulin ortak parcasidir.
+ */
 package com.aiasistan.config;
 
 import io.swagger.v3.oas.models.Components;

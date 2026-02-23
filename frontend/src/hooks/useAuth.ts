@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback, useState } from 'react';
 import { authService } from '../../services/auth.service';
 import type { LoginRequest, RegisterRequest } from '../models/auth.model';

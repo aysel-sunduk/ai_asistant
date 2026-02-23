@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Yenileme token'ı (refresh token) yanıtı.
+ */
 public class RefreshTokenResponse {
     private String accessToken;
     private String refreshToken;

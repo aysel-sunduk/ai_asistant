@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { remindersApi } from '../src/api/reminders.api';
 import type {
     Reminder,

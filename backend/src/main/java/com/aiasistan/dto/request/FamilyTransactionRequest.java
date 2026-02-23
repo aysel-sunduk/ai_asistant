@@ -1,11 +1,18 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
+
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
-import java.time.LocalDate;
-
+/**
+ * DTO: Aile içi işlem ekleme/güncelleme isteği.
+ */
 public class FamilyTransactionRequest {
 
     @NotNull(message = "Type is required")

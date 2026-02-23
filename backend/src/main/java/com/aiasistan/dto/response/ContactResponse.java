@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * DTO: Kişi/iletişim bilgisi yanıtı.
+ */
 public class ContactResponse {
     private UUID id;
     private String name;

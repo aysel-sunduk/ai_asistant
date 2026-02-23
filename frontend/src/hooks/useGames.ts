@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { gamesService } from '../../services/games.service';
 import type { FrontendGameType } from '../models/game.model';

@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Is kurallarini uygular.
+ */
+
 package com.aiasistan.service;
 
 import org.slf4j.Logger;

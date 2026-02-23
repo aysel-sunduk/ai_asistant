@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
@@ -52,7 +53,17 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        try {
+            const url = response.config?.url ?? '';
+            const method = (response.config?.method ?? '').toString().toUpperCase();
+            if (url.includes('/v1/health/logs')) {
+                // eslint-disable-next-line no-console
+                console.log('[ApiClient] Response:', method, url, 'status:', response.status, 'data:', response.data);
+            }
+        } catch {}
+        return response;
+    },
     async (error) => {
         const status = error.response?.status as number | undefined;
         const originalRequest = error.config as RetryableRequestConfig | undefined;

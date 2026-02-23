@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { contactsApi } from '../src/api/contacts.api';
 import type { Contact, ContactPage, ContactRequest } from '../src/models/contact.model';
 

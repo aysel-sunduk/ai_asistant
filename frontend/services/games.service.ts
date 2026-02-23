@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { gamesApi } from '../src/api/games.api';
 import type { FrontendGameType, GameRankSummary, GameScore } from '../src/models/game.model';
 

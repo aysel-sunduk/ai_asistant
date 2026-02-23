@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
@@ -7,6 +11,9 @@ import java.util.UUID;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * DTO: Uyumluluk amaçlı oyun skoru verisi.
+ */
 public class GameScoreCompatDto {
     private UUID id;
     private UUID userId;

@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export type AIInteractionType =
     | 'diet_plan'
     | 'mail_draft'

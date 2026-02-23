@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Şifre değiştirme isteği için yanıt.
+ */
 public class ChangePasswordResponse {
 
     private String email;

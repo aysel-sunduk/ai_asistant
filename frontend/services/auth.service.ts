@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { authApi } from '../src/api/auth.api';
 import type { LoginResponse, RegisterRequest, RegisterResponse, TokenResponse } from '../src/models/auth.model';
 import { storage } from '../src/utils/storage';

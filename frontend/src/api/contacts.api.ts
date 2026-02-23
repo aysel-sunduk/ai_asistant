@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type { ApiResponse } from '../models/auth.model';
 import type { Contact, ContactPage, ContactRequest } from '../models/contact.model';
 import apiClient from './client';

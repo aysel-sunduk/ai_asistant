@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export interface FamilyBirthdayRequest {
     fullName: string;
     relationship?: string;

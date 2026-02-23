@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { blogApi } from '../src/api/blog.api';
 import type { BlogPage, BlogPost, BlogPostRequest } from '../src/models/blog.model';
 

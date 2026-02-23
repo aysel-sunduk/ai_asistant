@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 import { LogBox } from 'react-native';
 
 export function ignoreLogs() {

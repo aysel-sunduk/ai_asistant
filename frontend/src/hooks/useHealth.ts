@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { healthService } from '../../services/health.service';
 import type { HealthLog } from '../models/health.model';

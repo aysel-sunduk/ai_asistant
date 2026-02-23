@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
@@ -6,6 +10,9 @@ import java.util.UUID;
 
 /**
  * Lombok KULLANILMADI - elle getter/setter
+ */
+/**
+ * DTO: Yatırım bilgisi için yanıt.
  */
 public class InvestmentResponse {
     private UUID id;

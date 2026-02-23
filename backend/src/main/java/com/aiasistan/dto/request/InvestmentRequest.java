@@ -1,10 +1,18 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
+
+import java.math.BigDecimal;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import java.math.BigDecimal;
 
+/**
+ * DTO: Yatırım ekleme/güncelleme isteği.
+ */
 public class InvestmentRequest {
     
     @NotBlank(message = "Asset type is required")

@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { familyApi } from '../src/api/family.api';
 import type {
     FamilyBirthdayPage,

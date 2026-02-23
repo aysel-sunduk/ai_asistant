@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
+/**
+ * DTO: Kullanıcı profilini oluşturma/güncelleme isteği.
+ */
 public class UserProfileUpsertRequest {
     private String fullName;
     private LocalDate birthDate;

@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function MailDraftScreen() {

@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 import { gamesService } from '../../services/games.service';
 import type { FrontendGameType } from '../models/game.model';
 

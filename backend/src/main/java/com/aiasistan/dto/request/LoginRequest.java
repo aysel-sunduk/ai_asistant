@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * DTO: Giriş (login) isteği verileri.
+ */
 public class LoginRequest {
     @NotBlank(message = "Email boş olamaz")
     @Email(message = "Geçerli bir email adresi girin", 

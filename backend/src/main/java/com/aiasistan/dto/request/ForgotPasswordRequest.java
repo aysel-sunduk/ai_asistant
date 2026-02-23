@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -5,6 +9,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+/**
+ * DTO: Şifremi unuttum isteği verileri.
+ */
 public class ForgotPasswordRequest {
     @Schema(example = "ahmet@example.com")
     @NotBlank(message = "Email bos olamaz")

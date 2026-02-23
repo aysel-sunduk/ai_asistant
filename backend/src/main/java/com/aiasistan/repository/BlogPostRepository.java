@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Veri erisim sorgularini tanimlar.
+ */
+
 package com.aiasistan.repository;
 
 import java.util.Optional;
@@ -15,6 +19,8 @@ import com.aiasistan.model.BlogPost;
 public interface BlogPostRepository extends JpaRepository<BlogPost, UUID> {
 
     Page<BlogPost> findByUserId(UUID userId, Pageable pageable);
+    
+    Page<BlogPost> findByUserIdAndStatusNot(UUID userId, String status, Pageable pageable);
 
     Optional<BlogPost> findByIdAndUserId(UUID id, UUID userId);
 

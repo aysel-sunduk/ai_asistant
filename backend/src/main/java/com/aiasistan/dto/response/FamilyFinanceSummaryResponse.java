@@ -1,7 +1,14 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.math.BigDecimal;
 
+/**
+ * DTO: Aile finans özeti (summary) yanıtı.
+ */
 public class FamilyFinanceSummaryResponse {
     private BigDecimal totalIncome;
     private BigDecimal totalExpense;

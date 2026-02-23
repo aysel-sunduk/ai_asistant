@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 // i18n konfigürasyonu
 // TODO: i18next veya expo-localization ile tam entegrasyon
 

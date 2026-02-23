@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 // ─── Genel Pagination ───
 export interface PageResponse<T> {
     content: T[];

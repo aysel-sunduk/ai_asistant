@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { financeApi } from '../src/api/finance.api';
 import axios from 'axios';
 import type {

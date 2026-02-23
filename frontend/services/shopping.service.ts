@@ -1,3 +1,4 @@
+// Kisa aciklama: Servis akislarini yonetir.
 import { shoppingApi } from '../src/api/shopping.api';
 import type {
     ShoppingItem,

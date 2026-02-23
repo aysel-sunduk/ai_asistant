@@ -1,5 +1,12 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
+/**
+ * DTO: Giriş (login) isteği yanıtı.
+ */
 public class LoginResponse {
     private String accessToken;
     private String refreshToken;
@@ -42,4 +49,3 @@ public class LoginResponse {
         this.email = email;
     }
 }
-

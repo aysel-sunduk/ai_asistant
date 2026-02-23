@@ -1,3 +1,6 @@
+/**
+ * Kisa aciklama: Bu dosya modulin ortak parcasidir.
+ */
 package com.aiasistan.config;
 
 import java.io.BufferedReader;
@@ -170,12 +173,15 @@ public class LoggingFilter extends OncePerRequestFilter {
                 logger.error("Response Body: {}", responseBody);
             }
         } else if (status >= 400) {
+            // 4xx isteklerinde kısa mesajı warn olarak yaz;
+            // request/response gövdelerini de warn olarak loglayarak
+            // hangi validation hatasının döndüğünü hızlıca görebilelim.
             logger.warn(logMessage);
             if (!requestBody.isEmpty()) {
-                logger.debug("Request Body: {}", requestBody);
+                logger.warn("Request Body: {}", requestBody);
             }
             if (!responseBody.isEmpty()) {
-                logger.debug("Response Body: {}", responseBody);
+                logger.warn("Response Body: {}", responseBody);
             }
         } else {
             logger.info(logMessage);

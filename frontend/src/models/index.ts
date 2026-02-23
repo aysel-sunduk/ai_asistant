@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 export * from './ai.model';
 export * from './auth.model';
 export * from './blog.model';
@@ -11,4 +12,3 @@ export * from './shopping.model';
 export * from './social.model';
 export * from './user.model';
 export * from './work.model';
-

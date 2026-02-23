@@ -1,3 +1,4 @@
+// Kisa aciklama: Destekleyici modul kodu icerir.
 // DB şeması: health_log_type ENUM + JSONB data
 export type HealthLogType =
     | 'daily_summary'

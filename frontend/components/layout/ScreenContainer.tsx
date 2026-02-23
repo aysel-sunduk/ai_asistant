@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya UI bilesenini tanimlar.
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
 

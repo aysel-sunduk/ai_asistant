@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { remindersService } from '../../services/reminders.service';
 import type { ReminderRequest, ReminderStatus } from '../models/reminder.model';

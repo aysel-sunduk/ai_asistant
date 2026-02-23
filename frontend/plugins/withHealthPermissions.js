@@ -1,3 +1,4 @@
+// Kisa aciklama: Bu dosya modulin destek kodunu icerir.
 const { withAndroidManifest, createRunOncePlugin } = require('@expo/config-plugins');
 
 const REQUIRED_HEALTH_PERMISSIONS = [

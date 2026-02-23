@@ -1,3 +1,4 @@
+// Kisa aciklama: Backend API cagrilarini toplar.
 import type { HealthGoals, HealthLog } from '../models/health.model';
 import type { ApiResponse } from '../models/auth.model';
 import type { PageResponse } from '../models/finance.model';

@@ -1,3 +1,4 @@
+// Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { aiService } from '../../services/ai.service';
 import type { AIInteractionType } from '../models/ai.model';

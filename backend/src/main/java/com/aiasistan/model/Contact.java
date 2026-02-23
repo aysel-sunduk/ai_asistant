@@ -1,3 +1,7 @@
+/**
+ * Kisa aciklama: Veritabani varligini temsil eder.
+ */
+
 package com.aiasistan.model;
 
 import com.aiasistan.common.BaseEntity;

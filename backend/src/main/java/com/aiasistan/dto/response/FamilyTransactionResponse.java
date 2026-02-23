@@ -1,9 +1,16 @@
+/**
+ * Kisa aciklama: Ortak uygulama parcasidir.
+ */
+
 package com.aiasistan.dto.response;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * DTO: Aile işlemi (family transaction) yanıtı.
+ */
 public class FamilyTransactionResponse {
     private UUID id;
     private String type;

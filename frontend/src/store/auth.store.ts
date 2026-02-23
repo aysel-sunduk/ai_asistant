@@ -1,3 +1,4 @@
+// Kisa aciklama: Uygulama state yonetimini yapar.
 import { create } from 'zustand';
 import type { TokenResponse } from '../models/auth.model';
 import type { User, UserProfile } from '../models/user.model';
