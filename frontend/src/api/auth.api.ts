@@ -30,11 +30,6 @@ export const authApi = {
 
     resetPassword: (data: { token: string; password: string }) =>
         apiClient.post('/v1/auth/reset-password', data),
-<<<<<<< Updated upstream
-};
-=======
-
     changePassword: (data: ChangePasswordRequest) =>
         apiClient.post<ApiResponse<ChangePasswordResponse>>('/v1/auth/change-password', data),
 };
->>>>>>> Stashed changes

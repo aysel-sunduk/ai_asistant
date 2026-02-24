@@ -101,10 +101,6 @@ export const authService = {
         }
         await authApi.resetPassword(data);
     },
-<<<<<<< Updated upstream
-};
-=======
-
     changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
         if (USE_MOCK) {
             await new Promise((r) => setTimeout(r, 500));
@@ -114,4 +110,3 @@ export const authService = {
         return response.data.data;
     },
 };
->>>>>>> Stashed changes

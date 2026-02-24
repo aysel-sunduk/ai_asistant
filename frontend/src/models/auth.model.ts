@@ -51,9 +51,6 @@ export interface ForgotPasswordRequest {
 export interface ResetPasswordRequest {
     token: string;
     newPassword: string;
-<<<<<<< Updated upstream
-}
-=======
 }
 
 // ─── Change Password ───
@@ -67,4 +64,3 @@ export interface ChangePasswordResponse {
     message: string;
     timestamp: string;
 }
->>>>>>> Stashed changes

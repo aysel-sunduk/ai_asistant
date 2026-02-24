@@ -50,13 +50,19 @@ export default function ProfileScreen() {
         fetchMe();
     }, []);
 
-    const displayName = user?.firstName
-        ? `${user.firstName} ${user.lastName || ''}`.trim()
-        : user?.username || user?.email || 'Kullanıcı';
+    const displayName = profile?.fullName
+        ? profile.fullName
+        : profile?.firstName
+            ? `${profile.firstName} ${profile.lastName || ''}`.trim()
+            : user?.firstName
+                ? `${user.firstName} ${user.lastName || ''}`.trim()
+                : user?.username || user?.email || 'Kullanıcı';
 
-    const initials = user?.firstName
-        ? `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}`
-        : user?.email?.charAt(0).toUpperCase() || 'K';
+    const initials = profile?.firstName
+        ? `${profile.firstName.charAt(0)}${profile.lastName?.charAt(0) || ''}`.toUpperCase()
+        : user?.firstName
+            ? `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}`.toUpperCase()
+            : user?.email?.charAt(0).toUpperCase() || 'K';
 
     const handleLogout = () => {
         Alert.alert('Çıkış Yap', 'Çıkış yapmak istediğinize emin misiniz?', [
