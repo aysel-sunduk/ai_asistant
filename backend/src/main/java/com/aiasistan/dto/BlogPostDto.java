@@ -100,6 +100,40 @@ public class BlogPostDto {
         }
     }
 
+    /** AI Başlık önerisi isteği. */
+    public static class TitleSuggestionRequest {
+        @NotBlank(message = "Icerik bos olamaz")
+        @Size(min = 20, max = 10000, message = "Icerik en az 20 karakter olmali")
+        private String content;
+
+        private String category = "genel";
+        private int numSuggestions = 3;
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+
+        public String getCategory() {
+            return category;
+        }
+
+        public void setCategory(String category) {
+            this.category = category;
+        }
+
+        public int getNumSuggestions() {
+            return numSuggestions;
+        }
+
+        public void setNumSuggestions(int numSuggestions) {
+            this.numSuggestions = numSuggestions;
+        }
+    }
+
     public static class CleanResponse {
         private String originalContent;
         private String cleanContent;

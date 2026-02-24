@@ -41,3 +41,13 @@ export interface BlogPage {
     first: boolean;
     last: boolean;
 }
+
+export interface BlogTitleSuggestionRequest {
+    content: string;
+    category?: string;
+    numSuggestions?: number;
+}
+
+export interface BlogTitleSuggestionResponse {
+    suggestions: string[];
+}

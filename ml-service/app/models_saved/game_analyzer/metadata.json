@@ -1,0 +1,33 @@
+{
+  "model_type": "game_analyzer",
+  "models": [
+    "kmeans",
+    "linreg",
+    "scaler"
+  ],
+  "n_clusters": 4,
+  "features": [
+    "Ort. Skor",
+    "Skor Std",
+    "Oyun Sayısı",
+    "Ort. Süre (sn)",
+    "Gelişim %"
+  ],
+  "segment_names": [
+    "Başlangıç",
+    "Gelişen",
+    "Düzenli",
+    "Usta"
+  ],
+  "label_mapping": {
+    "0": 1,
+    "1": 2,
+    "2": 0,
+    "3": 3
+  },
+  "metrics": {
+    "adjusted_rand_index": 0.7298,
+    "silhouette_score": 0.3489,
+    "linreg_r2": 0.8188
+  }
+}

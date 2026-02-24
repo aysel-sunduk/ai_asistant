@@ -61,4 +61,8 @@ export const blogService = {
         const response = await blogApi.cleanPreview(content);
         return response.data.data;
     },
+    suggestTitles: async (content: string, category?: string): Promise<string[]> => {
+        const response = await blogApi.suggestTitles(content, category);
+        return response.data.data;
+    },
 };

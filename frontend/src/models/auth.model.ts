@@ -1,11 +1,12 @@
 // Kisa aciklama: Destekleyici modul kodu icerir.
 // ─── Genel API Response Wrapper ───
 export interface ApiResponse<T> {
-    success: boolean;
+    status?: string;
+    success?: boolean;
     message: string;
     data: T;
     errorCode?: string;
-    timestamp: string;
+    timestamp?: string;
 }
 
 // ─── Login ───

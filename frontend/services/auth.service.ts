@@ -1,4 +1,4 @@
-// Kisa aciklama: Servis akislarini yonetir.
+﻿// Kisa aciklama: Servis akislarini yonetir.
 import { authApi } from '../src/api/auth.api';
 import type { ChangePasswordRequest, ChangePasswordResponse, LoginResponse, RegisterRequest, RegisterResponse, TokenResponse } from '../src/models/auth.model';
 import { storage } from '../src/utils/storage';
@@ -101,6 +101,7 @@ export const authService = {
         }
         await authApi.resetPassword(data);
     },
+
     changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
         if (USE_MOCK) {
             await new Promise((r) => setTimeout(r, 500));

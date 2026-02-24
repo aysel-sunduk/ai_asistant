@@ -1,8 +1,7 @@
 // Kisa aciklama: Servis akislarini yonetir.
-import { gamesApi } from '../src/api/games.api';
-import type { FrontendGameType, GameRankSummary, GameScore } from '../src/models/game.model';
-
-const toBackendGameType = (gameType: FrontendGameType): string => (gameType === '2048' ? 'quiz' : gameType);
+import { formatTime, getBestResult, getGameResults, type GameResult } from '../src/utils/game.utils';
+import type { FrontendGameType, GameRankSummary, GameScore, PlayerSegmentResponse, PerformanceTrendResponse } from '../src/models/game.model';
+import { gamesApi, toBackendGameType } from '../src/api/games.api';
 
 export const gamesService = {
     getScores: async (gameType?: FrontendGameType): Promise<GameScore[]> => {
@@ -36,5 +35,13 @@ export const gamesService = {
     getRankSummary: async (gameType: FrontendGameType): Promise<GameRankSummary> => {
         const response = await gamesApi.getRankSummary(toBackendGameType(gameType));
         return response.data;
+    },
+    getPlayerSegment: async (gameType: FrontendGameType): Promise<PlayerSegmentResponse> => {
+        const response = await gamesApi.getPlayerSegment(toBackendGameType(gameType));
+        return response.data.data;
+    },
+    getPerformanceTrend: async (gameType: FrontendGameType): Promise<PerformanceTrendResponse> => {
+        const response = await gamesApi.getPerformanceTrend(toBackendGameType(gameType));
+        return response.data.data;
     },
 };

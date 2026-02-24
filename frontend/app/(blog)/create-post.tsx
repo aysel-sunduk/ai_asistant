@@ -12,10 +12,13 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Modal,
+    Animated,
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
+import { useEffect, useRef } from 'react';
 
 const COLOR = '#6C63FF';
 
@@ -35,6 +38,46 @@ export default function CreatePostScreen() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
+
+    // AI States
+    const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [hasNewSuggestions, setHasNewSuggestions] = useState(false);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    // Proactive AI Trigger (Debounced)
+    useEffect(() => {
+        if (content.length < 50) {
+            setHasNewSuggestions(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setAiLoading(true);
+            try {
+                const results = await blogService.suggestTitles(content);
+                if (results && results.length > 0) {
+                    setAiSuggestions(results);
+                    setHasNewSuggestions(true);
+                    startPulse();
+                }
+            } catch (err) {
+                console.warn('AI suggestions failed', err);
+            } finally {
+                setAiLoading(false);
+            }
+        }, 2000); // 2 saniye bekle
+
+        return () => clearTimeout(timer);
+    }, [content]);
+
+    const startPulse = () => {
+        Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.2, duration: 400, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]).start();
+    };
 
     const showToast = (type: 'success' | 'error' | 'info', message: string) => {
         setToastType(type);
@@ -131,7 +174,24 @@ export default function CreatePostScreen() {
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.formCard}>
                     <Text style={styles.formTitle}>Yeni Yazi</Text>
-                    <TextInput placeholder="Baslik" value={title} onChangeText={setTitle} style={styles.input} />
+                    <View style={styles.titleContainer}>
+                        <TextInput
+                            placeholder="Baslik"
+                            value={title}
+                            onChangeText={setTitle}
+                            style={[styles.input, { flex: 1, marginTop: 0 }]}
+                        />
+                        {hasNewSuggestions && (
+                            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                <TouchableOpacity
+                                    style={styles.aiMagicBtn}
+                                    onPress={() => setShowAiModal(true)}
+                                >
+                                    <Ionicons name="sparkles" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </Animated.View>
+                        )}
+                    </View>
                     <TextInput
                         placeholder="Icerik"
                         value={content}
@@ -209,6 +269,47 @@ export default function CreatePostScreen() {
             </ScrollView>
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
+
+            {/* AI Suggestions Modal */}
+            <Modal
+                visible={showAiModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowAiModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>✨ AI Başlık Önerileri</Text>
+                            <TouchableOpacity onPress={() => setShowAiModal(false)}>
+                                <Ionicons name="close" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSub}>İçeriğine göre en uygun başlıklar burada:</Text>
+
+                        {aiLoading ? (
+                            <ActivityIndicator style={{ margin: 20 }} color={COLOR} />
+                        ) : (
+                            <ScrollView style={styles.suggestionList}>
+                                {aiSuggestions.map((suggestion, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={styles.suggestionItem}
+                                        onPress={() => {
+                                            setTitle(suggestion);
+                                            setShowAiModal(false);
+                                            setHasNewSuggestions(false);
+                                        }}
+                                    >
+                                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                                        <Ionicons name="chevron-forward" size={16} color={COLOR} />
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -228,6 +329,20 @@ const styles = StyleSheet.create({
     content: { padding: 14, paddingBottom: 24 },
     formCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12 },
     formTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+    titleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+    aiMagicBtn: {
+        backgroundColor: '#FFD700',
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 4,
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
     input: {
         marginTop: 8,
         borderRadius: 12,
@@ -257,4 +372,24 @@ const styles = StyleSheet.create({
     postTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     postMeta: { marginTop: 4, fontSize: 11, color: '#64748B' },
     postBody: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '60%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+    modalSub: { fontSize: 13, color: '#64748B', marginBottom: 15 },
+    suggestionList: { marginBottom: 20 },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    suggestionText: { fontSize: 14, fontWeight: '600', color: '#1E293B', flex: 1, marginRight: 10 },
 });

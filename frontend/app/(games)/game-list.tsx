@@ -2,9 +2,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { formatTime, getBestResult, getGameResults, type GameResult } from '../../src/utils/game.utils';
 import type { FrontendGameType } from '../../src/models/game.model';
+import { gamesService } from '../../services/games.service';
 
 const COLOR = '#A78BFA';
 
@@ -30,6 +31,8 @@ export default function GameListScreen() {
     const router = useRouter();
     const [bestResults, setBestResults] = useState<Record<string, GameResult | null>>({});
     const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+    const [segmentInfo, setSegmentInfo] = useState<{ segment: string, message: string } | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -43,6 +46,17 @@ export default function GameListScreen() {
                 }
                 setBestResults(bests);
                 setPlayCounts(counts);
+
+                // Load AI Segment (Defaulting to memory for demo, could be based on overall)
+                setAiLoading(true);
+                try {
+                    const data = await gamesService.getPlayerSegment('memory');
+                    setSegmentInfo(data);
+                } catch (err) {
+                    console.warn('Failed to load segment', err);
+                } finally {
+                    setAiLoading(false);
+                }
             };
             loadData();
         }, [])
@@ -89,6 +103,30 @@ export default function GameListScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                {/* AI Segment Banner */}
+                {aiLoading ? (
+                    <View style={styles.aiBannerLoading}>
+                        <ActivityIndicator color={COLOR} />
+                    </View>
+                ) : segmentInfo ? (
+                    <View style={styles.aiBanner}>
+                        <View style={styles.aiHeader}>
+                            <View style={[styles.segmentBadge, { backgroundColor: getSegmentColor(segmentInfo.segment) }]}>
+                                <Text style={styles.segmentBadgeText}>{segmentInfo.segment}</Text>
+                            </View>
+                            <Text style={styles.aiLabel}>✨ AI Oyuncu Analizi</Text>
+                        </View>
+                        <Text style={styles.aiMessage}>{segmentInfo.message}</Text>
+                        <TouchableOpacity
+                            style={styles.statsBtn}
+                            onPress={() => router.push('/(games)/performance-stats' as any)}
+                        >
+                            <Text style={styles.statsBtnText}>Detaylı İstatistikler</Text>
+                            <Ionicons name="stats-chart" size={14} color={COLOR} />
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
+
                 {GAMES.map((g) => (
                     <TouchableOpacity
                         key={g.id}
@@ -127,6 +165,16 @@ export default function GameListScreen() {
         </View>
     );
 }
+
+const getSegmentColor = (segment: string) => {
+    switch (segment) {
+        case 'Başlangıç': return '#94A3B8';
+        case 'Gelişen': return '#38BDF8';
+        case 'Düzenli': return '#818CF8';
+        case 'Usta': return '#F59E0B';
+        default: return '#A78BFA';
+    }
+};
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
@@ -169,4 +217,37 @@ const styles = StyleSheet.create({
     dailyEmoji: { fontSize: 28 },
     dailyTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
     dailySub: { fontSize: 12, color: '#9BA1A6', marginTop: 2 },
+
+    // AI Banner Styles
+    aiBannerLoading: { height: 120, justifyContent: 'center', alignItems: 'center' },
+    aiBanner: {
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 20,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    aiHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    aiLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    segmentBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    segmentBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+    aiMessage: { fontSize: 15, lineHeight: 22, color: '#1E293B', fontWeight: '600', marginBottom: 16 },
+    statsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: COLOR,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    statsBtnText: { color: COLOR, fontSize: 13, fontWeight: '700' },
 });

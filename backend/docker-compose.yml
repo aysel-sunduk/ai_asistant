@@ -15,7 +15,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aiasistan"]
+      test: [ "CMD-SHELL", "pg_isready -U aiasistan" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,7 +30,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,16 +42,33 @@ services:
     restart: unless-stopped
     ports:
       - "5672:5672"
-      - "15672:15672"   # Management UI
+      - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: aiasistan
       RABBITMQ_DEFAULT_PASS: aiasistan123
     volumes:
       - mq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
       interval: 15s
       timeout: 10s
+      retries: 5
+
+  # ─── ML Service (Python FastAPI) ─────────────────────
+  ml-service:
+    build:
+      context: ../ml-service
+      dockerfile: Dockerfile
+    container_name: aiasistan-ml
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      interval: 15s
+      timeout: 5s
       retries: 5
 
 volumes:

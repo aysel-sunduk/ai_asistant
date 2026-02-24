@@ -22,3 +22,22 @@ export interface GameRankSummary {
     friendsRank: number | null;
     friendsPlayerCount: number;
 }
+
+export interface PlayerSegmentResponse {
+    segment: string;
+    message: string;
+    stats: {
+        avgScore: number;
+        playCount: number;
+        improvementRate: number;
+    };
+    method: string;
+}
+
+export interface PerformanceTrendResponse {
+    trend: 'yükseliş' | 'düşüş' | 'stabil';
+    improvementPct: number;
+    message: string;
+    weeklyAvgScores: number[];
+    method: string;
+}

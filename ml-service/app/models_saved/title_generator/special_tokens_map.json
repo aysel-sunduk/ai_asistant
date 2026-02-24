@@ -1,0 +1,11 @@
+{
+    "bos_token": "<|endoftext|>",
+    "eos_token": "<|endoftext|>",
+    "pad_token": "<|pad|>",
+    "unk_token": "<|endoftext|>",
+    "additional_special_tokens": [
+        "<|kategori|>",
+        "<|icerik|>",
+        "<|baslik|>"
+    ]
+}

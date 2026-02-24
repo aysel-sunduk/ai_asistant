@@ -25,4 +25,10 @@ export const blogApi = {
     deleteComment: (id: string, commentId: string) => apiClient.delete<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/comments/${commentId}`),
     cleanPost: (id: string) => apiClient.patch<ApiResponse<BlogPost>>(`/v1/blog/posts/${id}/clean`),
     cleanPreview: (content: string) => apiClient.post<ApiResponse<{ originalContent: string; cleanContent: string }>>('/v1/blog/posts/clean-preview', { content }),
+    suggestTitles: (content: string, category = 'genel', numSuggestions = 3) =>
+        apiClient.post<ApiResponse<string[]>>('/v1/blog/posts/suggest-title', {
+            content,
+            category,
+            numSuggestions,
+        }),
 };
