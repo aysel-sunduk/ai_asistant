@@ -68,9 +68,9 @@ public class BlogPostService {
         BlogPost post = new BlogPost();
         post.setUserId(userId);
         applyRequest(post, request);
-        if (post.getCleanContent() == null || post.getCleanContent().isBlank()) {
-            post.setCleanContent(cleanLanguage(post.getRawContent()));
-        }
+        ensureNoProfanity(post.getTitle(), "Blog basligi");
+        ensureNoProfanity(post.getRawContent(), "Blog icerigi");
+        post.setCleanContent(post.getRawContent());
 
         return BlogPostDto.Response.from(blogPostRepository.save(post));
     }
@@ -134,7 +134,9 @@ public class BlogPostService {
         BlogPost post = findOwnedPost(id, userId);
 
         applyRequest(post, request);
-        post.setCleanContent(cleanLanguage(post.getRawContent()));
+        ensureNoProfanity(post.getTitle(), "Blog basligi");
+        ensureNoProfanity(post.getRawContent(), "Blog icerigi");
+        post.setCleanContent(post.getRawContent());
 
         return toResponseForViewer(blogPostRepository.save(post), userId);
     }
@@ -198,9 +200,7 @@ public class BlogPostService {
             throw new BadRequestException("Yorum 1000 karakteri gecemez");
         }
 
-        // Yorum içeriğini filtrele (argo/küfür temizle)
-        ContentFilterService.FilterResult commentFilterResult = contentFilterService.filterComment(normalizedContent);
-        String filteredContent = commentFilterResult.getCleanedText();
+        ensureNoProfanity(normalizedContent, "Yorum icerigi");
 
         List<Map<String, Object>> comments = post.getComments() == null ? new ArrayList<>()
                 : new ArrayList<>(post.getComments());
@@ -208,7 +208,7 @@ public class BlogPostService {
         comment.put("id", UUID.randomUUID().toString());
         comment.put("userId", viewerId.toString());
         comment.put("authorEmail", userEmail);
-        comment.put("content", filteredContent);
+        comment.put("content", normalizedContent);
         comment.put("createdAt", java.time.OffsetDateTime.now().toString());
         comments.add(comment);
         post.setComments(comments);
@@ -416,6 +416,19 @@ public class BlogPostService {
                 .distinct()
                 .limit(20)
                 .toArray(String[]::new);
+    }
+
+    private void ensureNoProfanity(String text, String fieldName) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        ContentFilterService.FilterResult result = contentFilterService.filterText(text);
+        if (result.isSafe()) {
+            return;
+        }
+        logger.info("{} argo nedeniyle engellendi. ML: {}, skor: {}",
+                fieldName, result.isMlUsed(), result.getProfanityScore());
+        throw new BadRequestException("Argo kelime kullandiniz. Lutfen duzeltip tekrar deneyin.");
     }
 
     private String cleanLanguage(String content) {

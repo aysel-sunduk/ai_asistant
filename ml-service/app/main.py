@@ -27,9 +27,11 @@ async def lifespan(app: FastAPI):
     from app.models.profanity_filter import _load_ml_model
     from app.models.title_generator import _load_model as _load_title_model
     from app.models.game_analyzer import _load_models as _load_game_models
+    from app.models.motivation_predictor import _load_models as _load_motivation_model
     _load_ml_model()
     _load_title_model()
     _load_game_models()
+    _load_motivation_model()
     logger.info("ML Service hazır.")
     yield
     logger.info("ML Service kapatılıyor...")
@@ -62,13 +64,15 @@ async def health_check():
     from app.models.profanity_filter import _ml_loaded, _ml_model
     from app.models.title_generator import is_model_loaded as title_loaded
     from app.models.game_analyzer import is_models_loaded as game_loaded
+    from app.models.motivation_predictor import is_model_loaded as motivation_loaded
     return {
         "status": "ok",
         "service": "ai-asistan-ml",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "models": {
             "profanity_filter": _ml_loaded and _ml_model is not None,
             "title_generator": title_loaded(),
             "game_analyzer": game_loaded(),
+            "motivation_predictor": motivation_loaded(),
         },
     }

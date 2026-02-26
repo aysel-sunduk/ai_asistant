@@ -155,4 +155,13 @@ public class GameScoreController {
     Map<String, Object> result = gameAIService.getPerformanceTrend(authentication.getName(), gameKey);
     return ResponseEntity.ok(ApiResponse.ok(result));
   }
+
+  @GetMapping("/ai/motivation")
+  @Operation(summary = "Motivasyon mesajı (RandomForest AI)")
+  public ResponseEntity<ApiResponse<Map<String, Object>>> getMotivation(
+      Authentication authentication,
+      @RequestParam String gameKey) {
+    Map<String, Object> result = gameAIService.getMotivationMessage(authentication.getName(), gameKey);
+    return ResponseEntity.ok(ApiResponse.ok(result));
+  }
 }

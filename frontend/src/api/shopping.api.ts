@@ -36,6 +36,9 @@ export const shoppingApi = {
             params: { page, size, sortBy: 'name', sortDirection: 'ASC' },
         }),
 
+    getItemById: (itemId: string) =>
+        apiClient.get<ApiResponse<ShoppingItem>>(`${BASE_PATH}/items/${itemId}`),
+
     addItem: (listId: string, data: ShoppingItemRequest) =>
         apiClient.post<ApiResponse<ShoppingItem>>(`${BASE_PATH}/lists/${listId}/items`, data),
 

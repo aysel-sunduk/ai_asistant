@@ -41,3 +41,11 @@ export interface PerformanceTrendResponse {
     weeklyAvgScores: number[];
     method: string;
 }
+
+export interface MotivationResponse {
+    label: number;
+    labelName: string;
+    message: string;
+    method: string;
+    confidence?: number;
+}

@@ -15,16 +15,47 @@ import {
     View,
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
+import { shoppingService } from '../../services/shopping.service';
 import { useShopping } from '../../src/hooks/useShopping';
+import type { ShoppingItem, ShoppingRecurrenceType } from '../../src/models/shopping.model';
 
 const COLOR = '#F472B6';
+const DATE_FILTERS: { key: ShoppingRecurrenceType; label: string }[] = [
+    { key: 'DAILY', label: 'Gunluk' },
+    { key: 'WEEKLY', label: 'Haftalik' },
+    { key: 'MONTHLY', label: 'Aylik' },
+];
+
+const isInCurrentPeriod = (dateStr: string, period: ShoppingRecurrenceType) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (Number.isNaN(d.getTime())) return false;
+
+    if (period === 'DAILY') {
+        return d.toDateString() === now.toDateString();
+    }
+    if (period === 'WEEKLY') {
+        const day = now.getDay();
+        const mondayOffset = day === 0 ? -6 : 1 - day;
+        const weekStart = new Date(now);
+        weekStart.setHours(0, 0, 0, 0);
+        weekStart.setDate(now.getDate() + mondayOffset);
+        return d >= weekStart;
+    }
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
 
 export default function ListsScreen() {
     const router = useRouter();
     const { lists, isLoading, fetchLists, createList, deleteList, updateListArchive } = useShopping();
 
     const [newListName, setNewListName] = useState('');
+    const [dateFilter, setDateFilter] = useState<ShoppingRecurrenceType>('WEEKLY');
+    const [overviewTab, setOverviewTab] = useState<'PENDING' | 'DONE'>('PENDING');
+    const [allPendingItems, setAllPendingItems] = useState<ShoppingItem[]>([]);
+    const [allDoneItems, setAllDoneItems] = useState<ShoppingItem[]>([]);
     const [creating, setCreating] = useState(false);
+    const [loadingOverview, setLoadingOverview] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
@@ -35,10 +66,27 @@ export default function ListsScreen() {
         setToastVisible(true);
     };
 
+    const loadData = useCallback(async () => {
+        setLoadingOverview(true);
+        try {
+            await fetchLists();
+            const freshLists = await shoppingService.getLists();
+            const allItemsNested = await Promise.all(freshLists.map((list) => shoppingService.getItems(list.id)));
+            const allItems = allItemsNested.flat();
+            setAllPendingItems(allItems.filter((i) => !i.isChecked));
+            setAllDoneItems(allItems.filter((i) => i.isChecked));
+        } catch {
+            setAllPendingItems([]);
+            setAllDoneItems([]);
+        } finally {
+            setLoadingOverview(false);
+        }
+    }, [fetchLists]);
+
     useFocusEffect(
         useCallback(() => {
-            void fetchLists();
-        }, [fetchLists]),
+            void loadData();
+        }, [loadData]),
     );
 
     const stats = useMemo(() => {
@@ -59,8 +107,9 @@ export default function ListsScreen() {
 
         setCreating(true);
         try {
-            await createList({ name });
+            await createList({ name, recurrenceType: dateFilter });
             setNewListName('');
+            await loadData();
             showToast('success', 'Liste olusturuldu.');
         } catch (error: any) {
             showToast('error', error?.response?.data?.message || 'Liste olusturulamadi.');
@@ -78,6 +127,7 @@ export default function ListsScreen() {
                 onPress: async () => {
                     try {
                         await deleteList(id);
+                        await loadData();
                         showToast('success', 'Liste silindi.');
                     } catch (error: any) {
                         showToast('error', error?.response?.data?.message || 'Liste silinemedi.');
@@ -90,11 +140,40 @@ export default function ListsScreen() {
     const onToggleArchive = async (id: string, archived: boolean) => {
         try {
             await updateListArchive(id, archived);
+            await loadData();
             showToast('success', archived ? 'Liste arsive alindi.' : 'Liste arsivden cikarildi.');
         } catch (error: any) {
             showToast('error', error?.response?.data?.message || 'Arsiv durumu guncellenemedi.');
         }
     };
+
+    const onOverviewToggleCheck = async (item: ShoppingItem) => {
+        try {
+            await shoppingService.updateItemCheck(item.listId, item.id, !item.isChecked);
+            await loadData();
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Urun durumu guncellenemedi.');
+        }
+    };
+
+    const onOpenItemList = (item: ShoppingItem) => {
+        const list = lists.find((l) => l.id === item.listId);
+        router.push({
+            pathname: '/(shopping)/list-detail',
+            params: { listId: item.listId, name: list?.name || 'Liste Detay' },
+        });
+    };
+
+    const filteredLists = useMemo(
+        () => lists.filter((list) => isInCurrentPeriod(list.createdAt, dateFilter)),
+        [dateFilter, lists],
+    );
+
+    const recurrenceBadgeLabel = (recurrenceType?: string) => {
+        const found = DATE_FILTERS.find((r) => r.key === recurrenceType);
+        return found ? found.label : 'Haftalik';
+    };
+    const overviewItems = overviewTab === 'PENDING' ? allPendingItems : allDoneItems;
 
     return (
         <View style={styles.container}>
@@ -106,7 +185,7 @@ export default function ListsScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Alisveris</Text>
-                    <TouchableOpacity onPress={() => void fetchLists()} style={styles.headerBtn}>
+                    <TouchableOpacity onPress={() => void loadData()} style={styles.headerBtn}>
                         <Ionicons name="refresh" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
@@ -144,6 +223,22 @@ export default function ListsScreen() {
                         <Text style={styles.createButtonText}>{creating ? '...' : 'Ekle'}</Text>
                     </TouchableOpacity>
                 </View>
+                <View style={styles.recurrenceRow}>
+                    {DATE_FILTERS.map((opt) => {
+                        const active = dateFilter === opt.key;
+                        return (
+                            <TouchableOpacity
+                                key={opt.key}
+                                style={[styles.recurrenceBtn, active && styles.recurrenceBtnActive]}
+                                onPress={() => setDateFilter(opt.key)}
+                            >
+                                <Text style={[styles.recurrenceBtnText, active && styles.recurrenceBtnTextActive]}>
+                                    {opt.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
             </View>
 
             {isLoading ? (
@@ -152,44 +247,79 @@ export default function ListsScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                    <View style={styles.card}>
+                        <Text style={styles.sectionTitle}>Genel Urun Durumu</Text>
+                        <View style={styles.overviewTabs}>
+                            <TouchableOpacity
+                                style={[styles.overviewTabBtn, overviewTab === 'PENDING' && styles.overviewTabBtnActive]}
+                                onPress={() => setOverviewTab('PENDING')}
+                            >
+                                <Text style={[styles.overviewTabText, overviewTab === 'PENDING' && styles.overviewTabTextActive]}>
+                                    Alinacaklar ({allPendingItems.length})
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.overviewTabBtn, overviewTab === 'DONE' && styles.overviewTabBtnActive]}
+                                onPress={() => setOverviewTab('DONE')}
+                            >
+                                <Text style={[styles.overviewTabText, overviewTab === 'DONE' && styles.overviewTabTextActive]}>
+                                    Alinanlar ({allDoneItems.length})
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        {loadingOverview ? (
+                            <View style={styles.loadingInline}>
+                                <ActivityIndicator size="small" color={COLOR} />
+                            </View>
+                        ) : overviewItems.length === 0 ? (
+                            <Text style={styles.emptySub}>
+                                {overviewTab === 'PENDING' ? 'Bekleyen urun yok.' : 'Alinan urun yok.'}
+                            </Text>
+                        ) : (
+                            overviewItems.slice(0, 6).map((item) => (
+                                <View key={item.id} style={styles.overviewRow}>
+                                    <TouchableOpacity
+                                        style={styles.overviewCheckBtn}
+                                        onPress={() => void onOverviewToggleCheck(item)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Ionicons
+                                            name={item.isChecked ? 'checkbox' : 'square-outline'}
+                                            size={18}
+                                            color={item.isChecked ? '#16A34A' : '#64748B'}
+                                        />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                                        activeOpacity={0.8}
+                                        onPress={() => onOpenItemList(item)}
+                                    >
+                                        <Text style={styles.overviewItemName}>{item.name}</Text>
+                                        <Text style={styles.overviewItemMeta}>
+                                            {item.quantity} {item.unit || 'adet'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+                    </View>
+
                     {lists.length === 0 ? (
                         <View style={styles.emptyCard}>
                             <Text style={styles.emptyTitle}>Henuz liste yok</Text>
                             <Text style={styles.emptySub}>Yukaridan yeni bir alisveris listesi olusturabilirsin.</Text>
                         </View>
                     ) : (
-                        lists.map((list) => (
-                            <TouchableOpacity
-                                key={list.id}
-                                style={styles.card}
-                                activeOpacity={0.75}
-                                onPress={() =>
-                                    router.push({
-                                        pathname: '/(shopping)/list-detail',
-                                        params: { listId: list.id, name: list.name },
-                                    })
-                                }
-                            >
-                                <View style={styles.cardTop}>
-                                    <View style={styles.iconBox}>
-                                        <Ionicons name="cart-outline" size={20} color={COLOR} />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.cardTitle}>{list.name}</Text>
-                                        <Text style={styles.cardSub}>
-                                            {new Date(list.createdAt).toLocaleString('tr-TR')}
-                                        </Text>
-                                    </View>
-                                    <View style={[styles.statusBadge, list.isArchived && styles.statusBadgeMuted]}>
-                                        <Text style={[styles.statusBadgeText, list.isArchived && styles.statusBadgeTextMuted]}>
-                                            {list.isArchived ? 'Arsiv' : 'Aktif'}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.cardActions}>
+                        <View style={styles.sectionWrap}>
+                            <Text style={styles.sectionTitle}>{dateFilter === 'DAILY' ? 'Bugun' : dateFilter === 'WEEKLY' ? 'Bu Hafta' : 'Bu Ay'} Listeleri</Text>
+                            {filteredLists.length === 0 ? (
+                                <Text style={styles.emptySub}>Secili tarih araliginda liste bulunamadi.</Text>
+                            ) : (
+                                filteredLists.map((list) => (
                                     <TouchableOpacity
-                                        style={styles.actionBtn}
+                                        key={list.id}
+                                        style={styles.card}
+                                        activeOpacity={0.75}
                                         onPress={() =>
                                             router.push({
                                                 pathname: '/(shopping)/list-detail',
@@ -197,27 +327,61 @@ export default function ListsScreen() {
                                             })
                                         }
                                     >
-                                        <Ionicons name="open-outline" size={14} color="#475569" />
-                                        <Text style={styles.actionText}>Ac</Text>
+                                        <View style={styles.cardTop}>
+                                            <View style={styles.iconBox}>
+                                                <Ionicons name="cart-outline" size={20} color={COLOR} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.cardTitle}>{list.name}</Text>
+                                                <Text style={styles.cardSub}>
+                                                    {new Date(list.createdAt).toLocaleString('tr-TR')}
+                                                </Text>
+                                            </View>
+                                            <View style={{ gap: 6, alignItems: 'flex-end' }}>
+                                                <View style={[styles.statusBadge, list.isArchived && styles.statusBadgeMuted]}>
+                                                    <Text style={[styles.statusBadgeText, list.isArchived && styles.statusBadgeTextMuted]}>
+                                                        {list.isArchived ? 'Arsiv' : 'Aktif'}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.recurrenceTag}>
+                                                    <Text style={styles.recurrenceTagText}>{recurrenceBadgeLabel(list.recurrenceType)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.cardActions}>
+                                            <TouchableOpacity
+                                                style={styles.actionBtn}
+                                                onPress={() =>
+                                                    router.push({
+                                                        pathname: '/(shopping)/list-detail',
+                                                        params: { listId: list.id, name: list.name },
+                                                    })
+                                                }
+                                            >
+                                                <Ionicons name="open-outline" size={14} color="#475569" />
+                                                <Text style={styles.actionText}>Ac</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.actionBtn}
+                                                onPress={() => void onToggleArchive(list.id, !list.isArchived)}
+                                            >
+                                                <Ionicons
+                                                    name={list.isArchived ? 'archive-outline' : 'file-tray-outline'}
+                                                    size={14}
+                                                    color="#475569"
+                                                />
+                                                <Text style={styles.actionText}>{list.isArchived ? 'Cikar' : 'Arsivle'}</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={styles.actionBtnDanger} onPress={() => onDeleteList(list.id)}>
+                                                <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                                                <Text style={styles.actionDangerText}>Sil</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.actionBtn}
-                                        onPress={() => void onToggleArchive(list.id, !list.isArchived)}
-                                    >
-                                        <Ionicons
-                                            name={list.isArchived ? 'archive-outline' : 'file-tray-outline'}
-                                            size={14}
-                                            color="#475569"
-                                        />
-                                        <Text style={styles.actionText}>{list.isArchived ? 'Cikar' : 'Arsivle'}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.actionBtnDanger} onPress={() => onDeleteList(list.id)}>
-                                        <Ionicons name="trash-outline" size={14} color="#DC2626" />
-                                        <Text style={styles.actionDangerText}>Sil</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </TouchableOpacity>
-                        ))
+                                ))
+                            )}
+                        </View>
                     )}
                 </ScrollView>
             )}
@@ -273,6 +437,31 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
+    recurrenceRow: {
+        marginTop: 8,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        gap: 8,
+    },
+    recurrenceBtn: {
+        flex: 1,
+        borderRadius: 10,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    recurrenceBtnActive: {
+        backgroundColor: '#fff',
+    },
+    recurrenceBtnText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    recurrenceBtnTextActive: {
+        color: COLOR,
+    },
     createInput: {
         flex: 1,
         height: 42,
@@ -294,7 +483,10 @@ const styles = StyleSheet.create({
     },
     createButtonText: { color: COLOR, fontWeight: '800', fontSize: 13 },
     loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingInline: { paddingVertical: 8, alignItems: 'center' },
     scroll: { padding: 16, paddingBottom: 28 },
+    sectionWrap: { marginBottom: 4 },
+    sectionTitle: { marginBottom: 8, fontSize: 13, fontWeight: '800', color: '#475569' },
     emptyCard: {
         marginTop: 8,
         backgroundColor: '#fff',
@@ -305,6 +497,49 @@ const styles = StyleSheet.create({
     },
     emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
     emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
+    overviewTabs: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 6,
+    },
+    overviewTabBtn: {
+        flex: 1,
+        borderRadius: 10,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F1F5F9',
+    },
+    overviewTabBtnActive: {
+        backgroundColor: '#FDF2F8',
+        borderWidth: 1,
+        borderColor: '#FBCFE8',
+    },
+    overviewTabText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    overviewTabTextActive: {
+        color: COLOR,
+    },
+    overviewRow: {
+        marginTop: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 6,
+    },
+    overviewCheckBtn: {
+        width: 24,
+        height: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    overviewItemName: { flex: 1, fontSize: 13, fontWeight: '700', color: '#0F172A' },
+    overviewItemMeta: { fontSize: 12, color: '#64748B' },
     card: {
         backgroundColor: '#fff',
         borderRadius: 16,
@@ -333,6 +568,17 @@ const styles = StyleSheet.create({
     statusBadgeMuted: { backgroundColor: '#F1F5F9' },
     statusBadgeText: { fontSize: 11, color: '#047857', fontWeight: '700' },
     statusBadgeTextMuted: { color: '#475569' },
+    recurrenceTag: {
+        borderRadius: 999,
+        backgroundColor: '#FDF2F8',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    recurrenceTagText: {
+        color: COLOR,
+        fontSize: 10,
+        fontWeight: '800',
+    },
     cardActions: { marginTop: 12, flexDirection: 'row', gap: 8 },
     actionBtn: {
         flexDirection: 'row',

@@ -1,6 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
 import { familyService } from '../../services/family.service';
+import { shoppingService } from '../../services/shopping.service';
 import type {
     FamilyFinanceBucket,
     FamilyFinanceReportResponse,
@@ -30,6 +31,7 @@ type Period = 'WEEKLY' | 'MONTHLY';
 const currency = (v: number) => `?${Number(v || 0).toFixed(2)}`;
 
 export default function TransactionsScreen() {
+    const router = useRouter();
     const [period, setPeriod] = useState<Period>('MONTHLY');
     const [report, setReport] = useState<FamilyFinanceReportResponse | null>(null);
     const [transactions, setTransactions] = useState<FamilyTransactionResponse[]>([]);
@@ -140,12 +142,58 @@ export default function TransactionsScreen() {
         ]);
     };
 
+    const onPressTransaction = async (tx: FamilyTransactionResponse) => {
+        const note = tx.note || '';
+        if (!note.startsWith('shopping_item:')) {
+            return;
+        }
+
+        const itemId = note.replace('shopping_item:', '').trim();
+        if (!itemId) {
+            return;
+        }
+
+        try {
+            const item = await shoppingService.getItemById(itemId);
+            const price = typeof item.estimatedPriceMinor === 'number'
+                ? `₺${(item.estimatedPriceMinor / 100).toFixed(2)}`
+                : '-';
+            Alert.alert(
+                'Alisveris Detayi',
+                [
+                    `Urun: ${item.name}`,
+                    `Durum: ${item.isChecked ? 'Alindi' : 'Alinacak'}`,
+                    `Miktar: ${item.quantity} ${item.unit || 'adet'}`,
+                    `Fiyat: ${price}`,
+                    `Not: ${item.note || '-'}`,
+                ].join('\n'),
+            );
+        } catch {
+            Alert.alert(
+                'Alisveris Detayi',
+                [
+                    'Bu kayda ait urun verisine su an erisilemedi.',
+                    `Kayit ID: ${itemId}`,
+                    `Kategori: ${tx.category || '-'}`,
+                    `Tutar: ₺${(tx.amountMinor / 100).toFixed(2)}`,
+                    `Tarih: ${tx.occurredOn}`,
+                ].join('\n'),
+            );
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Gelir / Gider Raporu</Text>
+                <View style={styles.headerTopRow}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
+                        <Ionicons name="chevron-back" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Gelir / Gider Raporu</Text>
+                    <View style={styles.headerBackBtnPlaceholder} />
+                </View>
                 <View style={styles.periodRow}>
                     <PeriodBtn label="Haftalik" active={period === 'WEEKLY'} onPress={() => switchPeriod('WEEKLY')} />
                     <PeriodBtn label="Aylik" active={period === 'MONTHLY'} onPress={() => switchPeriod('MONTHLY')} />
@@ -223,7 +271,12 @@ export default function TransactionsScreen() {
                             <Text style={styles.emptyText}>Bu donem icin islem kaydi yok.</Text>
                         ) : (
                             inPeriodTransactions.slice(0, 20).map((tx) => (
-                                <View key={tx.id} style={styles.txRow}>
+                                <TouchableOpacity
+                                    key={tx.id}
+                                    style={styles.txRow}
+                                    activeOpacity={0.8}
+                                    onPress={() => void onPressTransaction(tx)}
+                                >
                                     <View style={styles.txIconWrap}>
                                         <Ionicons
                                             name={tx.type === 'INCOME' ? 'arrow-down' : 'arrow-up'}
@@ -241,7 +294,7 @@ export default function TransactionsScreen() {
                                     <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteTransaction(tx.id)}>
                                         <Ionicons name="trash-outline" size={14} color="#DC2626" />
                                     </TouchableOpacity>
-                                </View>
+                                </TouchableOpacity>
                             ))
                         )}
                     </View>
@@ -311,6 +364,23 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingBottom: 14,
+    },
+    headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerBackBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerBackBtnPlaceholder: {
+        width: 34,
+        height: 34,
     },
     headerTitle: { color: '#fff', fontSize: 19, fontWeight: '800' },
     periodRow: { marginTop: 12, flexDirection: 'row', gap: 8 },

@@ -21,18 +21,23 @@ export default function PerformanceStatsScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [trendData, setTrendData] = useState<any>(null);
+    const [motivationData, setMotivationData] = useState<any>(null);
 
     useEffect(() => {
-        loadTrend();
+        loadData();
     }, []);
 
-    const loadTrend = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const data = await gamesService.getPerformanceTrend('memory');
-            setTrendData(data);
+            const [trend, motivation] = await Promise.all([
+                gamesService.getPerformanceTrend('memory'),
+                gamesService.getMotivation('memory').catch(() => null),
+            ]);
+            setTrendData(trend);
+            setMotivationData(motivation);
         } catch (err) {
-            console.warn('Trend load failed', err);
+            console.warn('Data load failed', err);
         } finally {
             setLoading(false);
         }
@@ -65,7 +70,7 @@ export default function PerformanceStatsScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Performans Analizi</Text>
-                    <TouchableOpacity onPress={loadTrend} style={styles.backBtn}>
+                    <TouchableOpacity onPress={loadData} style={styles.backBtn}>
                         <Ionicons name="refresh" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
@@ -79,6 +84,19 @@ export default function PerformanceStatsScreen() {
                     </View>
                 ) : trendData ? (
                     <>
+                        {/* Motivasyon Mesajı Card */}
+                        {motivationData && (
+                            <View style={styles.motivationCard}>
+                                <Text style={styles.motivationEmoji}>💬</Text>
+                                <Text style={styles.motivationMessage}>{motivationData.message}</Text>
+                                {motivationData.confidence && (
+                                    <Text style={styles.motivationMeta}>
+                                        AI güven: %{(motivationData.confidence * 100).toFixed(0)} • {motivationData.labelName}
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+
                         {/* Summary Card */}
                         <View style={styles.mainCard}>
                             <View style={[styles.trendBadge, { backgroundColor: getTrendColor() + '20' }]}>
@@ -124,7 +142,7 @@ export default function PerformanceStatsScreen() {
                         <View style={styles.infoBox}>
                             <Ionicons name="information-circle-outline" size={20} color="#64748B" />
                             <Text style={styles.infoText}>
-                                Bu analiz Linear Regression modeli kullanılarak gerçek oyun geçmişinden üretilmiştir.
+                                Bu analiz Linear Regression ve RandomForest modelleri kullanılarak gerçek oyun geçmişinden üretilmiştir.
                             </Text>
                         </View>
                     </>
@@ -220,4 +238,17 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     infoText: { flex: 1, fontSize: 12, color: '#64748B', lineHeight: 18 },
+
+    motivationCard: {
+        backgroundColor: '#EDE9FE',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#C4B5FD',
+    },
+    motivationEmoji: { fontSize: 32, marginBottom: 10 },
+    motivationMessage: { fontSize: 16, fontWeight: '700', color: '#4C1D95', textAlign: 'center', lineHeight: 24 },
+    motivationMeta: { marginTop: 10, fontSize: 11, color: '#7C3AED', fontWeight: '600' },
 });

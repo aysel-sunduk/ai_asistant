@@ -28,4 +28,6 @@ export const gamesApi = {
         apiClient.get<ApiResponse<any>>(`/v1/games/scores/ai/player-segment`, { params: { gameKey } }),
     getPerformanceTrend: (gameKey: string) =>
         apiClient.get<ApiResponse<any>>(`/v1/games/scores/ai/performance-trend`, { params: { gameKey } }),
+    getMotivation: (gameKey: string) =>
+        apiClient.get<ApiResponse<any>>(`/v1/games/scores/ai/motivation`, { params: { gameKey } }),
 };

@@ -1,9 +1,12 @@
 // Kisa aciklama: Destekleyici modul kodu icerir.
+export type ShoppingRecurrenceType = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+
 export interface ShoppingList {
     id: string;
     userId: string;
     name: string;
     isArchived: boolean;
+    recurrenceType: ShoppingRecurrenceType;
     createdAt: string;
 }
 
@@ -21,6 +24,7 @@ export interface ShoppingItem {
 export interface ShoppingListRequest {
     name: string;
     isArchived?: boolean;
+    recurrenceType?: ShoppingRecurrenceType;
 }
 
 export interface ShoppingItemRequest {

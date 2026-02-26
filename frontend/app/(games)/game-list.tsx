@@ -32,6 +32,7 @@ export default function GameListScreen() {
     const [bestResults, setBestResults] = useState<Record<string, GameResult | null>>({});
     const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
     const [segmentInfo, setSegmentInfo] = useState<{ segment: string, message: string } | null>(null);
+    const [motivationInfo, setMotivationInfo] = useState<{ message: string, labelName: string, confidence?: number } | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
 
     useFocusEffect(
@@ -47,13 +48,17 @@ export default function GameListScreen() {
                 setBestResults(bests);
                 setPlayCounts(counts);
 
-                // Load AI Segment (Defaulting to memory for demo, could be based on overall)
+                // Load AI Segment + Motivation
                 setAiLoading(true);
                 try {
-                    const data = await gamesService.getPlayerSegment('memory');
-                    setSegmentInfo(data);
+                    const [segData, motData] = await Promise.all([
+                        gamesService.getPlayerSegment('memory').catch(() => null),
+                        gamesService.getMotivation('memory').catch(() => null),
+                    ]);
+                    if (segData) setSegmentInfo(segData);
+                    if (motData) setMotivationInfo(motData);
                 } catch (err) {
-                    console.warn('Failed to load segment', err);
+                    console.warn('Failed to load AI data', err);
                 } finally {
                     setAiLoading(false);
                 }
@@ -117,6 +122,19 @@ export default function GameListScreen() {
                             <Text style={styles.aiLabel}>✨ AI Oyuncu Analizi</Text>
                         </View>
                         <Text style={styles.aiMessage}>{segmentInfo.message}</Text>
+
+                        {/* Motivasyon Mesajı */}
+                        {motivationInfo && (
+                            <View style={styles.motivationBox}>
+                                <Text style={styles.motivationMsg}>💬 {motivationInfo.message}</Text>
+                                {motivationInfo.confidence && (
+                                    <Text style={styles.motivationMeta}>
+                                        🤖 AI güven: %{(motivationInfo.confidence * 100).toFixed(0)}
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+
                         <TouchableOpacity
                             style={styles.statsBtn}
                             onPress={() => router.push('/(games)/performance-stats' as any)}
@@ -250,4 +268,15 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     statsBtnText: { color: COLOR, fontSize: 13, fontWeight: '700' },
+
+    motivationBox: {
+        backgroundColor: '#EDE9FE',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#C4B5FD',
+    },
+    motivationMsg: { fontSize: 14, fontWeight: '700', color: '#4C1D95', lineHeight: 20 },
+    motivationMeta: { marginTop: 6, fontSize: 11, color: '#7C3AED', fontWeight: '600' },
 });

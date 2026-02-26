@@ -38,6 +38,24 @@ export const shoppingService = {
         return response.data.data.content || [];
     },
 
+    getItemById: async (itemId: string): Promise<ShoppingItem> => {
+        try {
+            const response = await shoppingApi.getItemById(itemId);
+            return response.data.data;
+        } catch {
+            // Fallback: yeni endpoint yoksa mevcut list/items endpoint'leriyle ürünü bul.
+            const lists = await shoppingService.getLists();
+            for (const list of lists) {
+                const items = await shoppingService.getItems(list.id);
+                const found = items.find((item) => item.id === itemId);
+                if (found) {
+                    return found;
+                }
+            }
+            throw new Error('shopping_item_not_found');
+        }
+    },
+
     addItem: async (listId: string, data: ShoppingItemRequest): Promise<ShoppingItem> => {
         const response = await shoppingApi.addItem(listId, data);
         return response.data.data;

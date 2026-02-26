@@ -17,7 +17,7 @@ import {
 import Toast from '../../components/ui/Toast';
 import { shoppingService } from '../../services/shopping.service';
 import { useShopping } from '../../src/hooks/useShopping';
-import type { ShoppingListSummary } from '../../src/models/shopping.model';
+import type { ShoppingItem, ShoppingListSummary } from '../../src/models/shopping.model';
 
 const COLOR = '#F472B6';
 
@@ -160,6 +160,18 @@ export default function ListDetailScreen() {
         ]);
     };
 
+    const showItemDetail = (item: ShoppingItem) => {
+        const lines = [
+            `Urun: ${item.name}`,
+            `Durum: ${item.isChecked ? 'Alindi' : 'Alinacak'}`,
+            `Miktar: ${item.quantity} ${item.unit || 'adet'}`,
+            `Tahmini fiyat: ${typeof item.estimatedPriceMinor === 'number' ? `${money(item.estimatedPriceMinor)} TL` : '-'}`,
+            `Not: ${item.note || '-'}`,
+        ];
+        Alert.alert('Urun Detayi', lines.join('\n'));
+    };
+
+
     if (!listId) {
         return (
             <View style={[styles.container, styles.centered]}>
@@ -242,7 +254,7 @@ export default function ListDetailScreen() {
                 </View>
 
                 <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Liste urunleri</Text>
+                    <Text style={styles.sectionTitle}>Liste Urunleri</Text>
 
                     {isLoading ? (
                         <View style={styles.loadingInline}>
@@ -256,6 +268,7 @@ export default function ListDetailScreen() {
                                 <TouchableOpacity
                                     style={styles.itemCheckBtn}
                                     onPress={() => void onToggleCheck(item.id, !item.isChecked)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
                                     <Ionicons
                                         name={item.isChecked ? 'checkbox' : 'square-outline'}
@@ -264,7 +277,7 @@ export default function ListDetailScreen() {
                                     />
                                 </TouchableOpacity>
 
-                                <View style={{ flex: 1 }}>
+                                <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.8} onPress={() => showItemDetail(item)}>
                                     <Text style={[styles.itemName, item.isChecked && styles.itemNameDone]}>{item.name}</Text>
                                     <Text style={styles.itemMeta}>
                                         {item.quantity} {item.unit || 'adet'}
@@ -273,7 +286,7 @@ export default function ListDetailScreen() {
                                             : ''}
                                     </Text>
                                     {item.note ? <Text style={styles.itemNote}>{item.note}</Text> : null}
-                                </View>
+                                </TouchableOpacity>
 
                                 <TouchableOpacity style={styles.itemDeleteBtn} onPress={() => onDeleteItem(item.id)}>
                                     <Ionicons name="trash-outline" size={16} color="#DC2626" />

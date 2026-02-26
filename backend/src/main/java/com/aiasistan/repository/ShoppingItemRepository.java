@@ -23,6 +23,8 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, UUID
 
     Optional<ShoppingItem> findByIdAndList_Id(UUID id, UUID listId);
 
+    Optional<ShoppingItem> findByIdAndList_UserId(UUID id, UUID userId);
+
     void deleteByList_Id(UUID listId);
 
     long countByList_Id(UUID listId);

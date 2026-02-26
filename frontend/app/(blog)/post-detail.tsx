@@ -22,6 +22,7 @@ import { useAuthStore } from '../../src/store/auth.store';
 const COLOR = '#6C63FF';
 const VISIBILITY_OPTIONS = ['private', 'followers', 'public'] as const;
 const STATUS_OPTIONS = ['draft', 'published', 'archived'] as const;
+const PROFANITY_WARNING = 'Argo kelime kullandiniz, paylasim iptal edildi.';
 
 export default function PostDetailScreen() {
     const router = useRouter();
@@ -48,6 +49,14 @@ export default function PostDetailScreen() {
         setToastType(type);
         setToastMessage(message);
         setToastVisible(true);
+    };
+
+    const resolveBlogErrorMessage = (error: any, fallback: string) => {
+        const backendMessage: string | undefined = error?.response?.data?.message;
+        if (backendMessage?.toLowerCase().includes('argo kelime')) {
+            return PROFANITY_WARNING;
+        }
+        return backendMessage || fallback;
     };
 
     const load = useCallback(async () => {
@@ -114,7 +123,7 @@ export default function PostDetailScreen() {
             setEditMode(false);
             showToast('success', 'Blog guncellendi.');
         } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Guncellenemedi.');
+            showToast('error', resolveBlogErrorMessage(error, 'Guncellenemedi.'));
         } finally {
             setSaving(false);
         }
@@ -133,7 +142,7 @@ export default function PostDetailScreen() {
                         showToast('success', 'Blog silindi.');
                         router.back();
                     } catch (error: any) {
-                        showToast('error', error?.response?.data?.message || 'Silinemedi.');
+                        showToast('error', resolveBlogErrorMessage(error, 'Silinemedi.'));
                     }
                 },
             },
@@ -150,7 +159,7 @@ export default function PostDetailScreen() {
             setPost(updated);
             setNewComment('');
         } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Yorum eklenemedi.');
+            showToast('error', resolveBlogErrorMessage(error, 'Yorum eklenemedi.'));
         } finally {
             setCommenting(false);
         }
@@ -162,7 +171,7 @@ export default function PostDetailScreen() {
             const updated = await blogService.deleteComment(post.id, commentId);
             setPost(updated);
         } catch (error: any) {
-            showToast('error', error?.response?.data?.message || 'Yorum silinemedi.');
+            showToast('error', resolveBlogErrorMessage(error, 'Yorum silinemedi.'));
         }
     };
 
@@ -192,9 +201,14 @@ export default function PostDetailScreen() {
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Blog Detay</Text>
                     {isOwner ? (
-                        <TouchableOpacity onPress={() => setEditMode((p) => !p)} style={styles.headerBtn}>
-                            <Ionicons name={editMode ? 'close' : 'create-outline'} size={20} color="#fff" />
-                        </TouchableOpacity>
+                        <View style={styles.headerActions}>
+                            <TouchableOpacity onPress={() => setEditMode((p) => !p)} style={styles.headerBtn}>
+                                <Ionicons name={editMode ? 'close' : 'create-outline'} size={20} color="#fff" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={onDeletePost} style={styles.headerBtnDanger}>
+                                <Ionicons name="trash-outline" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
                     ) : (
                         <View style={styles.headerBtn} />
                     )}
@@ -303,6 +317,8 @@ const styles = StyleSheet.create({
     header: { backgroundColor: COLOR, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingBottom: 20 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
+    headerBtnDanger: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.35)', alignItems: 'center', justifyContent: 'center' },
+    headerActions: { flexDirection: 'row', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
     content: { padding: 14, paddingBottom: 24 },
     card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginBottom: 10 },

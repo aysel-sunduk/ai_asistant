@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Platform,
     ScrollView,
     StatusBar,
@@ -24,6 +25,7 @@ const COLOR = '#6C63FF';
 
 const VISIBILITY_OPTIONS = ['private', 'followers', 'public'] as const;
 const STATUS_OPTIONS = ['draft', 'published'] as const;
+const PROFANITY_WARNING = 'Argo kelime kullandiniz, paylasim iptal edildi.';
 
 export default function CreatePostScreen() {
     const router = useRouter();
@@ -85,6 +87,14 @@ export default function CreatePostScreen() {
         setToastVisible(true);
     };
 
+    const resolveBlogErrorMessage = (error: any, fallback: string) => {
+        const backendMessage: string | undefined = error?.response?.data?.message;
+        if (backendMessage?.toLowerCase().includes('argo kelime')) {
+            return PROFANITY_WARNING;
+        }
+        return backendMessage || fallback;
+    };
+
     const loadPosts = useCallback(async () => {
         try {
             const page = await blogService.getPosts(0, 30);
@@ -144,11 +154,11 @@ export default function CreatePostScreen() {
             showToast('success', 'Blog yazisi kaydedildi.');
             await loadPosts();
         } catch (error: any) {
-            const backendMessage: string | undefined = error?.response?.data?.message;
-            if (backendMessage?.includes('rawContent')) {
+            const message = resolveBlogErrorMessage(error, 'Blog kaydi basarisiz.');
+            if (message.includes('rawContent')) {
                 showToast('error', 'Icerik 10-10000 karakter araliginda olmali.');
             } else {
-                showToast('error', backendMessage || 'Blog kaydi basarisiz.');
+                showToast('error', message);
             }
         } finally {
             setSaving(false);
@@ -157,6 +167,25 @@ export default function CreatePostScreen() {
 
     const visibilityLabel = (v: string) => (v === 'private' ? 'Ozel' : v === 'followers' ? 'Takipciler' : 'Herkese Acik');
     const statusLabel = (s: string) => (s === 'draft' ? 'Taslak' : 'Yayin');
+
+    const onDeletePost = (id: string) => {
+        Alert.alert('Blogu sil', 'Bu yaziyi silmek istiyor musun?', [
+            { text: 'Iptal', style: 'cancel' },
+            {
+                text: 'Sil',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await blogService.deletePost(id);
+                        showToast('success', 'Blog yazisi silindi.');
+                        await loadPosts();
+                    } catch (error: any) {
+                        showToast('error', resolveBlogErrorMessage(error, 'Blog silinemedi.'));
+                    }
+                },
+            },
+        ]);
+    };
 
     return (
         <View style={styles.container}>
@@ -250,20 +279,25 @@ export default function CreatePostScreen() {
                     </View>
                 ) : (
                     posts.map((p) => (
-                        <TouchableOpacity
-                            key={p.id}
-                            style={styles.postCard}
-                            activeOpacity={0.8}
-                            onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
-                        >
-                            <Text style={styles.postTitle}>{p.title}</Text>
+                        <View key={p.id} style={styles.postCard}>
+                            <View style={styles.postHeaderRow}>
+                                <Text style={styles.postTitle}>{p.title}</Text>
+                                <TouchableOpacity style={styles.postDeleteBtn} onPress={() => onDeletePost(p.id)}>
+                                    <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                                </TouchableOpacity>
+                            </View>
                             <Text style={styles.postMeta}>
                                 {statusLabel(p.status)} | {visibilityLabel(p.visibility)} | {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
                             </Text>
-                            <Text style={styles.postBody} numberOfLines={3}>
-                                {p.cleanContent || p.rawContent}
-                            </Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
+                            >
+                                <Text style={styles.postBody} numberOfLines={3}>
+                                    {p.cleanContent || p.rawContent}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     ))
                 )}
             </ScrollView>
@@ -369,7 +403,16 @@ const styles = StyleSheet.create({
     emptyTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
     postCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginBottom: 8 },
+    postHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
     postTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+    postDeleteBtn: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        backgroundColor: '#FEF2F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     postMeta: { marginTop: 4, fontSize: 11, color: '#64748B' },
     postBody: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
 

@@ -64,7 +64,12 @@ export default function UserProfileScreen() {
                     </View>
                 ) : (
                     posts.map((p) => (
-                        <View key={p.id} style={styles.card}>
+                        <TouchableOpacity
+                            key={p.id}
+                            style={styles.card}
+                            activeOpacity={0.85}
+                            onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
+                        >
                             <Text style={styles.title}>{p.title}</Text>
                             <Text style={styles.meta}>
                                 {new Date(p.updatedAt).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -72,7 +77,17 @@ export default function UserProfileScreen() {
                             <Text style={styles.body} numberOfLines={4}>
                                 {p.cleanContent || p.rawContent}
                             </Text>
-                        </View>
+                            <View style={styles.cardFooter}>
+                                <View style={styles.metaBadge}>
+                                    <Ionicons name="heart-outline" size={13} color="#64748B" />
+                                    <Text style={styles.metaBadgeText}>{p.likeCount || 0}</Text>
+                                </View>
+                                <View style={styles.metaBadge}>
+                                    <Ionicons name="chatbubble-outline" size={13} color="#64748B" />
+                                    <Text style={styles.metaBadgeText}>{p.commentCount ?? p.comments?.length ?? 0}</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
                     ))
                 )}
             </ScrollView>
@@ -115,4 +130,15 @@ const styles = StyleSheet.create({
     title: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     meta: { marginTop: 4, fontSize: 11, color: '#64748B' },
     body: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
+    cardFooter: { marginTop: 10, flexDirection: 'row', gap: 8 },
+    metaBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: 999,
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+    },
+    metaBadgeText: { fontSize: 11, color: '#475569', fontWeight: '700' },
 });

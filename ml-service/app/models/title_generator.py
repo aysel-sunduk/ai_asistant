@@ -6,6 +6,7 @@ Model yoksa akıllı anahtar-kelime tabanlı fallback kullanır.
 
 import re
 import logging
+import random
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -17,9 +18,14 @@ MODEL_DIR = Path(__file__).parent.parent / "models_saved" / "title_generator"
 _model = None
 _tokenizer = None
 _model_loaded = False
-_is_mt5 = False       # mT5 mi GPT-2 mi?
+_is_mt5 = False
 
-PREFIX = "baslik olustur: "   # mT5'in beklediği görev prefix'i
+# mT5 görev prefix'leri — farklı prefix'ler farklı çıktılar üretir
+_MT5_PREFIXES = [
+    "summarize: ",
+    "başlık üret: ",
+    "bu metnin başlığı: ",
+]
 
 
 def _load_model():
@@ -36,7 +42,6 @@ def _load_model():
 
         logger.info("Title generator model yükleniyor: %s", MODEL_DIR)
 
-        # Model tipini config'den belirle (mT5 vs GPT-2)
         config = AutoConfig.from_pretrained(str(MODEL_DIR))
         model_type = getattr(config, "model_type", "").lower()
         _is_mt5 = "t5" in model_type
@@ -72,9 +77,7 @@ def generate_titles(
     max_new_tokens: int = 50,
     temperature: float = 0.8,
 ) -> dict:
-    """
-    Blog içeriğinden başlık önerileri üret.
-    """
+    """Blog içeriğinden başlık önerileri üret."""
     if _model_loaded:
         try:
             if _is_mt5:
@@ -82,43 +85,47 @@ def generate_titles(
             else:
                 return _generate_gpt2(content, category, num_suggestions, max_new_tokens, temperature)
         except Exception as e:
-            logger.error("Başlık üretimi başarısız: %s", e)
+            logger.error("Model başlık üretimi başarısız, fallback: %s", e)
 
     return _smart_fallback_titles(content, category, num_suggestions)
 
 
-# ─── mT5 Inference ──────────────────────────────────────────────
+# ─── mT5 Inference (Fine-tuned model) ───────────────────────────
 
 def _generate_mt5(content: str, num_suggestions: int) -> dict:
-    """mT5 ile beam search tabanlı başlık üretimi."""
+    """Fine-tuned mT5 ile başlık üretimi."""
     import torch
 
-    text = PREFIX + content[:500]
+    PREFIX = "baslik olustur: "
+    text = PREFIX + content[:2000]
     inputs = _tokenizer(text, return_tensors="pt", max_length=512, truncation=True)
 
     with torch.no_grad():
         outputs = _model.generate(
             **inputs,
-            max_new_tokens=60,
+            max_new_tokens=64,
             num_return_sequences=num_suggestions,
-            num_beams=max(num_suggestions, 4),
-            early_stopping=True,
+            num_beams=max(num_suggestions * 2, 6),
             no_repeat_ngram_size=3,
-            length_penalty=1.0,
+            early_stopping=True,
+            length_penalty=0.8,
         )
 
     titles = []
-    for out in outputs:
-        title = _tokenizer.decode(out, skip_special_tokens=True).strip()
-        if title and len(title) > 5:
-            titles.append(title[:150])
+    for o in outputs:
+        title = _tokenizer.decode(o, skip_special_tokens=True).strip()
+        if title and len(title) > 5 and title not in titles:
+            # İlk cümle kopyasını engelle
+            first_sentence = content.strip().split('.')[0].strip()
+            if title.lower() != first_sentence.lower():
+                titles.append(title[:150])
 
-    titles = list(dict.fromkeys(titles))
+    titles = list(dict.fromkeys(titles))[:num_suggestions]
 
     if not titles:
         return _smart_fallback_titles(content, "genel", num_suggestions)
 
-    return {"titles": titles, "model_used": "mt5", "category": "genel"}
+    return {"titles": titles, "model_used": "mt5_finetuned", "category": "genel"}
 
 
 # ─── GPT-2 Inference (eski model için geriye dönük destek) ───────
@@ -167,67 +174,138 @@ def _generate_gpt2(content, category, num_suggestions, max_new_tokens, temperatu
     return _smart_fallback_titles(content, category, num_suggestions)
 
 
-# ─── Akıllı Fallback ────────────────────────────────────────────
+# ─── Akıllı Fallback — Gerçek Başlık Üretimi ────────────────────
 
 _STOP_WORDS = {
     "bir", "bu", "şu", "o", "ve", "ile", "de", "da", "ki", "için",
-    "olan", "oldu", "ancak", "ama", "veya", "ya", "hem", "kadar",
-    "gibi", "daha", "çok", "en", "her", "hiç", "ne",
+    "olan", "oldu", "olur", "olarak", "ancak", "ama", "veya", "ya",
+    "hem", "kadar", "gibi", "daha", "çok", "en", "her", "hiç", "ne",
+    "ise", "mi", "mu", "mı", "mü", "sadece", "değil", "değildir",
+    "bunlar", "bunun", "onun", "şey", "bazı", "sonra", "önce",
+    "yani", "zaman", "aslında", "görünen", "kısım", "asıl",
+    "büyük", "küçük", "ilk", "son", "yeni", "eski", "iyi", "kötü",
 }
 
-_CATEGORY_PREFIXES = {
-    "teknoloji": ["Teknoloji Gündemi:", "Dijital Dünyadan:", "Tech Analizi:"],
-    "spor":      ["Spor Dünyasından:", "Sahadaki Gelişmeler:", "Spor Haberleri:"],
-    "ekonomi":   ["Ekonomi Analizi:", "Piyasalarda Son Durum:", "Ekonomiden:"],
-    "siyaset":   ["Siyasi Gündem:", "Gündemdeki Gelişmeler:", "Siyasette:"],
-    "kultur":    ["Kültür Sanat:", "Kültürden Haberler:", "Sanat ve Yaşam:"],
-    "saglik":    ["Sağlık Haberleri:", "Tıp Dünyasından:", "Sağlıkta:"],
-    "egitim":    ["Eğitim Haberleri:", "Öğrenim Dünyasından:", "Eğitimde:"],
-    "genel":     ["", "", ""],
+_CATEGORY_THEMES = {
+    "teknoloji": ["Dijital Dönüşüm", "Geleceğin Teknolojisi", "Tech Dünyası"],
+    "spor": ["Spor Dünyası", "Sahadan Haberler", "Spor Gündemi"],
+    "ekonomi": ["Ekonomi Analizi", "Piyasa Gündemi", "Finans Dünyası"],
+    "siyaset": ["Siyasi Gündem", "Gündem Analizi", "Politik Bakış"],
+    "kultur": ["Kültür Sanat", "Sanat Dünyası", "Kültürel İzler"],
+    "saglik": ["Sağlıklı Yaşam", "Tıp Dünyası", "Sağlık Gündemi"],
+    "egitim": ["Eğitim Dünyası", "Öğrenme Yolculuğu", "Eğitim Gündemi"],
 }
 
 
-def _extract_keywords(content: str, top_n: int = 6) -> list[str]:
+def _extract_keywords(content: str, top_n: int = 8) -> list[str]:
+    """İçerikten en önemli anahtar kelimeleri çıkar."""
     words = re.findall(r'\b[a-zA-ZçğışöüÇĞİŞÖÜ]{4,}\b', content)
     freq: dict[str, int] = {}
     for w in words:
         low = w.lower()
-        if low not in _STOP_WORDS:
+        if low not in _STOP_WORDS and len(low) >= 4:
             freq[low] = freq.get(low, 0) + 1
     return [w for w, _ in sorted(freq.items(), key=lambda x: x[1], reverse=True)[:top_n]]
 
 
+def _extract_core_topic(content: str) -> str:
+    """İçerikten ana konuyu çıkar — en sık geçen 2-3 anahtar kelime."""
+    keywords = _extract_keywords(content, 4)
+    if len(keywords) >= 2:
+        return " ".join(keywords[:3]).capitalize()
+    return keywords[0].capitalize() if keywords else "Düşünceler"
+
+
+def _compress_sentence(sentence: str, max_words: int = 8) -> str:
+    """Cümleyi başlık uzunluğuna kısalt — gereksiz kelimeleri çıkar."""
+    words = sentence.split()
+    # Stop word'leri ve çok kısa kelimeleri çıkar
+    important = [w for w in words if w.lower() not in _STOP_WORDS and len(w) > 2]
+    if len(important) <= max_words:
+        return " ".join(important).capitalize()
+    return " ".join(important[:max_words]).capitalize()
+
+
+def _find_key_sentence(content: str) -> str | None:
+    """İçerikten en anlamlı cümleyi bul — soru içermeyen, orta uzunlukta."""
+    sentences = re.split(r'(?<=[.!?])\s+', content.strip())
+    best = None
+    best_score = 0
+    keywords = set(_extract_keywords(content, 10))
+
+    for sent in sentences:
+        sent = sent.strip().rstrip('.!?')
+        if len(sent) < 15 or len(sent) > 200 or '?' in sent:
+            continue
+        # Skor = keyword hit sayısı (cümledeki anahtar kelime yoğunluğu)
+        words = set(re.findall(r'\b\w+\b', sent.lower()))
+        score = len(words & keywords)
+        # İlk cümle olmamasını tercih et (ilk cümle genelde giriş)
+        if sent == sentences[0].strip().rstrip('.!?'):
+            score -= 1
+        if score > best_score:
+            best_score = score
+            best = sent
+
+    return best
+
+
 def _smart_fallback_titles(content: str, category: str, num: int = 3) -> dict:
+    """Akıllı kural tabanlı başlık üretici — gerçek, anlamlı başlıklar."""
     titles: list[str] = []
     text = content.strip()
+    keywords = _extract_keywords(text, 8)
+    core_topic = _extract_core_topic(text)
 
-    # 1. Soru cümlelerini başlık yap
-    for q in re.findall(r'[^.!?]*\?', text)[:2]:
+    # ─── Strateji 1: Konu odaklı başlık (ana fikri özetle) ───
+    key_sentence = _find_key_sentence(text)
+    if key_sentence:
+        compressed = _compress_sentence(key_sentence, 7)
+        if 10 < len(compressed) < 100:
+            titles.append(compressed)
+
+    # ─── Strateji 2: Şablon tabanlı başlıklar ───
+    templates = [
+        f"{core_topic} Hakkında Bilmeniz Gerekenler",
+        f"{core_topic}: Neden Önemli?",
+        f"{core_topic} Üzerine Bir Bakış",
+        f"{core_topic} ve Değişen Bakış Açıları",
+        f"{core_topic}: Derinlemesine Bir İnceleme",
+    ]
+
+    # Kategori temalı şablonlar
+    cat_themes = _CATEGORY_THEMES.get(category.lower(), [])
+    if cat_themes and keywords:
+        kw_cap = keywords[0].capitalize()
+        templates.extend([
+            f"{random.choice(cat_themes)}: {kw_cap}",
+        ])
+
+    # Soru varsa başlık olarak ekle
+    questions = re.findall(r'[^.!?]*\?', text)
+    for q in questions[:1]:
         q = q.strip()
-        if 10 < len(q) < 120:
+        if 10 < len(q) < 100:
             titles.append(q)
 
-    # 2. İlk anlamlı cümle (kırpılmış)
-    for sent in re.split(r'(?<=[.!?])\s+', text)[:3]:
-        sent = sent.strip().rstrip('.!?')
-        if 15 < len(sent) < 120 and sent not in titles:
-            titles.append(sent)
+    # Şablonlardan rastgele seç
+    random.shuffle(templates)
+    for t in templates:
+        if len(titles) >= num:
             break
+        if t not in titles and 10 < len(t) < 120:
+            titles.append(t)
 
-    # 3. Anahtar-kelime + kategori şablonu
-    keywords = _extract_keywords(text)
-    if keywords:
-        prefixes = _CATEGORY_PREFIXES.get(category.lower(), _CATEGORY_PREFIXES["genel"])
-        for prefix in prefixes:
-            if len(titles) >= num:
-                break
-            kw = " ".join(keywords[:4]).capitalize()
-            full = f"{prefix} {kw}".strip() if prefix else kw
-            if len(full) > 10 and full not in titles:
-                titles.append(full)
+    # Yeterli başlık yoksa keyword bazlı basit başlık
+    while len(titles) < num and keywords:
+        kw_combo = " ".join(keywords[:3]).capitalize()
+        fallback_title = f"{kw_combo} Üzerine Düşünceler"
+        if fallback_title not in titles:
+            titles.append(fallback_title)
+        keywords = keywords[1:]
 
     return {
         "titles": titles[:num],
-        "model_used": "fallback",
+        "model_used": "smart_fallback",
         "category": category,
     }

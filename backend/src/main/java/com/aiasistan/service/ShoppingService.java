@@ -5,6 +5,8 @@
 package com.aiasistan.service;
 
 import java.time.LocalDate;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -25,6 +27,7 @@ import com.aiasistan.repository.ShoppingListRepository;
 
 @Service
 public class ShoppingService {
+    private static final Set<String> ALLOWED_RECURRENCE_TYPES = Set.of("DAILY", "WEEKLY", "MONTHLY");
 
     private final ShoppingListRepository shoppingListRepository;
     private final ShoppingItemRepository shoppingItemRepository;
@@ -51,6 +54,7 @@ public class ShoppingService {
         list.setUserId(userId);
         list.setName(request.getName().trim());
         list.setIsArchived(Boolean.TRUE.equals(request.getIsArchived()));
+        list.setRecurrenceType(resolveRecurrenceType(request.getRecurrenceType()));
 
         return ShoppingListDto.Response.from(shoppingListRepository.save(list));
     }
@@ -80,6 +84,9 @@ public class ShoppingService {
         list.setName(request.getName().trim());
         if (request.getIsArchived() != null) {
             list.setIsArchived(request.getIsArchived());
+        }
+        if (request.getRecurrenceType() != null) {
+            list.setRecurrenceType(resolveRecurrenceType(request.getRecurrenceType()));
         }
 
         return ShoppingListDto.Response.from(shoppingListRepository.save(list));
@@ -125,6 +132,14 @@ public class ShoppingService {
         findOwnedList(userId, listId);
 
         ShoppingItem item = findItemInList(listId, itemId);
+        return ShoppingItemDto.Response.from(item);
+    }
+
+    @Transactional(readOnly = true)
+    public ShoppingItemDto.Response getItemById(String userEmail, UUID itemId) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        ShoppingItem item = shoppingItemRepository.findByIdAndList_UserId(itemId, userId)
+            .orElseThrow(() -> new NotFoundException("Alisveris urunu bulunamadi"));
         return ShoppingItemDto.Response.from(item);
     }
 
@@ -212,7 +227,8 @@ public class ShoppingService {
         String noteKey = shoppingExpenseNote(item.getId());
         Long estimated = item.getEstimatedPriceMinor();
 
-        if (estimated == null || estimated <= 0) {
+        // Sadece kullanıcı gerçekten satın aldıysa (check=true) gider kaydı oluştur.
+        if (!Boolean.TRUE.equals(item.getIsChecked()) || estimated == null || estimated <= 0) {
             deleteOrphanedShoppingExpense(userId, item.getId());
             return;
         }
@@ -237,5 +253,16 @@ public class ShoppingService {
 
     private String shoppingExpenseNote(UUID itemId) {
         return "shopping_item:" + itemId;
+    }
+
+    private String resolveRecurrenceType(String recurrenceType) {
+        if (recurrenceType == null || recurrenceType.isBlank()) {
+            return "WEEKLY";
+        }
+        String normalized = recurrenceType.trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_RECURRENCE_TYPES.contains(normalized)) {
+            return "WEEKLY";
+        }
+        return normalized;
     }
 }

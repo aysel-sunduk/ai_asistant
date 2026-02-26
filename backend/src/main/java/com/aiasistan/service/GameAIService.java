@@ -147,6 +147,75 @@ public class GameAIService {
         return fallbackPerformanceTrend(scores);
     }
 
+    /**
+     * Motivasyon mesajı — RandomForest ile oyuncu davranışına göre mesaj üretir.
+     */
+    public Map<String, Object> getMotivationMessage(String userEmail, String gameKey) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        List<GameScore> scores = gameScoreRepository
+                .findByUserIdAndGameKeyOrderByPlayedAtDesc(userId, gameKey);
+
+        // Oyuncu istatistiklerini hesapla
+        int playCount = scores.size();
+        double avgScore = scores.stream().mapToInt(GameScore::getScore).average().orElse(0);
+        int maxLevel = scores.stream().mapToInt(s -> s.getLevel() != null ? s.getLevel() : 1).max().orElse(1);
+        double totalHours = scores.stream().mapToInt(s -> s.getDurationSec() != null ? s.getDurationSec() : 0).sum()
+                / 3600.0;
+        double avgDurationMin = scores.stream().mapToInt(s -> s.getDurationSec() != null ? s.getDurationSec() : 0)
+                .average().orElse(0) / 60.0;
+
+        // Haftalık oturum tahmini (son 7 günde kaç oyun?)
+        int sessionsPerWeek = Math.min(playCount, 7);
+        if (playCount > 7) {
+            long recentCount = scores.stream()
+                    .filter(s -> s.getPlayedAt() != null &&
+                            s.getPlayedAt().isAfter(OffsetDateTime.now().minusDays(7)))
+                    .count();
+            sessionsPerWeek = (int) recentCount;
+        }
+
+        // Başarı tahmini (skor bazlı)
+        int achievements = Math.min((int) (avgScore / 20), 49);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("age", 25); // varsayılan
+        requestBody.put("playTimeHours", Math.round(totalHours * 10.0) / 10.0);
+        requestBody.put("inGamePurchases", 0);
+        requestBody.put("sessionsPerWeek", sessionsPerWeek);
+        requestBody.put("avgSessionDurationMinutes", (int) Math.round(avgDurationMin));
+        requestBody.put("playerLevel", maxLevel);
+        requestBody.put("achievementsUnlocked", achievements);
+        requestBody.put("gameDifficulty", "Medium");
+
+        try {
+            String body = objectMapper.writeValueAsString(requestBody);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(mlServiceUrl + "/api/game/motivation"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                JsonNode json = objectMapper.readTree(response.body());
+                JsonNode data = json.get("data");
+                if (data != null) {
+                    return objectMapper.convertValue(data,
+                            objectMapper.getTypeFactory()
+                                    .constructMapType(HashMap.class, String.class, Object.class));
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("ML service motivasyon mesajı alınamadı, fallback: {}", e.getMessage());
+        }
+
+        return fallbackMotivation(playCount, avgScore, maxLevel);
+    }
+
     // ─── Yardımcı Metotlar ───
 
     private List<Map<String, Object>> convertScoresToList(List<GameScore> scores) {
@@ -225,5 +294,33 @@ public class GameAIService {
                 "recentAvg", Math.round(secondAvg * 10.0) / 10.0,
                 "previousAvg", Math.round(firstAvg * 10.0) / 10.0,
                 "weeklyAvgScores", List.of());
+    }
+
+    private Map<String, Object> fallbackMotivation(int playCount, double avgScore, int maxLevel) {
+        String labelName;
+        String message;
+
+        if (playCount == 0) {
+            labelName = "yeni_oyuncu";
+            message = "Oyun dünyasına hoş geldin, macera başlıyor! 🎉";
+        } else if (playCount < 3) {
+            labelName = "yeni_oyuncu";
+            message = "Her usta bir zamanlar çıraktı, devam et! 🎯";
+        } else if (maxLevel >= 70 && avgScore > 500) {
+            labelName = "basarili_oyuncu";
+            message = "Üst düzey performans, tebrikler şampiyon! 🏆";
+        } else if (playCount >= 10) {
+            labelName = "aktif_oyuncu";
+            message = "Harika tempoya devam! Enerjin bulaşıcı! 🔥";
+        } else {
+            labelName = "gelisen_oyuncu";
+            message = "Güzel ilerliyorsun, böyle devam! 📈";
+        }
+
+        return Map.of(
+                "label", 2,
+                "labelName", labelName,
+                "message", message,
+                "method", "fallback");
     }
 }

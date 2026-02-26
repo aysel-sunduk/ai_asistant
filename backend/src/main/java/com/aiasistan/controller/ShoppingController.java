@@ -176,6 +176,16 @@ public class ShoppingController {
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
+  @GetMapping("/items/{itemId}")
+  @Operation(summary = "Kullaniciya ait urun detayini getir")
+  public ResponseEntity<ApiResponse<ShoppingItemDto.Response>> getItemById(
+    Authentication authentication,
+    @PathVariable UUID itemId
+  ) {
+    ShoppingItemDto.Response response = shoppingService.getItemById(authentication.getName(), itemId);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
   @PutMapping("/lists/{listId}/items/{itemId}")
   @Operation(summary = "Liste urununu guncelle")
   public ResponseEntity<ApiResponse<ShoppingItemDto.Response>> updateItem(

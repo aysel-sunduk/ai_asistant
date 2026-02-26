@@ -1,11 +1,23 @@
 {
-    "bos_token": "<|endoftext|>",
-    "eos_token": "<|endoftext|>",
-    "pad_token": "<|pad|>",
-    "unk_token": "<|endoftext|>",
-    "additional_special_tokens": [
-        "<|kategori|>",
-        "<|icerik|>",
-        "<|baslik|>"
-    ]
+  "eos_token": {
+    "content": "</s>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  },
+  "pad_token": {
+    "content": "<pad>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  },
+  "unk_token": {
+    "content": "<unk>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  }
 }

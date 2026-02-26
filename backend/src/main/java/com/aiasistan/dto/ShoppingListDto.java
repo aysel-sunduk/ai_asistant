@@ -5,12 +5,14 @@
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 import com.aiasistan.model.ShoppingList;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -24,6 +26,12 @@ public class ShoppingListDto {
         private String name;
 
         private Boolean isArchived;
+
+        @Pattern(
+            regexp = "^(?i)(DAILY|WEEKLY|MONTHLY)$",
+            message = "recurrenceType sadece DAILY, WEEKLY veya MONTHLY olabilir"
+        )
+        private String recurrenceType;
 
         public String getName() {
             return name;
@@ -40,6 +48,14 @@ public class ShoppingListDto {
         public void setIsArchived(Boolean isArchived) {
             this.isArchived = isArchived;
         }
+
+        public String getRecurrenceType() {
+            return recurrenceType;
+        }
+
+        public void setRecurrenceType(String recurrenceType) {
+            this.recurrenceType = recurrenceType;
+        }
     }
 
     public static class Response {
@@ -47,6 +63,7 @@ public class ShoppingListDto {
         private UUID userId;
         private String name;
         private Boolean isArchived;
+        private String recurrenceType;
         private OffsetDateTime createdAt;
 
         public static Response from(ShoppingList list) {
@@ -55,6 +72,7 @@ public class ShoppingListDto {
             response.userId = list.getUserId();
             response.name = list.getName();
             response.isArchived = list.getIsArchived();
+            response.recurrenceType = normalizeRecurrenceType(list.getRecurrenceType());
             response.createdAt = list.getCreatedAt();
             return response;
         }
@@ -91,6 +109,14 @@ public class ShoppingListDto {
             this.isArchived = isArchived;
         }
 
+        public String getRecurrenceType() {
+            return recurrenceType;
+        }
+
+        public void setRecurrenceType(String recurrenceType) {
+            this.recurrenceType = recurrenceType;
+        }
+
         public OffsetDateTime getCreatedAt() {
             return createdAt;
         }
@@ -98,6 +124,13 @@ public class ShoppingListDto {
         public void setCreatedAt(OffsetDateTime createdAt) {
             this.createdAt = createdAt;
         }
+    }
+
+    private static String normalizeRecurrenceType(String recurrenceType) {
+        if (recurrenceType == null || recurrenceType.isBlank()) {
+            return "WEEKLY";
+        }
+        return recurrenceType.trim().toUpperCase(Locale.ROOT);
     }
 
     public static class ArchiveRequest {

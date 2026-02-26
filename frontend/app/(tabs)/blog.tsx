@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Platform,
     ScrollView,
     StatusBar,
@@ -26,8 +27,17 @@ export default function BlogTabScreen() {
     const [loading, setLoading] = useState(true);
     const [myPosts, setMyPosts] = useState<BlogPost[]>([]);
     const [feedPosts, setFeedPosts] = useState<BlogPost[]>([]);
+    const [activeTab, setActiveTab] = useState<'MY' | 'FOLLOWING'>('MY');
     const [toastVisible, setToastVisible] = useState(false);
+    const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('error');
     const [toastMessage, setToastMessage] = useState('');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+        setToastType(type);
+        setToastMessage(message);
+        setToastVisible(true);
+    };
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -47,13 +57,34 @@ export default function BlogTabScreen() {
                 setFeedPosts([]);
             }
             if (myPage.status === 'rejected' && feedPage.status === 'rejected') {
-                setToastMessage('Blog verileri alinamadi.');
-                setToastVisible(true);
+                showToast('error', 'Blog verileri alinamadi.');
             }
         } finally {
             setLoading(false);
         }
     }, []);
+
+    const onDeletePost = (id: string) => {
+        Alert.alert('Blogu sil', 'Bu yaziyi silmek istiyor musun?', [
+            { text: 'Iptal', style: 'cancel' },
+            {
+                text: 'Sil',
+                style: 'destructive',
+                onPress: async () => {
+                    setDeletingId(id);
+                    try {
+                        await blogService.deletePost(id);
+                        showToast('success', 'Blog yazisi silindi.');
+                        await load();
+                    } catch (error: any) {
+                        showToast('error', error?.response?.data?.message || 'Blog silinemedi.');
+                    } finally {
+                        setDeletingId(null);
+                    }
+                },
+            },
+        ]);
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -61,11 +92,16 @@ export default function BlogTabScreen() {
         }, [load]),
     );
 
+    const visiblePosts = activeTab === 'MY' ? myPosts : feedPosts;
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
+                    <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
+                        <Ionicons name="chevron-back" size={22} color="#fff" />
+                    </TouchableOpacity>
                     <Text style={styles.headerTitle}>Blog</Text>
                     <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/(blog)/create-post')}>
                         <Ionicons name="add" size={18} color="#fff" />
@@ -81,60 +117,73 @@ export default function BlogTabScreen() {
                     </View>
                 ) : (
                     <>
-                        <Text style={styles.sectionTitle}>Benim Bloglarim</Text>
-                        {myPosts.length === 0 ? (
-                            <View style={styles.emptyCard}>
-                                <Text style={styles.emptyTitle}>Kayit yok</Text>
-                                <Text style={styles.emptySub}>Sag ustteki Olustur ile ilk blogunu yaz.</Text>
-                            </View>
-                        ) : (
-                            myPosts.map((p) => (
-                                <TouchableOpacity
-                                    key={p.id}
-                                    style={styles.card}
-                                    activeOpacity={0.85}
-                                    onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
-                                >
-                                    <Text style={styles.cardTitle}>{p.title}</Text>
-                                    <Text style={styles.cardMeta}>
-                                        {statusLabel(p.status)} | {visibilityLabel(p.visibility)} | {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
-                                    </Text>
-                                    <Text numberOfLines={3} style={styles.cardBody}>
-                                        {p.cleanContent || p.rawContent}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))
-                        )}
+                        <View style={styles.tabRow}>
+                            <TouchableOpacity
+                                style={[styles.tabBtn, activeTab === 'MY' && styles.tabBtnActive]}
+                                onPress={() => setActiveTab('MY')}
+                            >
+                                <Text style={[styles.tabBtnText, activeTab === 'MY' && styles.tabBtnTextActive]}>
+                                    Benim Bloglarim ({myPosts.length})
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tabBtn, activeTab === 'FOLLOWING' && styles.tabBtnActive]}
+                                onPress={() => setActiveTab('FOLLOWING')}
+                            >
+                                <Text style={[styles.tabBtnText, activeTab === 'FOLLOWING' && styles.tabBtnTextActive]}>
+                                    Takip Ettiklerim ({feedPosts.length})
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Takip Ettiklerinden</Text>
-                        {feedPosts.length === 0 ? (
+                        {visiblePosts.length === 0 ? (
                             <View style={styles.emptyCard}>
-                                <Text style={styles.emptyTitle}>Feed bos</Text>
-                                <Text style={styles.emptySub}>Takip ettigin hesaplar yazi paylastiginda burada gorulur.</Text>
+                                <Text style={styles.emptyTitle}>
+                                    {activeTab === 'MY' ? 'Kayit yok' : 'Feed bos'}
+                                </Text>
+                                <Text style={styles.emptySub}>
+                                    {activeTab === 'MY'
+                                        ? 'Sag ustteki Olustur ile ilk blogunu yaz.'
+                                        : 'Takip ettigin hesaplar yazi paylastiginda burada gorulur.'}
+                                </Text>
                             </View>
                         ) : (
-                            feedPosts.map((p) => (
-                                <TouchableOpacity
-                                    key={p.id}
-                                    style={styles.card}
-                                    activeOpacity={0.85}
-                                    onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
-                                >
-                                    <Text style={styles.cardTitle}>{p.title}</Text>
+                            visiblePosts.map((p) => (
+                                <View key={p.id} style={styles.card}>
+                                    <View style={styles.cardHeaderRow}>
+                                        <Text style={styles.cardTitle}>{p.title}</Text>
+                                        {activeTab === 'MY' ? (
+                                            <TouchableOpacity
+                                                style={styles.deleteBtn}
+                                                onPress={() => onDeletePost(p.id)}
+                                                disabled={deletingId === p.id}
+                                            >
+                                                <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
                                     <Text style={styles.cardMeta}>
-                                        {statusLabel(p.status)} | {new Date(p.updatedAt).toLocaleString('tr-TR')}
+                                        {statusLabel(p.status)}
+                                        {activeTab === 'MY' ? ` | ${visibilityLabel(p.visibility)}` : ''}
+                                        {' | '}
+                                        {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
                                     </Text>
-                                    <Text numberOfLines={3} style={styles.cardBody}>
-                                        {p.cleanContent || p.rawContent}
-                                    </Text>
-                                </TouchableOpacity>
+                                    <TouchableOpacity
+                                        activeOpacity={0.85}
+                                        onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
+                                    >
+                                        <Text numberOfLines={3} style={styles.cardBody}>
+                                            {p.cleanContent || p.rawContent}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             ))
                         )}
                     </>
                 )}
             </ScrollView>
 
-            <Toast visible={toastVisible} type="error" message={toastMessage} onHide={() => setToastVisible(false)} />
+            <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
         </View>
     );
 }
@@ -149,17 +198,50 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    headerBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
     createBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
     createBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
     content: { padding: 14, paddingBottom: 28 },
     centered: { alignItems: 'center', paddingVertical: 44 },
+    tabRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+    tabBtn: {
+        flex: 1,
+        borderRadius: 10,
+        backgroundColor: '#E2E8F0',
+        paddingVertical: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tabBtnActive: {
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    tabBtnText: { fontSize: 12, fontWeight: '700', color: '#475569' },
+    tabBtnTextActive: { color: COLOR },
     sectionTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 8 },
     emptyCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 12, marginBottom: 8 },
     emptyTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
     card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 12, marginBottom: 8 },
+    cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
     cardTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
+    deleteBtn: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        backgroundColor: '#FEF2F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     cardMeta: { marginTop: 4, fontSize: 11, color: '#64748B' },
     cardBody: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
 });

@@ -37,6 +37,9 @@ public class ShoppingList {
     @Column(name = "is_archived", nullable = false)
     private Boolean isArchived = false;
 
+    @Column(name = "recurrence_type", nullable = false)
+    private String recurrenceType = "WEEKLY";
+
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
 
@@ -50,6 +53,9 @@ public class ShoppingList {
         }
         if (isArchived == null) {
             isArchived = false;
+        }
+        if (recurrenceType == null || recurrenceType.isBlank()) {
+            recurrenceType = "WEEKLY";
         }
     }
 
@@ -91,6 +97,14 @@ public class ShoppingList {
 
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getRecurrenceType() {
+        return recurrenceType;
+    }
+
+    public void setRecurrenceType(String recurrenceType) {
+        this.recurrenceType = recurrenceType;
     }
 
     public List<ShoppingItem> getItems() {
