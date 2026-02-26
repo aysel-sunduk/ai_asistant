@@ -61,9 +61,7 @@ ml-service/app/models_saved/**
 !ml-service/app/models_saved/
 !ml-service/app/models_saved/**/
 !ml-service/app/models_saved/README.md
-!ml-service/app/models_saved/game_analyzer/metadata.json
 ml-service/app/models_saved/motivation_model/
-ml-service/app/models/motivation_predictor.py
 
 # ── Colab eğitim notebook'ları ──
 ml-service/colab_*.ipynb
