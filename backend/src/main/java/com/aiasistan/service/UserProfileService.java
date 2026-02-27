@@ -44,32 +44,32 @@ public class UserProfileService {
         UserProfile profile = getOrCreateProfile(userId);
 
         Map<String, ModuleCompletionStatus> status = new HashMap<>();
-        
+
         status.put("work", checkWorkModule(profile));
         status.put("health", checkHealthModule(profile));
         status.put("finance", checkFinanceModule(profile));
         status.put("family", checkFamilyModule(profile));
         status.put("goals", checkGoalsModule(profile));
-        
+
         return status;
     }
 
     private ModuleCompletionStatus checkWorkModule(UserProfile profile) {
         List<String> missing = new ArrayList<>();
-        
+
         if (profile.getFullName() == null || profile.getFullName().isBlank()) {
             missing.add("full_name");
         }
         if (profile.getTimezone() == null) {
             missing.add("timezone");
         }
-        
+
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
 
     private ModuleCompletionStatus checkHealthModule(UserProfile profile) {
         List<String> missing = new ArrayList<>();
-        
+
         if (profile.getHeightCm() == null) {
             missing.add("height_cm");
         }
@@ -82,40 +82,40 @@ public class UserProfileService {
         if (profile.getGender() == null || profile.getGender().isBlank()) {
             missing.add("gender");
         }
-        
+
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
 
     private ModuleCompletionStatus checkFinanceModule(UserProfile profile) {
         List<String> missing = new ArrayList<>();
-        
+
         if (profile.getPreferredCurrency() == null) {
             missing.add("preferred_currency");
         }
         if (profile.getMonthlyIncomeEstimateMinor() == null) {
             missing.add("monthly_income_estimate");
         }
-        
+
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
 
     private ModuleCompletionStatus checkFamilyModule(UserProfile profile) {
         List<String> missing = new ArrayList<>();
-        
+
         if (profile.getFullName() == null || profile.getFullName().isBlank()) {
             missing.add("full_name");
         }
-        
+
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
 
     private ModuleCompletionStatus checkGoalsModule(UserProfile profile) {
         List<String> missing = new ArrayList<>();
-        
+
         if (profile.getInterests() == null || profile.getInterests().isEmpty()) {
             missing.add("interests");
         }
-        
+
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
 
@@ -159,7 +159,7 @@ public class UserProfileService {
 
     private UserProfile createDefaultProfile(UUID userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));
+                .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));
         UserProfile profile = new UserProfile();
         profile.setUser(user);
         return userProfileRepository.save(profile);
@@ -177,12 +177,24 @@ public class UserProfileService {
         if (request.getNotifications() != null) {
             profile.setNotifications(request.getNotifications());
         }
+        if (request.getPhone() != null) {
+            profile.setPhone(request.getPhone());
+        }
+        if (request.getShowPhone() != null) {
+            profile.setShowPhone(request.getShowPhone());
+        }
+        if (request.getShowEmail() != null) {
+            profile.setShowEmail(request.getShowEmail());
+        }
     }
 
     private void applyWorkFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getFullName() != null) profile.setFullName(request.getFullName().trim());
-        if (request.getTimezone() != null) profile.setTimezone(request.getTimezone());
-        if (request.getLocale() != null) profile.setLocale(request.getLocale());
+        if (request.getFullName() != null)
+            profile.setFullName(request.getFullName().trim());
+        if (request.getTimezone() != null)
+            profile.setTimezone(request.getTimezone());
+        if (request.getLocale() != null)
+            profile.setLocale(request.getLocale());
         if (request.getProfileVisibility() != null) {
             String normalized = normalizeProfileVisibility(request.getProfileVisibility());
             profile.setProfileVisibility(normalized);
@@ -190,10 +202,14 @@ public class UserProfileService {
     }
 
     private void applyHealthFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getBirthDate() != null) profile.setBirthDate(request.getBirthDate());
-        if (request.getGender() != null) profile.setGender(request.getGender());
-        if (request.getHeightCm() != null) profile.setHeightCm(request.getHeightCm());
-        if (request.getWeightKg() != null) profile.setWeightKg(request.getWeightKg());
+        if (request.getBirthDate() != null)
+            profile.setBirthDate(request.getBirthDate());
+        if (request.getGender() != null)
+            profile.setGender(request.getGender());
+        if (request.getHeightCm() != null)
+            profile.setHeightCm(request.getHeightCm());
+        if (request.getWeightKg() != null)
+            profile.setWeightKg(request.getWeightKg());
     }
 
     private void applyFinanceFields(UserProfile profile, UserProfileUpsertRequest request) {
@@ -206,11 +222,13 @@ public class UserProfileService {
     }
 
     private void applyFamilyFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getFullName() != null) profile.setFullName(request.getFullName().trim());
+        if (request.getFullName() != null)
+            profile.setFullName(request.getFullName().trim());
     }
 
     private void applyGoalsFields(UserProfile profile, UserProfileUpsertRequest request) {
-        if (request.getInterests() != null) profile.setInterests(request.getInterests());
+        if (request.getInterests() != null)
+            profile.setInterests(request.getInterests());
     }
 
     private UserProfileResponse toResponse(UserProfile profile) {
@@ -237,12 +255,16 @@ public class UserProfileService {
         }
         response.setHeightCm(profile.getHeightCm());
         response.setWeightKg(profile.getWeightKg());
-        response.setPreferredCurrency(profile.getPreferredCurrency() != null ? normalizeCurrency(profile.getPreferredCurrency()) : null);
+        response.setPreferredCurrency(
+                profile.getPreferredCurrency() != null ? normalizeCurrency(profile.getPreferredCurrency()) : null);
         response.setMonthlyIncomeEstimateMinor(profile.getMonthlyIncomeEstimateMinor());
         response.setInterests(profile.getInterests());
         response.setOnboarding(profile.getOnboarding());
         response.setNotifications(profile.getNotifications());
         response.setUpdatedAt(profile.getUpdatedAt());
+        response.setPhone(profile.getPhone());
+        response.setShowPhone(profile.isShowPhone());
+        response.setShowEmail(profile.isShowEmail());
         return response;
     }
 
@@ -288,8 +310,8 @@ public class UserProfileService {
         }
         String firstName = parts[0];
         String lastName = parts.length > 1
-            ? String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length))
-            : "";
+                ? String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length))
+                : "";
         user.setFirstName(firstName);
         user.setLastName(lastName);
     }
@@ -306,7 +328,12 @@ public class UserProfileService {
             this.missingFields = missingFields;
         }
 
-        public boolean isCompleted() { return completed; }
-        public List<String> getMissingFields() { return missingFields; }
+        public boolean isCompleted() {
+            return completed;
+        }
+
+        public List<String> getMissingFields() {
+            return missingFields;
+        }
     }
 }

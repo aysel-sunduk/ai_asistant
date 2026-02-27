@@ -65,6 +65,7 @@ ml-service/app/models_saved/motivation_model/
 
 # ── Colab eğitim notebook'ları ──
 ml-service/colab_*.ipynb
+ml-service/notebooks/
 
 # ── Python cache ──
 __pycache__/

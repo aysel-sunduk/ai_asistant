@@ -28,6 +28,7 @@ import com.aiasistan.model.FollowRequestId;
 import com.aiasistan.model.User;
 import com.aiasistan.repository.FollowRequestRepository;
 import com.aiasistan.repository.FollowRepository;
+import com.aiasistan.repository.UserProfileRepository;
 import com.aiasistan.repository.UserRepository;
 
 @Service
@@ -42,17 +43,19 @@ public class SocialFollowService {
     private final FollowRepository followRepository;
     private final FollowRequestRepository followRequestRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final UserService userService;
 
     public SocialFollowService(
-        FollowRepository followRepository,
-        FollowRequestRepository followRequestRepository,
-        UserRepository userRepository,
-        UserService userService
-    ) {
+            FollowRepository followRepository,
+            FollowRequestRepository followRequestRepository,
+            UserRepository userRepository,
+            UserProfileRepository userProfileRepository,
+            UserService userService) {
         this.followRepository = followRepository;
         this.followRequestRepository = followRequestRepository;
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
         this.userService = userService;
     }
 
@@ -87,11 +90,11 @@ public class SocialFollowService {
             followRepository.deleteByIdFollowerIdAndIdFollowingId(userId, targetUserId);
         }
         followRequestRepository.findByIdRequesterIdAndIdTargetId(userId, targetUserId)
-            .filter(r -> REQUEST_PENDING.equals(r.getStatus()))
-            .ifPresent(r -> {
-                r.setStatus(REQUEST_CANCELLED);
-                followRequestRepository.save(r);
-            });
+                .filter(r -> REQUEST_PENDING.equals(r.getStatus()))
+                .ifPresent(r -> {
+                    r.setStatus(REQUEST_CANCELLED);
+                    followRequestRepository.save(r);
+                });
 
         return followState(targetUserId, false, "not_following");
     }
@@ -123,22 +126,21 @@ public class SocialFollowService {
         Page<Follow> page = followRepository.findByIdFollowerId(userId, safePageable);
 
         List<UUID> followingIds = page.getContent().stream()
-            .map(f -> f.getId().getFollowingId())
-            .toList();
+                .map(f -> f.getId().getFollowingId())
+                .toList();
 
         Map<UUID, User> userMap = userRepository.findAllById(followingIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         List<FollowDto.FollowResponse> content = page.getContent().stream()
-            .map(f -> toFollowResponseOrNull(userMap.get(f.getId().getFollowingId()), f))
-            .filter(Objects::nonNull)
-            .toList();
+                .map(f -> toFollowResponseOrNull(userMap.get(f.getId().getFollowingId()), f))
+                .filter(Objects::nonNull)
+                .toList();
 
         Page<FollowDto.FollowResponse> mapped = new org.springframework.data.domain.PageImpl<>(
-            content,
-            safePageable,
-            page.getTotalElements()
-        );
+                content,
+                safePageable,
+                page.getTotalElements());
         return PageResponse.of(mapped);
     }
 
@@ -149,22 +151,21 @@ public class SocialFollowService {
         Page<Follow> page = followRepository.findByIdFollowingId(userId, safePageable);
 
         List<UUID> followerIds = page.getContent().stream()
-            .map(f -> f.getId().getFollowerId())
-            .toList();
+                .map(f -> f.getId().getFollowerId())
+                .toList();
 
         Map<UUID, User> userMap = userRepository.findAllById(followerIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         List<FollowDto.FollowResponse> content = page.getContent().stream()
-            .map(f -> toFollowResponseOrNull(userMap.get(f.getId().getFollowerId()), f))
-            .filter(Objects::nonNull)
-            .toList();
+                .map(f -> toFollowResponseOrNull(userMap.get(f.getId().getFollowerId()), f))
+                .filter(Objects::nonNull)
+                .toList();
 
         Page<FollowDto.FollowResponse> mapped = new org.springframework.data.domain.PageImpl<>(
-            content,
-            safePageable,
-            page.getTotalElements()
-        );
+                content,
+                safePageable,
+                page.getTotalElements());
         return PageResponse.of(mapped);
     }
 
@@ -184,8 +185,8 @@ public class SocialFollowService {
         validateTarget(userId, requesterUserId);
 
         FollowRequest request = followRequestRepository
-            .findByIdRequesterIdAndIdTargetId(requesterUserId, userId)
-            .orElseThrow(() -> new NotFoundException("Takip istegi bulunamadi"));
+                .findByIdRequesterIdAndIdTargetId(requesterUserId, userId)
+                .orElseThrow(() -> new NotFoundException("Takip istegi bulunamadi"));
 
         if (!REQUEST_PENDING.equals(request.getStatus())) {
             throw new BadRequestException("Sadece bekleyen istek kabul edilebilir");
@@ -209,8 +210,8 @@ public class SocialFollowService {
         validateTarget(userId, requesterUserId);
 
         FollowRequest request = followRequestRepository
-            .findByIdRequesterIdAndIdTargetId(requesterUserId, userId)
-            .orElseThrow(() -> new NotFoundException("Takip istegi bulunamadi"));
+                .findByIdRequesterIdAndIdTargetId(requesterUserId, userId)
+                .orElseThrow(() -> new NotFoundException("Takip istegi bulunamadi"));
 
         if (!REQUEST_PENDING.equals(request.getStatus())) {
             throw new BadRequestException("Sadece bekleyen istek reddedilebilir");
@@ -226,21 +227,21 @@ public class SocialFollowService {
         Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
         UUID userId = userService.getUserIdByEmail(userEmail);
 
-        Page<FollowRequest> page = followRequestRepository.findByIdTargetIdAndStatus(userId, REQUEST_PENDING, safePageable);
+        Page<FollowRequest> page = followRequestRepository.findByIdTargetIdAndStatus(userId, REQUEST_PENDING,
+                safePageable);
         List<UUID> requesterIds = page.getContent().stream().map(r -> r.getId().getRequesterId()).toList();
         Map<UUID, User> userMap = userRepository.findAllById(requesterIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         List<FollowDto.FollowRequestResponse> content = page.getContent().stream()
-            .map(r -> toFollowRequestResponseOrNull(userMap.get(r.getId().getRequesterId()), r))
-            .filter(Objects::nonNull)
-            .toList();
+                .map(r -> toFollowRequestResponseOrNull(userMap.get(r.getId().getRequesterId()), r))
+                .filter(Objects::nonNull)
+                .toList();
 
         Page<FollowDto.FollowRequestResponse> mapped = new org.springframework.data.domain.PageImpl<>(
-            content,
-            safePageable,
-            page.getTotalElements()
-        );
+                content,
+                safePageable,
+                page.getTotalElements());
         return PageResponse.of(mapped);
     }
 
@@ -249,26 +250,27 @@ public class SocialFollowService {
         Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
         UUID userId = userService.getUserIdByEmail(userEmail);
 
-        Page<FollowRequest> page = followRequestRepository.findByIdRequesterIdAndStatus(userId, REQUEST_PENDING, safePageable);
+        Page<FollowRequest> page = followRequestRepository.findByIdRequesterIdAndStatus(userId, REQUEST_PENDING,
+                safePageable);
         List<UUID> targetIds = page.getContent().stream().map(r -> r.getId().getTargetId()).toList();
         Map<UUID, User> userMap = userRepository.findAllById(targetIds).stream()
-            .collect(Collectors.toMap(User::getId, Function.identity()));
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         List<FollowDto.FollowRequestResponse> content = page.getContent().stream()
-            .map(r -> toFollowRequestResponseOrNull(userMap.get(r.getId().getTargetId()), r))
-            .filter(Objects::nonNull)
-            .toList();
+                .map(r -> toFollowRequestResponseOrNull(userMap.get(r.getId().getTargetId()), r))
+                .filter(Objects::nonNull)
+                .toList();
 
         Page<FollowDto.FollowRequestResponse> mapped = new org.springframework.data.domain.PageImpl<>(
-            content,
-            safePageable,
-            page.getTotalElements()
-        );
+                content,
+                safePageable,
+                page.getTotalElements());
         return PageResponse.of(mapped);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<FollowDto.DiscoverUserResponse> getDiscoverUsers(String userEmail, String q, Pageable pageable) {
+    public PageResponse<FollowDto.DiscoverUserResponse> getDiscoverUsers(String userEmail, String q,
+            Pageable pageable) {
         Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
         UUID userId = userService.getUserIdByEmail(userEmail);
 
@@ -276,10 +278,9 @@ public class SocialFollowService {
         Page<User> page;
         if (normalizedQ == null || normalizedQ.isBlank()) {
             page = userRepository.findByIdNotAndIsActiveTrueAndDeletedAtIsNullAndVisibilityIn(
-                userId,
-                Arrays.asList("public", "private"),
-                safePageable
-            );
+                    userId,
+                    Arrays.asList("public", "private"),
+                    safePageable);
         } else {
             page = userRepository.findDiscoverablePublicUsers(userId, normalizedQ, safePageable);
         }
@@ -310,8 +311,8 @@ public class SocialFollowService {
         validateTarget(userId, targetUserId);
 
         FollowRequest request = followRequestRepository
-            .findByIdRequesterIdAndIdTargetId(userId, targetUserId)
-            .orElseThrow(() -> new NotFoundException("Geri cekilecek takip istegi bulunamadi"));
+                .findByIdRequesterIdAndIdTargetId(userId, targetUserId)
+                .orElseThrow(() -> new NotFoundException("Geri cekilecek takip istegi bulunamadi"));
 
         if (!REQUEST_PENDING.equals(request.getStatus())) {
             throw new BadRequestException("Sadece bekleyen takip istegi geri cekilebilir");
@@ -330,8 +331,8 @@ public class SocialFollowService {
     @Transactional(readOnly = true)
     public List<UUID> getFollowingUserIds(UUID userId) {
         return followRepository.findByIdFollowerId(userId, Pageable.unpaged()).getContent().stream()
-            .map(f -> f.getId().getFollowingId())
-            .toList();
+                .map(f -> f.getId().getFollowingId())
+                .toList();
     }
 
     private FollowDto.FollowResponse toFollowResponseOrNull(User user, Follow follow) {
@@ -386,27 +387,27 @@ public class SocialFollowService {
 
     private boolean isPrivateProfile(UUID userId) {
         return userRepository.findById(userId)
-            .map(User::getVisibility)
-            .map(v -> v != null && PRIVATE.equalsIgnoreCase(v))
-            .orElse(false);
+                .map(User::getVisibility)
+                .map(v -> v != null && PRIVATE.equalsIgnoreCase(v))
+                .orElse(false);
     }
 
     private void upsertFollowRequest(UUID requesterId, UUID targetId, String status) {
         FollowRequest request = followRequestRepository
-            .findByIdRequesterIdAndIdTargetId(requesterId, targetId)
-            .orElseGet(() -> {
-                FollowRequest r = new FollowRequest();
-                r.setId(new FollowRequestId(requesterId, targetId));
-                return r;
-            });
+                .findByIdRequesterIdAndIdTargetId(requesterId, targetId)
+                .orElseGet(() -> {
+                    FollowRequest r = new FollowRequest();
+                    r.setId(new FollowRequestId(requesterId, targetId));
+                    return r;
+                });
         request.setStatus(status);
         followRequestRepository.save(request);
     }
 
     private boolean hasPendingRequest(UUID requesterId, UUID targetId) {
         return followRequestRepository.findByIdRequesterIdAndIdTargetId(requesterId, targetId)
-            .map(r -> REQUEST_PENDING.equals(r.getStatus()))
-            .orElse(false);
+                .map(r -> REQUEST_PENDING.equals(r.getStatus()))
+                .orElse(false);
     }
 
     private FollowDto.FollowStateResponse followState(UUID targetUserId, boolean following, String relationStatus) {
@@ -428,5 +429,31 @@ public class SocialFollowService {
             return "pending_incoming";
         }
         return "not_following";
+    }
+
+    @Transactional(readOnly = true)
+    public FollowDto.PublicProfileResponse getPublicProfile(UUID targetUserId) {
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        FollowDto.PublicProfileResponse response = new FollowDto.PublicProfileResponse();
+        response.setUserId(user.getId());
+        response.setFirstName(user.getFirstName());
+        response.setLastName(user.getLastName());
+        response.setFollowingCount(followRepository.countByIdFollowerId(targetUserId));
+        response.setFollowersCount(followRepository.countByIdFollowingId(targetUserId));
+        response.setProfileVisibility(user.getVisibility() != null ? user.getVisibility() : "public");
+
+        // Respect phone/email visibility settings
+        userProfileRepository.findById(targetUserId).ifPresent(profile -> {
+            if (profile.isShowEmail()) {
+                response.setEmail(user.getEmail());
+            }
+            if (profile.isShowPhone()) {
+                response.setPhone(profile.getPhone());
+            }
+        });
+
+        return response;
     }
 }

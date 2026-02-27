@@ -48,12 +48,11 @@ public class FamilyService {
     private final CurrencyService currencyService;
 
     public FamilyService(
-        FamilyTransactionRepository transactionRepository,
-        FamilyBirthdayRepository birthdayRepository,
-        ReminderRepository reminderRepository,
-        UserService userService,
-        CurrencyService currencyService
-    ) {
+            FamilyTransactionRepository transactionRepository,
+            FamilyBirthdayRepository birthdayRepository,
+            ReminderRepository reminderRepository,
+            UserService userService,
+            CurrencyService currencyService) {
         this.transactionRepository = transactionRepository;
         this.birthdayRepository = birthdayRepository;
         this.reminderRepository = reminderRepository;
@@ -79,14 +78,14 @@ public class FamilyService {
     public Page<FamilyTransactionResponse> getTransactions(String userEmail, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         return transactionRepository.findByUserIdOrderByOccurredOnDesc(userId, pageable)
-            .map(this::toTransactionResponse);
+                .map(this::toTransactionResponse);
     }
 
     @Transactional(readOnly = true)
     public FamilyTransactionResponse getTransaction(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = transactionRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family transaction not found"));
+                .orElseThrow(() -> new NotFoundException("Family transaction not found"));
         return toTransactionResponse(tx);
     }
 
@@ -94,7 +93,7 @@ public class FamilyService {
     public FamilyTransactionResponse updateTransaction(String userEmail, UUID id, FamilyTransactionRequest request) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = transactionRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family transaction not found"));
+                .orElseThrow(() -> new NotFoundException("Family transaction not found"));
         tx.setType(normalizeTransactionType(request.getType()));
         tx.setAmountMinor(request.getAmountMinor());
         tx.setCurrency(normalizeCurrency(request.getCurrency()));
@@ -108,7 +107,7 @@ public class FamilyService {
     public void deleteTransaction(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = transactionRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family transaction not found"));
+                .orElseThrow(() -> new NotFoundException("Family transaction not found"));
         transactionRepository.delete(tx);
     }
 
@@ -116,9 +115,9 @@ public class FamilyService {
     public FamilyFinanceSummaryResponse getFinanceSummary(String userEmail, LocalDate startDate, LocalDate endDate) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Long incomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, "INCOME", startDate, endDate);
+                userId, "INCOME", startDate, endDate);
         Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, "EXPENSE", startDate, endDate);
+                userId, "EXPENSE", startDate, endDate);
 
         BigDecimal income = minorToAmount(incomeMinor);
         BigDecimal expense = minorToAmount(expenseMinor);
@@ -159,11 +158,12 @@ public class FamilyService {
         }
 
         Long incomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "INCOME", startDate, endDate);
-        Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "EXPENSE", startDate, endDate);
+        Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "EXPENSE", startDate,
+                endDate);
         Long previousIncomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, "INCOME", previousStartDate, previousEndDate);
+                userId, "INCOME", previousStartDate, previousEndDate);
         Long previousExpenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(
-            userId, "EXPENSE", previousStartDate, previousEndDate);
+                userId, "EXPENSE", previousStartDate, previousEndDate);
 
         BigDecimal income = minorToAmount(incomeMinor);
         BigDecimal expense = minorToAmount(expenseMinor);
@@ -200,6 +200,8 @@ public class FamilyService {
         birthday.setPhone(request.getPhone());
         birthday.setEmail(request.getEmail());
         birthday.setNote(request.getNote());
+        birthday.setBloodType(request.getBloodType());
+        birthday.setRelationDegree(request.getRelationDegree());
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         createBirthdayReminder(userId, savedBirthday);
         return toBirthdayResponse(savedBirthday);
@@ -209,14 +211,14 @@ public class FamilyService {
     public Page<FamilyBirthdayResponse> getBirthdays(String userEmail, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         return birthdayRepository.findByUserIdOrderByBirthDateAsc(userId, pageable)
-            .map(this::toBirthdayResponse);
+                .map(this::toBirthdayResponse);
     }
 
     @Transactional(readOnly = true)
     public FamilyBirthdayResponse getBirthday(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyBirthday birthday = birthdayRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family birthday not found"));
+                .orElseThrow(() -> new NotFoundException("Family birthday not found"));
         return toBirthdayResponse(birthday);
     }
 
@@ -224,7 +226,7 @@ public class FamilyService {
     public FamilyBirthdayResponse updateBirthday(String userEmail, UUID id, FamilyBirthdayRequest request) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyBirthday birthday = birthdayRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family birthday not found"));
+                .orElseThrow(() -> new NotFoundException("Family birthday not found"));
         String oldTitle = birthdayReminderTitle(birthday.getFullName());
         birthday.setFullName(request.getFullName());
         birthday.setRelationship(request.getRelationship());
@@ -232,6 +234,8 @@ public class FamilyService {
         birthday.setPhone(request.getPhone());
         birthday.setEmail(request.getEmail());
         birthday.setNote(request.getNote());
+        birthday.setBloodType(request.getBloodType());
+        birthday.setRelationDegree(request.getRelationDegree());
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         syncBirthdayReminder(userId, oldTitle, savedBirthday);
         return toBirthdayResponse(savedBirthday);
@@ -241,7 +245,7 @@ public class FamilyService {
     public void deleteBirthday(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyBirthday birthday = birthdayRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Family birthday not found"));
+                .orElseThrow(() -> new NotFoundException("Family birthday not found"));
         deleteBirthdayReminder(userId, birthdayReminderTitle(birthday.getFullName()));
         birthdayRepository.delete(birthday);
     }
@@ -253,11 +257,11 @@ public class FamilyService {
         LocalDate limit = now.plusDays(days);
 
         return birthdayRepository.findByUserIdOrderByBirthDateAsc(userId, Pageable.unpaged()).getContent()
-            .stream()
-            .filter(b -> isUpcoming(b.getBirthDate(), now, limit))
-            .sorted(Comparator.comparingLong(b -> daysUntilBirthday(b.getBirthDate(), now)))
-            .map(this::toBirthdayResponse)
-            .collect(Collectors.toList());
+                .stream()
+                .filter(b -> isUpcoming(b.getBirthDate(), now, limit))
+                .sorted(Comparator.comparingLong(b -> daysUntilBirthday(b.getBirthDate(), now)))
+                .map(this::toBirthdayResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -266,7 +270,8 @@ public class FamilyService {
     }
 
     @Transactional(readOnly = true)
-    public List<CurrencyRateResponse> getHistoricalFxRates(String code, LocalDateTime startDate, LocalDateTime endDate) {
+    public List<CurrencyRateResponse> getHistoricalFxRates(String code, LocalDateTime startDate,
+            LocalDateTime endDate) {
         return currencyService.getHistoricalRates(code, startDate, endDate);
     }
 
@@ -293,6 +298,8 @@ public class FamilyService {
         response.setPhone(birthday.getPhone());
         response.setEmail(birthday.getEmail());
         response.setNote(birthday.getNote());
+        response.setBloodType(birthday.getBloodType());
+        response.setRelationDegree(birthday.getRelationDegree());
         response.setCreatedAt(birthday.getCreatedAt());
         response.setUpdatedAt(birthday.getUpdatedAt());
         return response;
@@ -308,22 +315,21 @@ public class FamilyService {
     private BigDecimal calculateChangePct(BigDecimal previous, BigDecimal current) {
         if (previous == null || previous.compareTo(BigDecimal.ZERO) == 0) {
             return current.compareTo(BigDecimal.ZERO) == 0
-                ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP);
+                    ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                    : BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP);
         }
         return current.subtract(previous)
-            .multiply(BigDecimal.valueOf(100))
-            .divide(previous.abs(), 2, RoundingMode.HALF_UP);
+                .multiply(BigDecimal.valueOf(100))
+                .divide(previous.abs(), 2, RoundingMode.HALF_UP);
     }
 
     private List<FamilyFinanceReportResponse.Bucket> buildBuckets(
-        UUID userId,
-        LocalDate startDate,
-        LocalDate endDate,
-        String period
-    ) {
+            UUID userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String period) {
         List<FamilyTransaction> transactions = transactionRepository
-            .findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(userId, startDate, endDate);
+                .findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(userId, startDate, endDate);
 
         List<FamilyFinanceReportResponse.Bucket> buckets = new java.util.ArrayList<>();
 
@@ -351,11 +357,10 @@ public class FamilyService {
     }
 
     private FamilyFinanceReportResponse.Bucket buildBucket(
-        String label,
-        LocalDate startDate,
-        LocalDate endDate,
-        List<FamilyTransaction> transactions
-    ) {
+            String label,
+            LocalDate startDate,
+            LocalDate endDate,
+            List<FamilyTransaction> transactions) {
         long incomeMinor = 0L;
         long expenseMinor = 0L;
         for (FamilyTransaction tx : transactions) {
@@ -465,5 +470,18 @@ public class FamilyService {
 
     private String birthdayReminderTitle(String fullName) {
         return "Dogum Gunu: " + fullName;
+    }
+
+    @Transactional
+    public FamilyTransactionResponse createIncome(String userEmail, FamilyTransactionRequest request) {
+        request.setType("INCOME");
+        return createTransaction(userEmail, request);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<FamilyTransactionResponse> getIncomes(String userEmail, Pageable pageable) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        return transactionRepository.findByUserIdAndTypeOrderByOccurredOnDesc(userId, "INCOME", pageable)
+                .map(this::toTransactionResponse);
     }
 }

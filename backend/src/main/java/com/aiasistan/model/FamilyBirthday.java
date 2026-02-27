@@ -33,6 +33,12 @@ public class FamilyBirthday extends UserOwnedEntity {
     @Column(name = "note", columnDefinition = "text")
     private String note;
 
+    @Column(name = "blood_type", length = 5)
+    private String bloodType;
+
+    @Column(name = "relation_degree", length = 30)
+    private String relationDegree;
+
     public String getFullName() {
         return fullName;
     }
@@ -79,5 +85,21 @@ public class FamilyBirthday extends UserOwnedEntity {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getBloodType() {
+        return bloodType;
+    }
+
+    public void setBloodType(String bloodType) {
+        this.bloodType = bloodType;
+    }
+
+    public String getRelationDegree() {
+        return relationDegree;
+    }
+
+    public void setRelationDegree(String relationDegree) {
+        this.relationDegree = relationDegree;
     }
 }

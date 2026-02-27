@@ -22,21 +22,21 @@ public interface FamilyTransactionRepository extends JpaRepository<FamilyTransac
 
     Page<FamilyTransaction> findByUserIdOrderByOccurredOnDesc(UUID userId, Pageable pageable);
 
+    Page<FamilyTransaction> findByUserIdAndTypeOrderByOccurredOnDesc(UUID userId, String type, Pageable pageable);
+
     Optional<FamilyTransaction> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<FamilyTransaction> findByUserIdAndNote(UUID userId, String note);
 
     List<FamilyTransaction> findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(
-        UUID userId,
-        LocalDate startDate,
-        LocalDate endDate
-    );
+            UUID userId,
+            LocalDate startDate,
+            LocalDate endDate);
 
     @Query("SELECT COALESCE(SUM(ft.amountMinor), 0) FROM FamilyTransaction ft WHERE ft.userId = :userId AND ft.type = :type AND ft.occurredOn BETWEEN :startDate AND :endDate")
     Long sumAmountMinorByTypeAndDateRange(
-        @Param("userId") UUID userId,
-        @Param("type") String type,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
-    );
+            @Param("userId") UUID userId,
+            @Param("type") String type,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

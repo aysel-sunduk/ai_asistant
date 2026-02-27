@@ -46,7 +46,7 @@ public class ContactService {
     public ContactResponse getContact(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Contact contact = contactRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Contact not found"));
+                .orElseThrow(() -> new NotFoundException("Contact not found"));
         return toResponse(contact);
     }
 
@@ -54,7 +54,7 @@ public class ContactService {
     public ContactResponse updateContact(String userEmail, UUID id, ContactRequest request) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Contact contact = contactRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Contact not found"));
+                .orElseThrow(() -> new NotFoundException("Contact not found"));
         apply(contact, request);
         return toResponse(contactRepository.save(contact));
     }
@@ -63,7 +63,7 @@ public class ContactService {
     public void deleteContact(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Contact contact = contactRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Contact not found"));
+                .orElseThrow(() -> new NotFoundException("Contact not found"));
         contactRepository.delete(contact);
     }
 
@@ -74,6 +74,8 @@ public class ContactService {
         contact.setPhone(request.getPhone());
         contact.setEmail(request.getEmail());
         contact.setNotes(request.getNotes());
+        contact.setBloodType(request.getBloodType());
+        contact.setRelationDegree(request.getRelationDegree());
     }
 
     private ContactResponse toResponse(Contact contact) {
@@ -85,6 +87,8 @@ public class ContactService {
         response.setPhone(contact.getPhone());
         response.setEmail(contact.getEmail());
         response.setNotes(contact.getNotes());
+        response.setBloodType(contact.getBloodType());
+        response.setRelationDegree(contact.getRelationDegree());
         response.setCreatedAt(contact.getCreatedAt());
         response.setUpdatedAt(contact.getUpdatedAt());
         return response;

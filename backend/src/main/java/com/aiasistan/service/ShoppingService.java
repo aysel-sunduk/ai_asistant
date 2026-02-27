@@ -5,6 +5,7 @@
 package com.aiasistan.service;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -162,6 +163,7 @@ public class ShoppingService {
 
         ShoppingItem item = findItemInList(listId, itemId);
         item.setIsChecked(Boolean.TRUE.equals(checked));
+        item.setCheckedAt(Boolean.TRUE.equals(checked) ? OffsetDateTime.now() : null);
         ShoppingItem saved = shoppingItemRepository.save(item);
         syncShoppingExpense(userId, saved);
         return ShoppingItemDto.Response.from(saved);
@@ -216,10 +218,14 @@ public class ShoppingService {
     private void applyItemRequest(ShoppingItem item, ShoppingItemDto.Request request) {
         String normalizedName = request.getName().trim();
         item.setName(normalizedName);
+        item.setProductKey(normalizeProductKey(normalizedName));
+        item.setCategory(normalizeNullableText(request.getCategory()));
         item.setQuantity(request.getQuantity() != null && request.getQuantity() > 0 ? request.getQuantity() : 1);
-        item.setUnit(request.getUnit() == null ? null : request.getUnit().trim());
+        item.setUnit(normalizeNullableText(request.getUnit()));
         item.setEstimatedPriceMinor(request.getEstimatedPriceMinor());
-        item.setIsChecked(request.getIsChecked() != null ? request.getIsChecked() : Boolean.FALSE);
+        Boolean checked = request.getIsChecked() != null ? request.getIsChecked() : Boolean.FALSE;
+        item.setIsChecked(checked);
+        item.setCheckedAt(Boolean.TRUE.equals(checked) ? OffsetDateTime.now() : null);
         item.setNote(request.getNote());
     }
 
@@ -264,5 +270,17 @@ public class ShoppingService {
             return "WEEKLY";
         }
         return normalized;
+    }
+
+    private String normalizeProductKey(String name) {
+        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

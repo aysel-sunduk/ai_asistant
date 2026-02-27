@@ -4,6 +4,7 @@
 
 package com.aiasistan.model;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -33,6 +34,12 @@ public class ShoppingItem {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "product_key", nullable = false)
+    private String productKey;
+
+    @Column(name = "category")
+    private String category;
+
     @Column(name = "quantity", nullable = false)
     private Integer quantity = 1;
 
@@ -48,6 +55,12 @@ public class ShoppingItem {
     @Column(name = "note", columnDefinition = "text")
     private String note;
 
+    @Column(name = "added_at", nullable = false, columnDefinition = "timestamptz")
+    private OffsetDateTime addedAt;
+
+    @Column(name = "checked_at", columnDefinition = "timestamptz")
+    private OffsetDateTime checkedAt;
+
     @PrePersist
     protected void onCreate() {
         if (quantity == null || quantity < 1) {
@@ -55,6 +68,9 @@ public class ShoppingItem {
         }
         if (isChecked == null) {
             isChecked = false;
+        }
+        if (addedAt == null) {
+            addedAt = OffsetDateTime.now();
         }
     }
 
@@ -84,6 +100,22 @@ public class ShoppingItem {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getProductKey() {
+        return productKey;
+    }
+
+    public void setProductKey(String productKey) {
+        this.productKey = productKey;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public Integer getQuantity() {
@@ -124,5 +156,21 @@ public class ShoppingItem {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public OffsetDateTime getAddedAt() {
+        return addedAt;
+    }
+
+    public void setAddedAt(OffsetDateTime addedAt) {
+        this.addedAt = addedAt;
+    }
+
+    public OffsetDateTime getCheckedAt() {
+        return checkedAt;
+    }
+
+    public void setCheckedAt(OffsetDateTime checkedAt) {
+        this.checkedAt = checkedAt;
     }
 }

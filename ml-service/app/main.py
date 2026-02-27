@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.blog_api import router as blog_router
 from app.api.game_api import router as game_router
+from app.api.shopping_api import router as shopping_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,10 +29,12 @@ async def lifespan(app: FastAPI):
     from app.models.title_generator import _load_model as _load_title_model
     from app.models.game_analyzer import _load_models as _load_game_models
     from app.models.motivation_predictor import _load_models as _load_motivation_model
+    from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
     _load_ml_model()
     _load_title_model()
     _load_game_models()
     _load_motivation_model()
+    _load_shopping_artifacts()
     logger.info("ML Service hazır.")
     yield
     logger.info("ML Service kapatılıyor...")
@@ -56,6 +59,7 @@ app.add_middleware(
 # Router'ları ekle
 app.include_router(blog_router, prefix="/api")
 app.include_router(game_router, prefix="/api")
+app.include_router(shopping_router, prefix="/api")
 
 
 @app.get("/health")
@@ -65,6 +69,7 @@ async def health_check():
     from app.models.title_generator import is_model_loaded as title_loaded
     from app.models.game_analyzer import is_models_loaded as game_loaded
     from app.models.motivation_predictor import is_model_loaded as motivation_loaded
+    from app.models.shopping_recommender import is_model_loaded as shopping_loaded
     return {
         "status": "ok",
         "service": "ai-asistan-ml",
@@ -74,5 +79,6 @@ async def health_check():
             "title_generator": title_loaded(),
             "game_analyzer": game_loaded(),
             "motivation_predictor": motivation_loaded(),
+            "shopping_recommender": shopping_loaded(),
         },
     }

@@ -41,9 +41,8 @@ public class SocialFollowController {
   @PostMapping("/{targetUserId}")
   @Operation(summary = "Kullaniciyi takip et")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> followUser(
-    Authentication authentication,
-    @PathVariable UUID targetUserId
-  ) {
+      Authentication authentication,
+      @PathVariable UUID targetUserId) {
     FollowDto.FollowStateResponse response = socialFollowService.followUser(authentication.getName(), targetUserId);
     return ResponseEntity.ok(ApiResponse.ok(response, "Takip edildi"));
   }
@@ -51,9 +50,8 @@ public class SocialFollowController {
   @DeleteMapping("/{targetUserId}")
   @Operation(summary = "Kullaniciyi takipten cikar")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> unfollowUser(
-    Authentication authentication,
-    @PathVariable UUID targetUserId
-  ) {
+      Authentication authentication,
+      @PathVariable UUID targetUserId) {
     FollowDto.FollowStateResponse response = socialFollowService.unfollowUser(authentication.getName(), targetUserId);
     return ResponseEntity.ok(ApiResponse.ok(response, "Takip birakildi"));
   }
@@ -61,9 +59,8 @@ public class SocialFollowController {
   @GetMapping("/state/{targetUserId}")
   @Operation(summary = "Takip durumunu getir")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> getFollowState(
-    Authentication authentication,
-    @PathVariable UUID targetUserId
-  ) {
+      Authentication authentication,
+      @PathVariable UUID targetUserId) {
     FollowDto.FollowStateResponse response = socialFollowService.getFollowState(authentication.getName(), targetUserId);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -71,28 +68,24 @@ public class SocialFollowController {
   @GetMapping("/following")
   @Operation(summary = "Takip edilenleri getir")
   public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowResponse>>> getFollowing(
-    Authentication authentication,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-  ) {
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResponse<FollowDto.FollowResponse> response = socialFollowService.getFollowing(
-      authentication.getName(),
-      PageRequest.of(page, size, Sort.by("createdAt").descending())
-    );
+        authentication.getName(),
+        PageRequest.of(page, size, Sort.by("createdAt").descending()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
   @GetMapping("/followers")
   @Operation(summary = "Takipcileri getir")
   public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowResponse>>> getFollowers(
-    Authentication authentication,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-  ) {
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResponse<FollowDto.FollowResponse> response = socialFollowService.getFollowers(
-      authentication.getName(),
-      PageRequest.of(page, size, Sort.by("createdAt").descending())
-    );
+        authentication.getName(),
+        PageRequest.of(page, size, Sort.by("createdAt").descending()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -106,74 +99,68 @@ public class SocialFollowController {
   @GetMapping("/discover")
   @Operation(summary = "Kesfedilecek kullanicilari getir")
   public ResponseEntity<ApiResponse<PageResponse<FollowDto.DiscoverUserResponse>>> getDiscoverUsers(
-    Authentication authentication,
-    @RequestParam(required = false) String q,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-  ) {
+      Authentication authentication,
+      @RequestParam(required = false) String q,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResponse<FollowDto.DiscoverUserResponse> response = socialFollowService.getDiscoverUsers(
-      authentication.getName(),
-      q,
-      PageRequest.of(page, size, Sort.by("createdAt").descending())
-    );
+        authentication.getName(),
+        q,
+        PageRequest.of(page, size, Sort.by("createdAt").descending()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
   @PostMapping("/requests/{requesterUserId}/accept")
   @Operation(summary = "Takip istegini kabul et")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> acceptRequest(
-    Authentication authentication,
-    @PathVariable UUID requesterUserId
-  ) {
-    FollowDto.FollowStateResponse response = socialFollowService.acceptFollowRequest(authentication.getName(), requesterUserId);
+      Authentication authentication,
+      @PathVariable UUID requesterUserId) {
+    FollowDto.FollowStateResponse response = socialFollowService.acceptFollowRequest(authentication.getName(),
+        requesterUserId);
     return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi kabul edildi"));
   }
 
   @PostMapping("/requests/{requesterUserId}/reject")
   @Operation(summary = "Takip istegini reddet")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> rejectRequest(
-    Authentication authentication,
-    @PathVariable UUID requesterUserId
-  ) {
-    FollowDto.FollowStateResponse response = socialFollowService.rejectFollowRequest(authentication.getName(), requesterUserId);
+      Authentication authentication,
+      @PathVariable UUID requesterUserId) {
+    FollowDto.FollowStateResponse response = socialFollowService.rejectFollowRequest(authentication.getName(),
+        requesterUserId);
     return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi reddedildi"));
   }
 
   @PostMapping("/requests/{targetUserId}/withdraw")
   @Operation(summary = "Takip istegini geri cek")
   public ResponseEntity<ApiResponse<FollowDto.FollowStateResponse>> withdrawRequest(
-    Authentication authentication,
-    @PathVariable UUID targetUserId
-  ) {
-    FollowDto.FollowStateResponse response = socialFollowService.withdrawFollowRequest(authentication.getName(), targetUserId);
+      Authentication authentication,
+      @PathVariable UUID targetUserId) {
+    FollowDto.FollowStateResponse response = socialFollowService.withdrawFollowRequest(authentication.getName(),
+        targetUserId);
     return ResponseEntity.ok(ApiResponse.ok(response, "Takip istegi geri cekildi"));
   }
 
   @GetMapping("/requests/incoming")
   @Operation(summary = "Gelen takip isteklerini getir")
   public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowRequestResponse>>> getIncomingRequests(
-    Authentication authentication,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-  ) {
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResponse<FollowDto.FollowRequestResponse> response = socialFollowService.getIncomingRequests(
-      authentication.getName(),
-      PageRequest.of(page, size, Sort.by("createdAt").descending())
-    );
+        authentication.getName(),
+        PageRequest.of(page, size, Sort.by("createdAt").descending()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
   @GetMapping("/requests/outgoing")
   @Operation(summary = "Gonderilen takip isteklerini getir")
   public ResponseEntity<ApiResponse<PageResponse<FollowDto.FollowRequestResponse>>> getOutgoingRequests(
-    Authentication authentication,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
-  ) {
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     PageResponse<FollowDto.FollowRequestResponse> response = socialFollowService.getOutgoingRequests(
-      authentication.getName(),
-      PageRequest.of(page, size, Sort.by("createdAt").descending())
-    );
+        authentication.getName(),
+        PageRequest.of(page, size, Sort.by("createdAt").descending()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -183,5 +170,12 @@ public class SocialFollowController {
     FollowDto.RequestStatsResponse response = socialFollowService.getRequestStats(authentication.getName());
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
-}
 
+  @GetMapping("/profile/{userId}")
+  @Operation(summary = "Kullanicinin public profilini getir")
+  public ResponseEntity<ApiResponse<FollowDto.PublicProfileResponse>> getPublicProfile(
+      @PathVariable UUID userId) {
+    FollowDto.PublicProfileResponse response = socialFollowService.getPublicProfile(userId);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+}

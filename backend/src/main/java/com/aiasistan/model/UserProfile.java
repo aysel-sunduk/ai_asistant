@@ -17,7 +17,7 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(name = "user_profiles")
 public class UserProfile {
-    
+
     @Id
     @Column(name = "user_id")
     private UUID userId;
@@ -58,6 +58,15 @@ public class UserProfile {
     @Column(name = "monthly_income_estimate_minor")
     private Long monthlyIncomeEstimateMinor;
 
+    @Column(name = "phone", length = 30)
+    private String phone;
+
+    @Column(name = "show_phone")
+    private boolean showPhone = false;
+
+    @Column(name = "show_email")
+    private boolean showEmail = false;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "interests", columnDefinition = "jsonb")
     private Map<String, Object> interests;
@@ -69,63 +78,167 @@ public class UserProfile {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "notifications", columnDefinition = "jsonb")
     private Map<String, Object> notifications = Map.of(
-        "email", true,
-        "push", true,
-        "sms", false
-    );
+            "email", true,
+            "push", true,
+            "sms", false);
 
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    public UserProfile() {}
+    public UserProfile() {
+    }
 
     // Getters & Setters
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public UUID getUserId() {
+        return userId;
+    }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public User getUser() {
+        return user;
+    }
 
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public void setUser(User user) {
+        this.user = user;
+    }
 
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public String getTimezone() { return timezone; }
-    public void setTimezone(String timezone) { this.timezone = timezone; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public String getLocale() { return locale; }
-    public void setLocale(String locale) { this.locale = locale; }
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
 
-    public String getProfileVisibility() { return profileVisibility; }
-    public void setProfileVisibility(String profileVisibility) { this.profileVisibility = profileVisibility; }
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
 
-    public Integer getHeightCm() { return heightCm; }
-    public void setHeightCm(Integer heightCm) { this.heightCm = heightCm; }
+    public String getGender() {
+        return gender;
+    }
 
-    public BigDecimal getWeightKg() { return weightKg; }
-    public void setWeightKg(BigDecimal weightKg) { this.weightKg = weightKg; }
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
 
-    public String getPreferredCurrency() { return preferredCurrency; }
-    public void setPreferredCurrency(String preferredCurrency) { this.preferredCurrency = preferredCurrency; }
+    public String getTimezone() {
+        return timezone;
+    }
 
-    public Long getMonthlyIncomeEstimateMinor() { return monthlyIncomeEstimateMinor; }
-    public void setMonthlyIncomeEstimateMinor(Long monthlyIncomeEstimateMinor) { this.monthlyIncomeEstimateMinor = monthlyIncomeEstimateMinor; }
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
+    }
 
-    public Map<String, Object> getInterests() { return interests; }
-    public void setInterests(Map<String, Object> interests) { this.interests = interests; }
+    public String getLocale() {
+        return locale;
+    }
 
-    public Map<String, Object> getOnboarding() { return onboarding; }
-    public void setOnboarding(Map<String, Object> onboarding) { this.onboarding = onboarding; }
+    public void setLocale(String locale) {
+        this.locale = locale;
+    }
 
-    public Map<String, Object> getNotifications() { return notifications; }
-    public void setNotifications(Map<String, Object> notifications) { this.notifications = notifications; }
+    public String getProfileVisibility() {
+        return profileVisibility;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setProfileVisibility(String profileVisibility) {
+        this.profileVisibility = profileVisibility;
+    }
+
+    public Integer getHeightCm() {
+        return heightCm;
+    }
+
+    public void setHeightCm(Integer heightCm) {
+        this.heightCm = heightCm;
+    }
+
+    public BigDecimal getWeightKg() {
+        return weightKg;
+    }
+
+    public void setWeightKg(BigDecimal weightKg) {
+        this.weightKg = weightKg;
+    }
+
+    public String getPreferredCurrency() {
+        return preferredCurrency;
+    }
+
+    public void setPreferredCurrency(String preferredCurrency) {
+        this.preferredCurrency = preferredCurrency;
+    }
+
+    public Long getMonthlyIncomeEstimateMinor() {
+        return monthlyIncomeEstimateMinor;
+    }
+
+    public void setMonthlyIncomeEstimateMinor(Long monthlyIncomeEstimateMinor) {
+        this.monthlyIncomeEstimateMinor = monthlyIncomeEstimateMinor;
+    }
+
+    public Map<String, Object> getInterests() {
+        return interests;
+    }
+
+    public void setInterests(Map<String, Object> interests) {
+        this.interests = interests;
+    }
+
+    public Map<String, Object> getOnboarding() {
+        return onboarding;
+    }
+
+    public void setOnboarding(Map<String, Object> onboarding) {
+        this.onboarding = onboarding;
+    }
+
+    public Map<String, Object> getNotifications() {
+        return notifications;
+    }
+
+    public void setNotifications(Map<String, Object> notifications) {
+        this.notifications = notifications;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public boolean isShowPhone() {
+        return showPhone;
+    }
+
+    public void setShowPhone(boolean showPhone) {
+        this.showPhone = showPhone;
+    }
+
+    public boolean isShowEmail() {
+        return showEmail;
+    }
+
+    public void setShowEmail(boolean showEmail) {
+        this.showEmail = showEmail;
+    }
 }
