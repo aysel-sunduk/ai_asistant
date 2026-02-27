@@ -25,7 +25,9 @@ import com.aiasistan.dto.BlogPostDto;
 import com.aiasistan.exception.BadRequestException;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.BlogPost;
+import com.aiasistan.model.User;
 import com.aiasistan.repository.BlogPostRepository;
+import com.aiasistan.repository.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -44,6 +46,7 @@ public class BlogPostService {
 
     private final BlogPostRepository blogPostRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
     private final SocialFollowService socialFollowService;
     private final ContentFilterService contentFilterService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -52,10 +55,11 @@ public class BlogPostService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService,
+    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, UserRepository userRepository,
             SocialFollowService socialFollowService, ContentFilterService contentFilterService) {
         this.blogPostRepository = blogPostRepository;
         this.userService = userService;
+        this.userRepository = userRepository;
         this.socialFollowService = socialFollowService;
         this.contentFilterService = contentFilterService;
     }
@@ -207,7 +211,11 @@ public class BlogPostService {
         Map<String, Object> comment = new HashMap<>();
         comment.put("id", UUID.randomUUID().toString());
         comment.put("userId", viewerId.toString());
-        comment.put("authorEmail", userEmail);
+        User author = userRepository.findById(viewerId)
+                .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi"));
+        comment.put("authorFirstName", safe(author.getFirstName()));
+        comment.put("authorLastNameMasked", maskLastName(author.getLastName()));
+        comment.put("authorDisplayName", buildDisplayName(author));
         comment.put("content", normalizedContent);
         comment.put("createdAt", java.time.OffsetDateTime.now().toString());
         comments.add(comment);
@@ -351,13 +359,10 @@ public class BlogPostService {
     private BlogPostDto.Response toResponseForViewer(BlogPost post, UUID viewerId) {
         BlogPostDto.Response response = BlogPostDto.Response.from(post);
         boolean likedByMe = false;
+        List<String> likedUserIds = List.of();
         if (hasLikedUserIdsColumn()) {
             try {
-                Object raw = entityManager.createNativeQuery(
-                        "SELECT COALESCE(liked_user_ids, '[]'::jsonb)::text FROM public.blog_posts WHERE id = CAST(:id AS uuid)")
-                        .setParameter("id", post.getId().toString()).getSingleResult();
-                List<String> likedUserIds = objectMapper.readValue(String.valueOf(raw), new TypeReference<>() {
-                });
+                likedUserIds = getLikedUserIds(post.getId());
                 likedByMe = likedUserIds.contains(viewerId.toString());
                 if (post.getLikeCount() == null) {
                     response.setLikeCount(likedUserIds.size());
@@ -366,10 +371,113 @@ public class BlogPostService {
                 likedByMe = false;
             }
         }
+        response.setComments(enrichCommentsForResponse(post.getComments()));
+        response.setLikedUsers(resolveLikedUsers(likedUserIds));
         response.setLikedByMe(likedByMe);
         response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount() : 0);
         response.setCommentCount(post.getComments() != null ? post.getComments().size() : 0);
         return response;
+    }
+
+    private List<String> getLikedUserIds(UUID postId) throws Exception {
+        Object raw = entityManager.createNativeQuery(
+                "SELECT COALESCE(liked_user_ids, '[]'::jsonb)::text FROM public.blog_posts WHERE id = CAST(:id AS uuid)")
+                .setParameter("id", postId.toString()).getSingleResult();
+        return objectMapper.readValue(String.valueOf(raw), new TypeReference<>() {
+        });
+    }
+
+    private List<Map<String, Object>> resolveLikedUsers(List<String> likedUserIds) {
+        if (likedUserIds == null || likedUserIds.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> ids = likedUserIds.stream()
+                .map(this::parseUuid)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<UUID, User> users = userRepository.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, java.util.function.Function.identity()));
+        List<Map<String, Object>> likedUsers = new ArrayList<>();
+        for (UUID id : ids) {
+            User user = users.get(id);
+            if (user == null) {
+                continue;
+            }
+            Map<String, Object> row = new HashMap<>();
+            row.put("userId", user.getId().toString());
+            row.put("firstName", safe(user.getFirstName()));
+            row.put("lastNameMasked", maskLastName(user.getLastName()));
+            row.put("displayName", buildDisplayName(user));
+            likedUsers.add(row);
+        }
+        return likedUsers;
+    }
+
+    private List<Map<String, Object>> enrichCommentsForResponse(List<Map<String, Object>> comments) {
+        if (comments == null || comments.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        List<UUID> userIds = comments.stream()
+                .map(c -> parseUuid(String.valueOf(c.get("userId"))))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, User> users = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, java.util.function.Function.identity()));
+
+        for (Map<String, Object> comment : comments) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", comment.get("id"));
+            row.put("userId", comment.get("userId"));
+            row.put("content", comment.get("content"));
+            row.put("createdAt", comment.get("createdAt"));
+
+            UUID uid = parseUuid(String.valueOf(comment.get("userId")));
+            User user = uid == null ? null : users.get(uid);
+            if (user != null) {
+                row.put("authorFirstName", safe(user.getFirstName()));
+                row.put("authorLastNameMasked", maskLastName(user.getLastName()));
+                row.put("authorDisplayName", buildDisplayName(user));
+            } else {
+                String firstName = String.valueOf(comment.getOrDefault("authorFirstName", ""));
+                String lastNameMasked = String.valueOf(comment.getOrDefault("authorLastNameMasked", ""));
+                row.put("authorFirstName", firstName);
+                row.put("authorLastNameMasked", lastNameMasked);
+                row.put("authorDisplayName",
+                        (firstName + " " + lastNameMasked).trim());
+            }
+            result.add(row);
+        }
+        return result;
+    }
+
+    private String buildDisplayName(User user) {
+        return (safe(user.getFirstName()) + " " + maskLastName(user.getLastName())).trim();
+    }
+
+    private String maskLastName(String lastName) {
+        String value = safe(lastName);
+        if (value.isBlank()) {
+            return "";
+        }
+        if (value.length() == 1) {
+            return value;
+        }
+        return value.substring(0, 1) + "*".repeat(value.length() - 1);
+    }
+
+    private String safe(String text) {
+        return text == null ? "" : text.trim();
+    }
+
+    private UUID parseUuid(String text) {
+        try {
+            return UUID.fromString(text);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private void applyRequest(BlogPost post, BlogPostDto.Request request) {

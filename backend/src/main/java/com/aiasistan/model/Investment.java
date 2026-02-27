@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 import com.aiasistan.common.UserOwnedEntity;
+import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "investments")
+@Where(clause = "deleted_at IS NULL")
 public class Investment extends UserOwnedEntity {
     
     @ManyToOne(fetch = FetchType.LAZY)

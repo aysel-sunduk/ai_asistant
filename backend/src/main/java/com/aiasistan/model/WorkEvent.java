@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.Where;
 
 import com.aiasistan.common.BaseEntity;
 
@@ -26,6 +27,7 @@ import jakarta.persistence.Table;
     @Index(name = "idx_work_events_user_start", columnList = "user_id, start_time"),
     @Index(name = "idx_work_events_status", columnList = "status")
 })
+@Where(clause = "deleted_at IS NULL")
 public class WorkEvent extends BaseEntity {
     
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")

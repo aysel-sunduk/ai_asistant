@@ -266,7 +266,8 @@ public class WorkEventService {
     public void deleteWorkEvent(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         WorkEvent event = findOwnedEvent(id, userId);
-        workEventRepository.delete(event);
+        event.setDeletedAt(OffsetDateTime.now());
+        workEventRepository.save(event);
     }
 
     @Transactional

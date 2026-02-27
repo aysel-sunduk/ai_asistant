@@ -178,7 +178,8 @@ public class ReminderService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Reminder reminder = reminderRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Hatirlatici bulunamadi"));
-        reminderRepository.delete(reminder);
+        reminder.setDeletedAt(OffsetDateTime.now());
+        reminderRepository.save(reminder);
     }
 
     private String normalizeModule(String module) {

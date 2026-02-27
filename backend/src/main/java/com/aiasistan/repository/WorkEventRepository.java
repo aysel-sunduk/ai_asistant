@@ -177,7 +177,7 @@ public interface WorkEventRepository extends JpaRepository<WorkEvent, UUID> {
     // İstatistikler için - Ortalama toplantı süresi (dakika)
     @Query(
         value = "SELECT AVG(EXTRACT(EPOCH FROM (w.end_time - w.start_time)) / 60.0) " +
-                "FROM work_events w WHERE w.user_id = :userId",
+                "FROM work_events w WHERE w.user_id = :userId AND w.deleted_at IS NULL",
         nativeQuery = true
     )
     Double averageDurationMinutesByUserId(@Param("userId") UUID userId);

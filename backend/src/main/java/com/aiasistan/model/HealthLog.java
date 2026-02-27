@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.Where;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
@@ -22,6 +23,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "health_logs")
+@Where(clause = "deleted_at IS NULL")
 public class HealthLog {
 
     @Id
@@ -50,6 +52,9 @@ public class HealthLog {
 
     @Column(name = "logged_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime loggedAt;
+
+    @Column(name = "deleted_at", columnDefinition = "timestamptz")
+    private OffsetDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -120,5 +125,13 @@ public class HealthLog {
 
     public void setLoggedAt(OffsetDateTime loggedAt) {
         this.loggedAt = loggedAt;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

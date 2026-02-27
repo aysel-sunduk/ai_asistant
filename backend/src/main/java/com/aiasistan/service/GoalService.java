@@ -6,6 +6,7 @@ package com.aiasistan.service;
 
 import java.util.List;
 import java.util.Locale;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -103,7 +104,8 @@ public class GoalService {
     public void deleteGoal(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Goal goal = findOwnedGoal(id, userId);
-        goalRepository.delete(goal);
+        goal.setDeletedAt(OffsetDateTime.now());
+        goalRepository.save(goal);
     }
 
     private void applyRequest(Goal goal, GoalDto.Request request) {

@@ -5,6 +5,7 @@
 package com.aiasistan.model;
 
 import com.aiasistan.common.UserOwnedEntity;
+import org.hibernate.annotations.Where;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "family_transactions")
+@Where(clause = "deleted_at IS NULL")
 public class FamilyTransaction extends UserOwnedEntity {
 
     @Column(name = "type", nullable = false, length = 16)

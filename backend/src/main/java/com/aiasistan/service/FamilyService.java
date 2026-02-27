@@ -108,7 +108,8 @@ public class FamilyService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         FamilyTransaction tx = transactionRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new NotFoundException("Family transaction not found"));
-        transactionRepository.delete(tx);
+        tx.setDeletedAt(OffsetDateTime.now());
+        transactionRepository.save(tx);
     }
 
     @Transactional(readOnly = true)
@@ -247,7 +248,8 @@ public class FamilyService {
         FamilyBirthday birthday = birthdayRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new NotFoundException("Family birthday not found"));
         deleteBirthdayReminder(userId, birthdayReminderTitle(birthday.getFullName()));
-        birthdayRepository.delete(birthday);
+        birthday.setDeletedAt(OffsetDateTime.now());
+        birthdayRepository.save(birthday);
     }
 
     @Transactional(readOnly = true)
@@ -454,7 +456,11 @@ public class FamilyService {
     private void deleteBirthdayReminder(UUID userId, String title) {
         List<Reminder> reminders = reminderRepository.findByUserIdAndSourceModuleAndTitle(userId, "family", title);
         if (!reminders.isEmpty()) {
-            reminderRepository.deleteAll(reminders);
+            reminders.forEach(r -> {
+                r.setStatus("canceled");
+                r.setDeletedAt(OffsetDateTime.now());
+            });
+            reminderRepository.saveAll(reminders);
         }
     }
 

@@ -161,7 +161,8 @@ public class HealthLogService {
     public void deleteLog(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         HealthLog healthLog = findOwnedLog(id, userId);
-        healthLogRepository.delete(healthLog);
+        healthLog.setDeletedAt(java.time.OffsetDateTime.now());
+        healthLogRepository.save(healthLog);
     }
 
     private HealthLog findOwnedLog(UUID id, UUID userId) {

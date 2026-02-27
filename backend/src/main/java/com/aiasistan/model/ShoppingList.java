@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
@@ -21,6 +22,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "shopping_lists")
+@Where(clause = "deleted_at IS NULL")
 public class ShoppingList {
 
     @Id
@@ -42,6 +44,9 @@ public class ShoppingList {
 
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
+
+    @Column(name = "deleted_at", columnDefinition = "timestamptz")
+    private OffsetDateTime deletedAt;
 
     @OneToMany(mappedBy = "list", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ShoppingItem> items = new ArrayList<>();
@@ -113,5 +118,13 @@ public class ShoppingList {
 
     public void setItems(List<ShoppingItem> items) {
         this.items = items;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

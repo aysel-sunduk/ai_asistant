@@ -7,6 +7,7 @@ package com.aiasistan.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,18 +99,25 @@ public class FinanceMarketService {
         String code = normalizeCurrencyOrThrow(request.getCurrencyCode());
         UserFavoriteCurrency favorite = userFavoriteCurrencyRepository
             .findByUserIdAndCurrencyCodeIgnoreCase(userId, code)
-            .orElseGet(UserFavoriteCurrency::new);
+            .orElseGet(() -> userFavoriteCurrencyRepository
+                .findAnyByUserIdAndCurrencyCodeIgnoreCase(userId, code)
+                .orElseGet(UserFavoriteCurrency::new));
 
         favorite.setUserId(userId);
         favorite.setCurrencyCode(code);
         favorite.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        favorite.setDeletedAt(null);
         userFavoriteCurrencyRepository.save(favorite);
     }
 
     @Transactional
     public void removeFavoriteCurrency(UUID userId, String currencyCode) {
         String code = normalizeCurrencyOrThrow(currencyCode);
-        userFavoriteCurrencyRepository.deleteByUserIdAndCurrencyCodeIgnoreCase(userId, code);
+        userFavoriteCurrencyRepository.findByUserIdAndCurrencyCodeIgnoreCase(userId, code)
+            .ifPresent(favorite -> {
+                favorite.setDeletedAt(OffsetDateTime.now());
+                userFavoriteCurrencyRepository.save(favorite);
+            });
     }
 
     @Transactional(readOnly = true)
@@ -172,7 +180,8 @@ public class FinanceMarketService {
     public void deleteCurrencyHolding(UUID userId, UUID holdingId) {
         Investment investment = investmentRepository.findByIdAndUserIdAndAssetType(holdingId, userId, ASSET_TYPE_CURRENCY)
             .orElseThrow(() -> new NotFoundException("Currency holding not found"));
-        investmentRepository.delete(investment);
+        investment.setDeletedAt(OffsetDateTime.now());
+        investmentRepository.save(investment);
     }
 
     @Transactional(readOnly = true)

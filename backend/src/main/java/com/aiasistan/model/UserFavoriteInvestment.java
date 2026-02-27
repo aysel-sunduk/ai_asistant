@@ -7,6 +7,7 @@ package com.aiasistan.model;
 import java.util.UUID;
 
 import com.aiasistan.common.UserOwnedEntity;
+import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,6 +15,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "finance_user_favorite_investments")
+@Where(clause = "deleted_at IS NULL")
 public class UserFavoriteInvestment extends UserOwnedEntity {
 
     @Column(name = "investment_id", nullable = false, columnDefinition = "uuid")

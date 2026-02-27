@@ -25,10 +25,58 @@ public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
     List<GameScore> findByUserIdAndGameKeyOrderByPlayedAtDesc(UUID userId, String gameKey);
 
     Optional<GameScore> findByIdAndUserId(UUID id, UUID userId);
+    Optional<GameScore> findTopByUserIdAndGameKeyOrderByPlayedAtDesc(UUID userId, String gameKey);
 
     Page<GameScore> findByGameKeyOrderByScoreDesc(String gameKey, Pageable pageable);
 
     Page<GameScore> findByGameKeyAndUserIdInOrderByScoreDesc(String gameKey, List<UUID> userIds, Pageable pageable);
+
+    @Query(value = """
+        SELECT gs.*
+        FROM (
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY played_at DESC, id DESC) AS rn
+            FROM game_scores
+            WHERE game_key = :gameKey
+              AND deleted_at IS NULL
+        ) latest
+        JOIN game_scores gs ON gs.id = latest.id
+        WHERE latest.rn = 1
+        ORDER BY gs.score DESC, gs.played_at DESC
+        """, countQuery = """
+        SELECT COUNT(DISTINCT user_id)
+        FROM game_scores
+        WHERE game_key = :gameKey
+          AND deleted_at IS NULL
+        """, nativeQuery = true)
+    Page<GameScore> findLatestPerUserByGameKeyOrderByScoreDesc(
+        @Param("gameKey") String gameKey,
+        Pageable pageable
+    );
+
+    @Query(value = """
+        SELECT gs.*
+        FROM (
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY played_at DESC, id DESC) AS rn
+            FROM game_scores
+            WHERE game_key = :gameKey
+              AND user_id IN (:userIds)
+              AND deleted_at IS NULL
+        ) latest
+        JOIN game_scores gs ON gs.id = latest.id
+        WHERE latest.rn = 1
+        ORDER BY gs.score DESC, gs.played_at DESC
+        """, countQuery = """
+        SELECT COUNT(DISTINCT user_id)
+        FROM game_scores
+        WHERE game_key = :gameKey
+          AND user_id IN (:userIds)
+          AND deleted_at IS NULL
+        """, nativeQuery = true)
+    Page<GameScore> findLatestPerUserByGameKeyAndUserIdInOrderByScoreDesc(
+        @Param("gameKey") String gameKey,
+        @Param("userIds") List<UUID> userIds,
+        Pageable pageable
+    );
 
     @Query("SELECT MAX(g.score) FROM GameScore g WHERE g.gameKey = :gameKey AND g.userId = :userId")
     Integer findBestScoreByGameKeyAndUserId(@Param("gameKey") String gameKey, @Param("userId") UUID userId);
@@ -64,6 +112,7 @@ public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
             SELECT user_id, MAX(score) AS best_score
             FROM game_scores
             WHERE game_key = :gameKey
+              AND deleted_at IS NULL
             GROUP BY user_id
         ) t
         WHERE t.best_score > :score
@@ -76,6 +125,7 @@ public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
             SELECT user_id
             FROM game_scores
             WHERE game_key = :gameKey AND user_id IN (:userIds)
+              AND deleted_at IS NULL
             GROUP BY user_id
         ) t
         """, nativeQuery = true)
@@ -87,6 +137,7 @@ public interface GameScoreRepository extends JpaRepository<GameScore, UUID> {
             SELECT user_id, MAX(score) AS best_score
             FROM game_scores
             WHERE game_key = :gameKey AND user_id IN (:userIds)
+              AND deleted_at IS NULL
             GROUP BY user_id
         ) t
         WHERE t.best_score > :score

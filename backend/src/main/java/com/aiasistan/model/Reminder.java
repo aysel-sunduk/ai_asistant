@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.aiasistan.common.BaseEntity;
+import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +16,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "reminders")
+@Where(clause = "deleted_at IS NULL")
 public class Reminder extends BaseEntity {
 
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")

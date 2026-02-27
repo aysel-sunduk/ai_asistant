@@ -99,9 +99,12 @@ public class ShoppingService {
         ShoppingList list = findOwnedList(userId, listId);
         for (ShoppingItem item : shoppingItemRepository.findByList_Id(listId, Pageable.unpaged()).getContent()) {
             deleteOrphanedShoppingExpense(userId, item.getId());
+            item.setDeletedAt(OffsetDateTime.now());
+            shoppingItemRepository.save(item);
         }
-        shoppingItemRepository.deleteByList_Id(listId);
-        shoppingListRepository.delete(list);
+        list.setDeletedAt(OffsetDateTime.now());
+        list.setIsArchived(true);
+        shoppingListRepository.save(list);
     }
 
     @Transactional
@@ -176,7 +179,8 @@ public class ShoppingService {
 
         ShoppingItem item = findItemInList(listId, itemId);
         deleteOrphanedShoppingExpense(userId, itemId);
-        shoppingItemRepository.delete(item);
+        item.setDeletedAt(OffsetDateTime.now());
+        shoppingItemRepository.save(item);
     }
 
     @Transactional

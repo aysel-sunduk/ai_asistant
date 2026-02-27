@@ -5,6 +5,7 @@
 package com.aiasistan.repository;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,15 +18,15 @@ import com.aiasistan.model.FollowId;
 @Repository
 public interface FollowRepository extends JpaRepository<Follow, FollowId> {
 
-    boolean existsByIdFollowerIdAndIdFollowingId(UUID followerId, UUID followingId);
+    boolean existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(UUID followerId, UUID followingId);
 
-    void deleteByIdFollowerIdAndIdFollowingId(UUID followerId, UUID followingId);
+    Optional<Follow> findByIdFollowerIdAndIdFollowingId(UUID followerId, UUID followingId);
 
-    Page<Follow> findByIdFollowerId(UUID followerId, Pageable pageable);
+    Page<Follow> findByIdFollowerIdAndDeletedAtIsNull(UUID followerId, Pageable pageable);
 
-    Page<Follow> findByIdFollowingId(UUID followingId, Pageable pageable);
+    Page<Follow> findByIdFollowingIdAndDeletedAtIsNull(UUID followingId, Pageable pageable);
 
-    long countByIdFollowerId(UUID followerId);
+    long countByIdFollowerIdAndDeletedAtIsNull(UUID followerId);
 
-    long countByIdFollowingId(UUID followingId);
+    long countByIdFollowingIdAndDeletedAtIsNull(UUID followingId);
 }

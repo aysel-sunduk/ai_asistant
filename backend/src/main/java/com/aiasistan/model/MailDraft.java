@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.hibernate.annotations.Type;
 
 import com.aiasistan.common.BaseEntity;
+import org.hibernate.annotations.Where;
 
 import io.hypersistence.utils.hibernate.type.array.StringArrayType;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
@@ -20,6 +21,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "mail_drafts")
+@Where(clause = "deleted_at IS NULL")
 public class MailDraft extends BaseEntity {
 
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")

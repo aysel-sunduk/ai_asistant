@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
+import java.time.OffsetDateTime;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -126,7 +127,8 @@ public class MailDraftService {
     public void deleteDraft(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         MailDraft draft = findOwnedDraft(userId, id);
-        mailDraftRepository.delete(draft);
+        draft.setDeletedAt(OffsetDateTime.now());
+        mailDraftRepository.save(draft);
     }
 
     private MailDraft findOwnedDraft(UUID userId, UUID id) {

@@ -6,6 +6,7 @@ package com.aiasistan.model;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "shopping_items")
+@Where(clause = "deleted_at IS NULL")
 public class ShoppingItem {
 
     @Id
@@ -60,6 +62,9 @@ public class ShoppingItem {
 
     @Column(name = "checked_at", columnDefinition = "timestamptz")
     private OffsetDateTime checkedAt;
+
+    @Column(name = "deleted_at", columnDefinition = "timestamptz")
+    private OffsetDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -172,5 +177,13 @@ public class ShoppingItem {
 
     public void setCheckedAt(OffsetDateTime checkedAt) {
         this.checkedAt = checkedAt;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

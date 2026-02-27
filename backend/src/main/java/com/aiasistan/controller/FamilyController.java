@@ -193,7 +193,7 @@ public class FamilyController {
       Authentication authentication,
       @ParameterObject Pageable pageable) {
     return ResponseEntity
-        .ok(ApiResponse.ok(PageResponse.from(familyService.getIncomes(authentication.getName(), pageable))));
+        .ok(ApiResponse.ok(PageResponse.of(familyService.getIncomes(authentication.getName(), pageable))));
   }
 
   @PostMapping("/transactions/incomes")

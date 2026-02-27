@@ -22,6 +22,9 @@ public abstract class BaseEntity {
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private OffsetDateTime updatedAt;
 
+    @Column(name = "deleted_at", columnDefinition = "timestamptz")
+    private OffsetDateTime deletedAt;
+
     @PrePersist
     protected void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -41,6 +44,8 @@ public abstract class BaseEntity {
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public OffsetDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(OffsetDateTime deletedAt) { this.deletedAt = deletedAt; }
 
     @Override
     public boolean equals(Object o) {

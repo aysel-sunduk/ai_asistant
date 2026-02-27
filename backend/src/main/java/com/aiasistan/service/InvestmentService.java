@@ -6,6 +6,7 @@ package com.aiasistan.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -107,17 +108,24 @@ public class InvestmentService {
 
         UserFavoriteInvestment favorite = userFavoriteInvestmentRepository
             .findByUserIdAndInvestmentId(userId, investmentId)
-            .orElseGet(UserFavoriteInvestment::new);
+            .orElseGet(() -> userFavoriteInvestmentRepository
+                .findAnyByUserIdAndInvestmentId(userId, investmentId)
+                .orElseGet(UserFavoriteInvestment::new));
 
         favorite.setUserId(userId);
         favorite.setInvestmentId(investmentId);
         favorite.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        favorite.setDeletedAt(null);
         userFavoriteInvestmentRepository.save(favorite);
     }
 
     @Transactional
     public void removeFavoriteInvestment(UUID userId, UUID investmentId) {
-        userFavoriteInvestmentRepository.deleteByUserIdAndInvestmentId(userId, investmentId);
+        userFavoriteInvestmentRepository.findByUserIdAndInvestmentId(userId, investmentId)
+            .ifPresent(favorite -> {
+                favorite.setDeletedAt(OffsetDateTime.now());
+                userFavoriteInvestmentRepository.save(favorite);
+            });
     }
 
     @Transactional(readOnly = true)
@@ -154,7 +162,8 @@ public class InvestmentService {
             throw new SecurityException("You don't have permission to delete this investment");
         }
         
-        investmentRepository.delete(investment);
+        investment.setDeletedAt(OffsetDateTime.now());
+        investmentRepository.save(investment);
     }
     
     @Transactional(readOnly = true)

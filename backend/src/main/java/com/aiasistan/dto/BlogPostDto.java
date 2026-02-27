@@ -166,6 +166,7 @@ public class BlogPostDto {
         private String[] tags;
         private Integer likeCount;
         private List<Map<String, Object>> comments;
+        private List<Map<String, Object>> likedUsers;
         private Integer commentCount;
         private Boolean likedByMe;
         private OffsetDateTime createdAt;
@@ -183,6 +184,7 @@ public class BlogPostDto {
             response.tags = post.getTags();
             response.likeCount = post.getLikeCount();
             response.comments = post.getComments();
+            response.likedUsers = List.of();
             response.commentCount = post.getComments() != null ? post.getComments().size() : 0;
             response.likedByMe = false;
             response.createdAt = post.getCreatedAt();
@@ -276,6 +278,14 @@ public class BlogPostDto {
 
         public void setCommentCount(Integer commentCount) {
             this.commentCount = commentCount;
+        }
+
+        public List<Map<String, Object>> getLikedUsers() {
+            return likedUsers;
+        }
+
+        public void setLikedUsers(List<Map<String, Object>> likedUsers) {
+            this.likedUsers = likedUsers;
         }
 
         public Boolean getLikedByMe() {

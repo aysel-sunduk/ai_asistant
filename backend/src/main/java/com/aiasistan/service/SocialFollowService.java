@@ -7,6 +7,7 @@ package com.aiasistan.service;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -64,7 +65,7 @@ public class SocialFollowService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         validateTarget(userId, targetUserId);
 
-        if (followRepository.existsByIdFollowerIdAndIdFollowingId(userId, targetUserId)) {
+        if (followRepository.existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(userId, targetUserId)) {
             return followState(targetUserId, true, "following");
         }
 
@@ -73,8 +74,9 @@ public class SocialFollowService {
             return followState(targetUserId, false, "pending_outgoing");
         }
 
-        Follow follow = new Follow();
+        Follow follow = followRepository.findByIdFollowerIdAndIdFollowingId(userId, targetUserId).orElseGet(Follow::new);
         follow.setId(new FollowId(userId, targetUserId));
+        follow.setDeletedAt(null);
         followRepository.save(follow);
         upsertFollowRequest(userId, targetUserId, REQUEST_ACCEPTED);
 
@@ -86,9 +88,10 @@ public class SocialFollowService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         validateTarget(userId, targetUserId);
 
-        if (followRepository.existsByIdFollowerIdAndIdFollowingId(userId, targetUserId)) {
-            followRepository.deleteByIdFollowerIdAndIdFollowingId(userId, targetUserId);
-        }
+        followRepository.findByIdFollowerIdAndIdFollowingId(userId, targetUserId).ifPresent(follow -> {
+            follow.setDeletedAt(OffsetDateTime.now());
+            followRepository.save(follow);
+        });
         followRequestRepository.findByIdRequesterIdAndIdTargetId(userId, targetUserId)
                 .filter(r -> REQUEST_PENDING.equals(r.getStatus()))
                 .ifPresent(r -> {
@@ -104,7 +107,7 @@ public class SocialFollowService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         validateTarget(userId, targetUserId);
 
-        if (followRepository.existsByIdFollowerIdAndIdFollowingId(userId, targetUserId)) {
+        if (followRepository.existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(userId, targetUserId)) {
             return followState(targetUserId, true, "following");
         }
 
@@ -123,7 +126,7 @@ public class SocialFollowService {
     public PageResponse<FollowDto.FollowResponse> getFollowing(String userEmail, Pageable pageable) {
         Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
         UUID userId = userService.getUserIdByEmail(userEmail);
-        Page<Follow> page = followRepository.findByIdFollowerId(userId, safePageable);
+        Page<Follow> page = followRepository.findByIdFollowerIdAndDeletedAtIsNull(userId, safePageable);
 
         List<UUID> followingIds = page.getContent().stream()
                 .map(f -> f.getId().getFollowingId())
@@ -148,7 +151,7 @@ public class SocialFollowService {
     public PageResponse<FollowDto.FollowResponse> getFollowers(String userEmail, Pageable pageable) {
         Pageable safePageable = Objects.requireNonNull(pageable, "pageable zorunludur");
         UUID userId = userService.getUserIdByEmail(userEmail);
-        Page<Follow> page = followRepository.findByIdFollowingId(userId, safePageable);
+        Page<Follow> page = followRepository.findByIdFollowingIdAndDeletedAtIsNull(userId, safePageable);
 
         List<UUID> followerIds = page.getContent().stream()
                 .map(f -> f.getId().getFollowerId())
@@ -174,8 +177,8 @@ public class SocialFollowService {
         UUID userId = userService.getUserIdByEmail(userEmail);
 
         FollowDto.StatsResponse response = new FollowDto.StatsResponse();
-        response.setFollowingCount(followRepository.countByIdFollowerId(userId));
-        response.setFollowersCount(followRepository.countByIdFollowingId(userId));
+        response.setFollowingCount(followRepository.countByIdFollowerIdAndDeletedAtIsNull(userId));
+        response.setFollowersCount(followRepository.countByIdFollowingIdAndDeletedAtIsNull(userId));
         return response;
     }
 
@@ -195,9 +198,10 @@ public class SocialFollowService {
         request.setStatus(REQUEST_ACCEPTED);
         followRequestRepository.save(request);
 
-        if (!followRepository.existsByIdFollowerIdAndIdFollowingId(requesterUserId, userId)) {
-            Follow follow = new Follow();
+        if (!followRepository.existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(requesterUserId, userId)) {
+            Follow follow = followRepository.findByIdFollowerIdAndIdFollowingId(requesterUserId, userId).orElseGet(Follow::new);
             follow.setId(new FollowId(requesterUserId, userId));
+            follow.setDeletedAt(null);
             followRepository.save(follow);
         }
 
@@ -288,7 +292,7 @@ public class SocialFollowService {
             FollowDto.DiscoverUserResponse response = new FollowDto.DiscoverUserResponse();
             response.setUser(toUserSummary(target));
 
-            boolean following = followRepository.existsByIdFollowerIdAndIdFollowingId(userId, target.getId());
+            boolean following = followRepository.existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(userId, target.getId());
             response.setFollowing(following);
             response.setRelationStatus(resolveRelationStatus(userId, target.getId(), following));
             response.setPrivateProfile(PRIVATE.equalsIgnoreCase(target.getVisibility()));
@@ -325,12 +329,12 @@ public class SocialFollowService {
 
     @Transactional(readOnly = true)
     public boolean isFollowing(UUID followerId, UUID followingId) {
-        return followRepository.existsByIdFollowerIdAndIdFollowingId(followerId, followingId);
+        return followRepository.existsByIdFollowerIdAndIdFollowingIdAndDeletedAtIsNull(followerId, followingId);
     }
 
     @Transactional(readOnly = true)
     public List<UUID> getFollowingUserIds(UUID userId) {
-        return followRepository.findByIdFollowerId(userId, Pageable.unpaged()).getContent().stream()
+        return followRepository.findByIdFollowerIdAndDeletedAtIsNull(userId, Pageable.unpaged()).getContent().stream()
                 .map(f -> f.getId().getFollowingId())
                 .toList();
     }
@@ -440,8 +444,8 @@ public class SocialFollowService {
         response.setUserId(user.getId());
         response.setFirstName(user.getFirstName());
         response.setLastName(user.getLastName());
-        response.setFollowingCount(followRepository.countByIdFollowerId(targetUserId));
-        response.setFollowersCount(followRepository.countByIdFollowingId(targetUserId));
+        response.setFollowingCount(followRepository.countByIdFollowerIdAndDeletedAtIsNull(targetUserId));
+        response.setFollowersCount(followRepository.countByIdFollowingIdAndDeletedAtIsNull(targetUserId));
         response.setProfileVisibility(user.getVisibility() != null ? user.getVisibility() : "public");
 
         // Respect phone/email visibility settings

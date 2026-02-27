@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.List;
 import java.util.Map;
+import java.time.OffsetDateTime;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -50,10 +51,12 @@ public class GameScoreService {
     @Transactional
     public GameScoreDto.Response createScore(String userEmail, GameScoreDto.Request request) {
         UUID userId = userService.getUserIdByEmail(userEmail);
+        String normalizedGameKey = normalizeGameKey(request.resolveGameKey());
 
-        GameScore score = new GameScore();
+        GameScore score = gameScoreRepository.findTopByUserIdAndGameKeyOrderByPlayedAtDesc(userId, normalizedGameKey)
+            .orElseGet(GameScore::new);
         score.setUserId(userId);
-        score.setGameKey(normalizeGameKey(request.resolveGameKey()));
+        score.setGameKey(normalizedGameKey);
         score.setScore(request.getScore());
         score.setDifficulty(normalizeDifficulty(request.getDifficulty()));
         score.setDurationSec(request.resolveDurationSec());
@@ -83,7 +86,7 @@ public class GameScoreService {
     @Transactional(readOnly = true)
     public PageResponse<GameScoreDto.Response> getLeaderboard(String gameKey, Pageable pageable) {
         Page<GameScoreDto.Response> page = gameScoreRepository
-            .findByGameKeyOrderByScoreDesc(normalizeGameKey(gameKey), pageable)
+            .findLatestPerUserByGameKeyOrderByScoreDesc(normalizeGameKey(gameKey), pageable)
             .map(GameScoreDto.Response::from);
         return PageResponse.of(page);
     }
@@ -109,7 +112,7 @@ public class GameScoreService {
     @Transactional(readOnly = true)
     public List<GameScoreDto.Response> getLeaderboardTopList(String gameKey, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 200);
-        return gameScoreRepository.findByGameKeyOrderByScoreDesc(
+        return gameScoreRepository.findLatestPerUserByGameKeyOrderByScoreDesc(
                 normalizeGameKey(gameKey),
                 org.springframework.data.domain.PageRequest.of(0, safeLimit)
             ).getContent().stream()
@@ -130,7 +133,7 @@ public class GameScoreService {
         }
 
         Page<GameScore> page = gameScoreRepository
-            .findByGameKeyAndUserIdInOrderByScoreDesc(normalizeGameKey(gameKey), followingIds, pageable);
+            .findLatestPerUserByGameKeyAndUserIdInOrderByScoreDesc(normalizeGameKey(gameKey), followingIds, pageable);
 
         Map<UUID, User> userMap = userRepository.findAllById(
             page.getContent().stream().map(GameScore::getUserId).toList()
@@ -193,7 +196,8 @@ public class GameScoreService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         GameScore score = gameScoreRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Oyun skoru bulunamadi"));
-        gameScoreRepository.delete(score);
+        score.setDeletedAt(OffsetDateTime.now());
+        gameScoreRepository.save(score);
     }
 
     private String normalizeGameKey(String gameKey) {

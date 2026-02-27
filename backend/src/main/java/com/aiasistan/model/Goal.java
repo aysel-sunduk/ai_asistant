@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.Where;
 
 import com.aiasistan.common.UserOwnedEntity;
 
@@ -19,6 +20,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "goals")
+@Where(clause = "deleted_at IS NULL")
 public class Goal extends UserOwnedEntity {
 
     @Column(name = "title", nullable = false)

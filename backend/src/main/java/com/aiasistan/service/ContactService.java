@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -64,7 +65,8 @@ public class ContactService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Contact contact = contactRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new NotFoundException("Contact not found"));
-        contactRepository.delete(contact);
+        contact.setDeletedAt(OffsetDateTime.now());
+        contactRepository.save(contact);
     }
 
     private void apply(Contact contact, ContactRequest request) {

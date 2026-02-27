@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.Where;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
@@ -21,6 +22,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "game_scores")
+@Where(clause = "deleted_at IS NULL")
 public class GameScore {
 
     @Id
@@ -52,6 +54,9 @@ public class GameScore {
 
     @Column(name = "played_at", columnDefinition = "timestamptz")
     private OffsetDateTime playedAt;
+
+    @Column(name = "deleted_at", columnDefinition = "timestamptz")
+    private OffsetDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -130,5 +135,13 @@ public class GameScore {
 
     public void setPlayedAt(OffsetDateTime playedAt) {
         this.playedAt = playedAt;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

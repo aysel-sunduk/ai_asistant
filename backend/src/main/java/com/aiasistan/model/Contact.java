@@ -5,6 +5,7 @@
 package com.aiasistan.model;
 
 import com.aiasistan.common.BaseEntity;
+import org.hibernate.annotations.Where;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "contacts")
+@Where(clause = "deleted_at IS NULL")
 public class Contact extends BaseEntity {
 
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
