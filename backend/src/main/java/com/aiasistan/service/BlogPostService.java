@@ -49,6 +49,7 @@ public class BlogPostService {
     private final UserRepository userRepository;
     private final SocialFollowService socialFollowService;
     private final ContentFilterService contentFilterService;
+    private final PushNotificationService pushNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile boolean blogSchemaEnsured;
     private volatile Boolean likedUserIdsColumnAvailable;
@@ -56,12 +57,14 @@ public class BlogPostService {
     private EntityManager entityManager;
 
     public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, UserRepository userRepository,
-            SocialFollowService socialFollowService, ContentFilterService contentFilterService) {
+            SocialFollowService socialFollowService, ContentFilterService contentFilterService,
+            PushNotificationService pushNotificationService) {
         this.blogPostRepository = blogPostRepository;
         this.userService = userService;
         this.userRepository = userRepository;
         this.socialFollowService = socialFollowService;
         this.contentFilterService = contentFilterService;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Transactional
@@ -171,10 +174,13 @@ public class BlogPostService {
             List<String> likedUserIds = objectMapper.readValue(String.valueOf(raw), new TypeReference<>() {
             });
             String viewerIdText = viewerId.toString();
+            boolean likedNow;
             if (likedUserIds.contains(viewerIdText)) {
                 likedUserIds.remove(viewerIdText);
+                likedNow = false;
             } else {
                 likedUserIds.add(viewerIdText);
+                likedNow = true;
             }
             entityManager.createNativeQuery(
                     "UPDATE public.blog_posts SET liked_user_ids = CAST(:liked AS jsonb), like_count = :cnt WHERE id = CAST(:id AS uuid)")
@@ -184,6 +190,9 @@ public class BlogPostService {
                     .executeUpdate();
             BlogPost updated = blogPostRepository.findById(id)
                     .orElseThrow(() -> new NotFoundException("Blog yazisi bulunamadi"));
+            if (likedNow && !viewerId.equals(updated.getUserId())) {
+                pushNotificationService.sendBlogLikeNotification(updated.getUserId(), viewerId, updated.getTitle());
+            }
             return toResponseForViewer(updated, viewerId);
         } catch (Exception e) {
             throw new BadRequestException("Begeni islemi sirasinda hata olustu");

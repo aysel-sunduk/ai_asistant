@@ -5,10 +5,12 @@
 package com.aiasistan.controller;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest; // Manuel Pageable iÃ§in ÅŸart
 import org.springframework.data.domain.Sort;    // Manuel Pageable iÃ§in ÅŸart
 import org.springframework.format.annotation.DateTimeFormat;
@@ -79,6 +81,33 @@ public class FinanceController {
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
+  @GetMapping("/currencies/latest")
+  @Operation(summary = "Temel para birimine gore guncel kurlari getir")
+  public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getLatestRates(
+      @RequestParam(defaultValue = "TRY") String base,
+      @RequestParam(required = false) List<String> symbols) {
+    List<CurrencyRateResponse> response = currencyService.getLiveRates(base, symbols);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/currencies")
+  @Operation(summary = "Kurlari sayfali getir")
+  public ResponseEntity<ApiResponse<PageResponse<CurrencyRateResponse>>> getCurrencies(
+      @RequestParam(defaultValue = "TRY") String base,
+      @RequestParam(required = false) List<String> symbols,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    List<CurrencyRateResponse> rates = currencyService.getLiveRates(base, symbols);
+    int safePage = Math.max(page, 0);
+    int safeSize = Math.max(size, 1);
+    int fromIndex = Math.min(safePage * safeSize, rates.size());
+    int toIndex = Math.min(fromIndex + safeSize, rates.size());
+    PageResponse<CurrencyRateResponse> response = PageResponse.of(
+      new PageImpl<>(rates.subList(fromIndex, toIndex), PageRequest.of(safePage, safeSize), rates.size())
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
   @GetMapping("/currencies/supported")
   @Operation(summary = "Desteklenen dovizleri getir")
   public ResponseEntity<ApiResponse<List<String>>> getSupportedCurrencies() {
@@ -94,6 +123,15 @@ public class FinanceController {
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
+  @PostMapping("/currencies/live")
+  @Operation(summary = "Temel para birimine gore anlik kurlari getir (POST uyumluluk)")
+  public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getLiveRatesByBasePost(
+      @RequestParam(defaultValue = "TRY") String base,
+      @RequestParam(required = false) List<String> symbols) {
+    List<CurrencyRateResponse> response = currencyService.getLiveRates(base, symbols);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
   @GetMapping("/currencies/history/{code}")
   @Operation(summary = "Doviz gecmis getir")
   public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getCurrencyHistory(
@@ -102,6 +140,19 @@ public class FinanceController {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
     List<CurrencyRateResponse> response = currencyService.getHistoricalRates(code, base, startDate, endDate);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/currencies/historical/{code}")
+  @Operation(summary = "Doviz gecmis getir (historical alias)")
+  public ResponseEntity<ApiResponse<List<CurrencyRateResponse>>> getCurrencyHistoricalAlias(
+      @PathVariable String code,
+      @RequestParam(required = false) String base,
+      @RequestParam(required = false) String startDate,
+      @RequestParam(required = false) String endDate) {
+    LocalDateTime parsedStart = parseFlexibleDateTime(startDate, true);
+    LocalDateTime parsedEnd = parseFlexibleDateTime(endDate, false);
+    List<CurrencyRateResponse> response = currencyService.getHistoricalRates(code, base, parsedStart, parsedEnd);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -123,12 +174,21 @@ public class FinanceController {
     return ResponseEntity.ok(ApiResponse.ok(financeMetalSymbolService.getActiveSymbolResponses()));
   }
 
-  @GetMapping("/currencies/details")
+  @GetMapping(value = "/currencies/details", params = { "base", "quote" })
   @Operation(summary = "Doviz parite detaylarini getir")
   public ResponseEntity<ApiResponse<CurrencyPairDailyDetailResponse>> getCurrencyPairDetails(
       @RequestParam String base,
       @RequestParam String quote) {
     CurrencyPairDailyDetailResponse response = currencyService.getCurrencyPairDailyDetail(base, quote);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping(value = "/currencies/details", params = { "from" })
+  @Operation(summary = "Doviz parite detaylarini getir (from/to uyumluluk)")
+  public ResponseEntity<ApiResponse<CurrencyPairDailyDetailResponse>> getCurrencyPairDetailsCompat(
+      @RequestParam String from,
+      @RequestParam(defaultValue = "TRY") String to) {
+    CurrencyPairDailyDetailResponse response = currencyService.getCurrencyPairDailyDetail(from, to);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -328,7 +388,27 @@ public class FinanceController {
 
   @GetMapping("/currency-holdings")
   @Operation(summary = "Doviz varliklarini getir")
-  public ResponseEntity<ApiResponse<PageResponse<CurrencyHoldingResponse>>> getCurrencyHoldings(
+  public ResponseEntity<ApiResponse<List<CurrencyHoldingResponse>>> getCurrencyHoldings(
+      Authentication authentication,
+      @RequestParam(defaultValue = "TRY") String base,
+      @RequestParam(defaultValue = "true") boolean refresh,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size,
+      @RequestParam(defaultValue = "updatedAt") String sortBy,
+      @RequestParam(defaultValue = "DESC") String sortDirection) {
+    UUID userId = resolveUserId(authentication);
+    Sort sort = sortDirection.equalsIgnoreCase("ASC")
+      ? Sort.by(sortBy).ascending()
+      : Sort.by(sortBy).descending();
+    PageRequest pageRequest = PageRequest.of(page, size, sort);
+    PageResponse<CurrencyHoldingResponse> response = financeMarketService.getCurrencyHoldings(userId, pageRequest, base, refresh);
+    List<CurrencyHoldingResponse> content = response.getContent() == null ? List.of() : response.getContent();
+    return ResponseEntity.ok(ApiResponse.ok(content));
+  }
+
+  @GetMapping("/currency-holdings/paged")
+  @Operation(summary = "Doviz varliklarini sayfali getir")
+  public ResponseEntity<ApiResponse<PageResponse<CurrencyHoldingResponse>>> getCurrencyHoldingsPaged(
       Authentication authentication,
       @RequestParam(defaultValue = "TRY") String base,
       @RequestParam(defaultValue = "true") boolean refresh,
@@ -383,5 +463,22 @@ public class FinanceController {
   private UUID resolveUserId(Authentication authentication) {
     String email = authentication.getName();
     return userService.getUserIdByEmail(email);
+  }
+
+  private LocalDateTime parseFlexibleDateTime(String rawValue, boolean start) {
+    if (rawValue == null || rawValue.isBlank()) {
+      return null;
+    }
+    String value = rawValue.trim();
+    try {
+      return LocalDateTime.parse(value);
+    } catch (Exception ignored) {
+      try {
+        LocalDate date = LocalDate.parse(value);
+        return start ? date.atStartOfDay() : date.atTime(23, 59, 59);
+      } catch (Exception secondEx) {
+        return null;
+      }
+    }
   }
 }

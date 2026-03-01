@@ -77,7 +77,13 @@ public class GoalService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Goal goal = findOwnedGoal(id, userId);
 
+        Integer previousProgress = goal.getProgressPct();
         int normalized = normalizeProgress(progressPct);
+        if (normalized >= 100 && (previousProgress == null || previousProgress < 100)) {
+            goal.setProgressPctBeforeCompletion(normalizeProgress(previousProgress));
+        } else if (normalized < 100) {
+            goal.setProgressPctBeforeCompletion(null);
+        }
         goal.setProgressPct(normalized);
         goal.setIsCompleted(normalized >= 100);
 
@@ -92,8 +98,18 @@ public class GoalService {
 
         boolean completed = Boolean.TRUE.equals(isCompleted);
         goal.setIsCompleted(completed);
-        if (completed && (goal.getProgressPct() == null || goal.getProgressPct() < 100)) {
+        if (completed) {
+            int currentProgress = normalizeProgress(goal.getProgressPct());
+            if (currentProgress < 100) {
+                goal.setProgressPctBeforeCompletion(currentProgress);
+            }
             goal.setProgressPct(100);
+        } else {
+            Integer progressBeforeCompletion = goal.getProgressPctBeforeCompletion();
+            if (progressBeforeCompletion != null) {
+                goal.setProgressPct(normalizeProgress(progressBeforeCompletion));
+            }
+            goal.setProgressPctBeforeCompletion(null);
         }
 
         Goal saved = goalRepository.save(goal);
@@ -122,7 +138,10 @@ public class GoalService {
         boolean completed = request.getIsCompleted() != null ? request.getIsCompleted() : progress >= 100;
 
         if (completed && progress < 100) {
+            goal.setProgressPctBeforeCompletion(progress);
             progress = 100;
+        } else if (!completed && progress < 100) {
+            goal.setProgressPctBeforeCompletion(null);
         }
 
         goal.setProgressPct(progress);

@@ -38,6 +38,9 @@ public class Goal extends UserOwnedEntity {
     @Column(name = "progress_pct")
     private Integer progressPct = 0;
 
+    @Column(name = "progress_pct_before_completion")
+    private Integer progressPctBeforeCompletion;
+
     @Column(name = "is_completed")
     private Boolean isCompleted = false;
 
@@ -91,6 +94,14 @@ public class Goal extends UserOwnedEntity {
 
     public void setIsCompleted(Boolean isCompleted) {
         this.isCompleted = isCompleted;
+    }
+
+    public Integer getProgressPctBeforeCompletion() {
+        return progressPctBeforeCompletion;
+    }
+
+    public void setProgressPctBeforeCompletion(Integer progressPctBeforeCompletion) {
+        this.progressPctBeforeCompletion = progressPctBeforeCompletion;
     }
 
     public List<Map<String, Object>> getMilestones() {

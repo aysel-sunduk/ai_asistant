@@ -46,18 +46,21 @@ public class SocialFollowService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserService userService;
+    private final PushNotificationService pushNotificationService;
 
     public SocialFollowService(
             FollowRepository followRepository,
             FollowRequestRepository followRequestRepository,
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
-            UserService userService) {
+            UserService userService,
+            PushNotificationService pushNotificationService) {
         this.followRepository = followRepository;
         this.followRequestRepository = followRequestRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.userService = userService;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Transactional
@@ -70,7 +73,11 @@ public class SocialFollowService {
         }
 
         if (isPrivateProfile(targetUserId)) {
+            boolean pendingBefore = hasPendingRequest(userId, targetUserId);
             upsertFollowRequest(userId, targetUserId, REQUEST_PENDING);
+            if (!pendingBefore) {
+                pushNotificationService.sendFollowRequestNotification(targetUserId, userId);
+            }
             return followState(targetUserId, false, "pending_outgoing");
         }
 

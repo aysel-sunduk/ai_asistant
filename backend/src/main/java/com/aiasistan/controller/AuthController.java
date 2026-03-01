@@ -19,6 +19,7 @@ import com.aiasistan.dto.request.ForgotPasswordRequest;
 import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
+import com.aiasistan.dto.request.ResetPasswordRequest;
 import com.aiasistan.dto.response.ChangePasswordResponse;
 import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
@@ -60,6 +61,14 @@ public class AuthController {
       @Valid @RequestBody ForgotPasswordRequest request) {
     ForgotPasswordResponse response = authService.forgotPassword(request);
     return ResponseEntity.ok(ApiResponse.ok(response, "Gecici sifre e-postaya gonderildi"));
+  }
+
+  @PostMapping("/reset-password")
+  @Operation(summary = "Sifre sifirla")
+  public ResponseEntity<ApiResponse<Void>> resetPassword(
+      @Valid @RequestBody ResetPasswordRequest request) {
+    authService.resetPassword(request);
+    return ResponseEntity.ok(ApiResponse.ok(null, "Sifre basariyla sifirlandi"));
   }
 
   @PostMapping("/change-password")

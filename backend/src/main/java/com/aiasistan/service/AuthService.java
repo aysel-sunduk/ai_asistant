@@ -21,6 +21,7 @@ import com.aiasistan.dto.request.LoginRequest;
 import com.aiasistan.dto.request.RefreshTokenRequest;
 import com.aiasistan.dto.request.RegisterRequest;
 import com.aiasistan.dto.request.ChangePasswordRequest;
+import com.aiasistan.dto.request.ResetPasswordRequest;
 import com.aiasistan.dto.response.ChangePasswordResponse;
 import com.aiasistan.dto.response.ForgotPasswordResponse;
 import com.aiasistan.dto.response.LoginResponse;
@@ -149,6 +150,22 @@ public class AuthService {
 
         logger.info("Password updated successfully for email: {}", user.getEmail());
         return new ForgotPasswordResponse(user.getEmail(), "Gecici sifre e-posta adresinize gonderildi");
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!jwtService.isValid(request.getToken())) {
+            throw new BadRequestException("Sifre sifirlama tokeni gecersiz veya suresi dolmus");
+        }
+
+        String email = jwtService.extractSubject(request.getToken());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi!"));
+
+        validatePasswordPolicy(request.getPassword());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        userRepository.save(user);
+        refreshTokenRepository.revokeAllUserTokens(user.getId());
     }
 
     @Transactional
