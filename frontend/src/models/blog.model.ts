@@ -11,8 +11,18 @@ export interface BlogComment {
     id: string;
     userId: string;
     authorEmail?: string;
+    authorFirstName?: string;
+    authorLastNameMasked?: string;
+    authorDisplayName?: string;
     content: string;
     createdAt: string;
+}
+
+export interface LikedUser {
+    userId: string;
+    firstName: string;
+    lastNameMasked: string;
+    displayName: string;
 }
 
 export interface BlogPost {
@@ -28,6 +38,7 @@ export interface BlogPost {
     comments: BlogComment[];
     commentCount?: number;
     likedByMe?: boolean;
+    likedUsers?: LikedUser[];
     createdAt: string;
     updatedAt: string;
 }

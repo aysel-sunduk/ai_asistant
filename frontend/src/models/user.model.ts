@@ -32,6 +32,9 @@ export interface UserProfile {
     interests?: Record<string, any>;
     onboarding?: Record<string, any>;
     notifications?: Record<string, any>;
+
+    showEmail?: boolean;
+    showPhone?: boolean;
 }
 
 // ─── PUT /api/v1/profile Request ───
@@ -49,6 +52,8 @@ export interface UpdateProfileRequest {
     interests?: Record<string, any>;
     onboarding?: Record<string, any>;
     notifications?: Record<string, any>;
+    showEmail?: boolean;
+    showPhone?: boolean;
 }
 
 // ─── Helpers ───

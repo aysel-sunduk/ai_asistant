@@ -6,6 +6,7 @@ import type {
     FollowRequestItem,
     FollowState,
     FollowStats,
+    PublicProfileResponse,
     RequestStats,
     SocialPage,
 } from '../models/social.model';
@@ -48,4 +49,6 @@ export const socialApi = {
         apiClient.post<ApiResponse<FollowState>>(`/v1/social/follows/requests/${requesterUserId}/reject`),
     withdrawRequest: (targetUserId: string) =>
         apiClient.post<ApiResponse<FollowState>>(`/v1/social/follows/requests/${targetUserId}/withdraw`),
+    getPublicProfile: (userId: string) =>
+        apiClient.get<ApiResponse<PublicProfileResponse>>(`/v1/social/follows/profile/${userId}`),
 };

@@ -6,6 +6,7 @@ import type {
     FollowRequestItem,
     FollowState,
     FollowStats,
+    PublicProfileResponse,
     RequestStats,
     SocialPage,
 } from '../src/models/social.model';
@@ -73,6 +74,11 @@ export const socialService = {
 
     withdrawRequest: async (targetUserId: string): Promise<FollowState> => {
         const response = await socialApi.withdrawRequest(targetUserId);
+        return response.data.data;
+    },
+
+    getPublicProfile: async (userId: string): Promise<PublicProfileResponse> => {
+        const response = await socialApi.getPublicProfile(userId);
         return response.data.data;
     },
 };

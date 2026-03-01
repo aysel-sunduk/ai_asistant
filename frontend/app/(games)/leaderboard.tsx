@@ -21,14 +21,17 @@ const TABS: { key: FrontendGameType; label: string; icon: IoniconsName }[] = [
 const normalizeGameType = (gameType: string): FrontendGameType => (gameType === 'quiz' ? '2048' : gameType as FrontendGameType);
 
 const getDisplayName = (row: GameScore): string => {
-    const fullName = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim();
+    if (row.displayName) return row.displayName;
+    const first = row.firstName ?? '';
+    const last = row.lastNameMasked ?? row.lastName ?? '';
+    const fullName = `${first} ${last}`.trim();
     if (fullName.length > 0) return fullName;
     return `Kullanici ${row.userId.slice(0, 8)}`;
 };
 
 const getInitials = (row: GameScore): string => {
     const first = (row.firstName ?? '').trim().charAt(0);
-    const last = (row.lastName ?? '').trim().charAt(0);
+    const last = (row.lastNameMasked ?? row.lastName ?? '').trim().charAt(0);
     const initials = `${first}${last}`.toUpperCase();
     return initials || row.userId.slice(0, 2).toUpperCase();
 };

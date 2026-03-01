@@ -71,3 +71,5 @@ ml-service/notebooks/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+frontend/src/api/client.ts
+frontend/src/api/client.ts

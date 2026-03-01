@@ -40,6 +40,28 @@ export interface DiscoverUserItem {
     privateProfile: boolean;
 }
 
+export interface PublicProfileResponse {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    followingCount: number;
+    followersCount: number;
+    profileVisibility: 'public' | 'private' | string;
+}
+
+export interface PublicProfileResponse {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    followingCount: number;
+    followersCount: number;
+    profileVisibility: 'public' | 'private' | string;
+}
+
 export interface SocialPage<T> {
     content: T[];
     page: number;

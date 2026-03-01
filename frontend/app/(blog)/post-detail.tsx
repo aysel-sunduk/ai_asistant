@@ -264,6 +264,15 @@ export default function PostDetailScreen() {
                                     <Text style={styles.reactionText}>{post.commentCount ?? post.comments?.length ?? 0}</Text>
                                 </View>
                             </View>
+
+                            {(post.likedUsers && post.likedUsers.length > 0) && (
+                                <View style={styles.likedUsersRow}>
+                                    <Ionicons name="heart" size={12} color="#EF4444" />
+                                    <Text style={styles.likedUsersText}>
+                                        {post.likedUsers.map((u) => u.displayName).join(', ')}
+                                    </Text>
+                                </View>
+                            )}
                         </>
                     )}
                 </View>
@@ -290,7 +299,7 @@ export default function PostDetailScreen() {
                             return (
                                 <View key={c.id} style={styles.commentItem}>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={styles.commentMeta}>{c.authorEmail || 'Kullanici'} | {new Date(c.createdAt).toLocaleString('tr-TR')}</Text>
+                                        <Text style={styles.commentMeta}>{c.authorDisplayName || c.authorEmail || 'Kullanici'} | {new Date(c.createdAt).toLocaleString('tr-TR')}</Text>
                                         <Text style={styles.commentText}>{c.content}</Text>
                                     </View>
                                     {canDelete && (
@@ -349,4 +358,6 @@ const styles = StyleSheet.create({
     commentMeta: { fontSize: 11, color: '#64748B' },
     commentText: { marginTop: 3, fontSize: 13, color: '#334155' },
     commentDeleteBtn: { width: 26, height: 26, borderRadius: 8, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
+    likedUsersRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, flexWrap: 'wrap' },
+    likedUsersText: { fontSize: 11, color: '#64748B', flex: 1 },
 });

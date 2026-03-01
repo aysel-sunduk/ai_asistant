@@ -98,6 +98,8 @@ export default function PersonalInfoScreen() {
                 weightKg: form.weightKg ?? undefined,
                 preferredCurrency: form.preferredCurrency || undefined,
                 monthlyIncomeEstimateMinor: form.monthlyIncomeEstimateMinor ?? undefined,
+                showEmail: form.showEmail ?? undefined,
+                showPhone: form.showPhone ?? undefined,
                 interests: form.interests || undefined,
                 onboarding: form.onboarding || undefined,
                 notifications: form.notifications || undefined,
@@ -249,7 +251,52 @@ export default function PersonalInfoScreen() {
                         </View>
                     </View>
 
-                    {/* ═══ 4. BİLDİRİMLER ═══ */}
+                    {/* ═══ 4. GİZLİLİK ═══ */}
+                    <SectionHeader icon="lock-closed-outline" title="Gizlilik" color="#EF4444" />
+                    <View style={styles.card}>
+                        <View style={[styles.fieldRow, { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }]}>
+                            <View style={styles.fieldLabelRow}>
+                                <View style={[styles.fieldIcon, { backgroundColor: '#EF444415' }]}>
+                                    <Ionicons name="mail-outline" size={16} color="#EF4444" />
+                                </View>
+                                <Text style={styles.fieldLabel}>E-posta Göster</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 36 }}>
+                                <Text style={{ fontSize: 12, color: GRAY, flex: 1 }}>
+                                    {form.showEmail ? 'Herkes görebilir' : 'Gizli'}
+                                </Text>
+                                <Switch
+                                    value={form.showEmail ?? false}
+                                    onValueChange={(v) => updateField('showEmail', v)}
+                                    disabled={!isEditing}
+                                    trackColor={{ false: '#E5E7EB', true: PURPLE + '50' }}
+                                    thumbColor={form.showEmail ? PURPLE : '#f4f3f4'}
+                                />
+                            </View>
+                        </View>
+                        <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
+                            <View style={styles.fieldLabelRow}>
+                                <View style={[styles.fieldIcon, { backgroundColor: '#EF444415' }]}>
+                                    <Ionicons name="call-outline" size={16} color="#EF4444" />
+                                </View>
+                                <Text style={styles.fieldLabel}>Telefon Göster</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 36 }}>
+                                <Text style={{ fontSize: 12, color: GRAY, flex: 1 }}>
+                                    {form.showPhone ? 'Herkes görebilir' : 'Gizli'}
+                                </Text>
+                                <Switch
+                                    value={form.showPhone ?? false}
+                                    onValueChange={(v) => updateField('showPhone', v)}
+                                    disabled={!isEditing}
+                                    trackColor={{ false: '#E5E7EB', true: PURPLE + '50' }}
+                                    thumbColor={form.showPhone ? PURPLE : '#f4f3f4'}
+                                />
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* ═══ 5. BİLDİRİMLER ═══ */}
                     <SectionHeader icon="notifications-outline" title="Bildirimler" color="#F59E0B" />
                     <MapSection
                         data={form.notifications}

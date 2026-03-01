@@ -15,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
+import UserProfileModal from '../../components/social/UserProfileModal';
 import { blogService } from '../../services/blog.service';
 import { socialService } from '../../services/social.service';
 import type { BlogPost } from '../../src/models/blog.model';
@@ -56,6 +57,13 @@ export default function FeedScreen() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
+    const [profileModalVisible, setProfileModalVisible] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+    const openProfile = (userId: string) => {
+        setSelectedUserId(userId);
+        setProfileModalVisible(true);
+    };
 
     const showToast = (type: 'success' | 'error' | 'info', message: string) => {
         setToastType(type);
@@ -235,13 +243,15 @@ export default function FeedScreen() {
                             const isBusy = busyUserId === r.user.userId;
                             return (
                                 <View key={r.user.userId} style={styles.requestCard}>
-                                    <View style={styles.avatar}>
-                                        <Text style={styles.avatarText}>{initials(name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
+                                    <TouchableOpacity onPress={() => openProfile(r.user.userId)}>
+                                        <View style={styles.avatar}>
+                                            <Text style={styles.avatarText}>{initials(name)}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(r.user.userId)}>
                                         <Text style={styles.cardTitle}>{name}</Text>
                                         <Text style={styles.cardSub}>{r.user.email}</Text>
-                                    </View>
+                                    </TouchableOpacity>
                                     <TouchableOpacity
                                         disabled={isBusy}
                                         style={styles.acceptBtn}
@@ -288,10 +298,12 @@ export default function FeedScreen() {
                                         : 'Takip Et';
                             return (
                                 <View key={item.user.userId} style={styles.userCard}>
-                                    <View style={styles.avatar}>
-                                        <Text style={styles.avatarText}>{initials(name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
+                                    <TouchableOpacity onPress={() => openProfile(item.user.userId)}>
+                                        <View style={styles.avatar}>
+                                            <Text style={styles.avatarText}>{initials(name)}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(item.user.userId)}>
                                         <Text style={styles.cardTitle}>{name}</Text>
                                         <Text style={styles.cardSub}>{item.user.email}</Text>
                                         <Text style={styles.stateText}>
@@ -300,7 +312,7 @@ export default function FeedScreen() {
                                         <Text style={styles.visibilityText}>
                                             {item.privateProfile ? 'Hesap tipi: Ozel' : 'Hesap tipi: Herkese acik'}
                                         </Text>
-                                    </View>
+                                    </TouchableOpacity>
                                     <TouchableOpacity
                                         disabled={isBusy}
                                         style={[
@@ -365,6 +377,12 @@ export default function FeedScreen() {
             </ScrollView>
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
+
+            <UserProfileModal
+                visible={profileModalVisible}
+                userId={selectedUserId}
+                onClose={() => setProfileModalVisible(false)}
+            />
         </View>
     );
 }

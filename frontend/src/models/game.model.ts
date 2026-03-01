@@ -7,6 +7,8 @@ export interface GameScore {
     userId: string;
     firstName?: string;
     lastName?: string;
+    lastNameMasked?: string;
+    displayName?: string;
     gameType: BackendGameType;
     score: number;
     level?: number;
