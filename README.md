@@ -28,21 +28,6 @@ Mimari ozet
 - Veritabani: PostgreSQL + Flyway migration
 - Kimlik dogrulama: JWT access/refresh token
 
-Yeni/guncel backend davranislari
---------------------------------
-- Goal completion bug fix:
-  - `PATCH /api/v1/goals/{id}/completion` ile tamamlandi -> geri al akisinda onceki `progressPct` geri yuklenir.
-- Push token kaydi:
-  - `POST /api/v1/users/push-token` (uyumluluk icin `POST /api/users/push-token` da acik)
-  - Expo token veritabani kaydi yapilir.
-- Push notification:
-  - Ozel profil icin yeni follow request geldiginde hedef kullaniciya push gider.
-  - Blog post begenisinde (yeni like) post sahibine push gider.
-- Frontend uyumluluk endpointleri eklendi:
-  - `GET /api/v1/users/me`
-  - `POST /api/v1/auth/reset-password`
-  - Finance alias endpointleri (`/currencies`, `/currencies/latest`, `/currencies/historical`, `POST /currencies/live`, `from/to` detay sorgusu)
-
 Kurulum - Backend
 -----------------
 Gereksinimler:
