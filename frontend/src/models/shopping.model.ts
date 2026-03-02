@@ -14,11 +14,15 @@ export interface ShoppingItem {
     id: string;
     listId: string;
     name: string;
+    productKey?: string;
+    category?: string | null;
     quantity: number;
     unit?: string | null;
     estimatedPriceMinor?: number | null;
     isChecked: boolean;
     note?: string | null;
+    addedAt?: string;
+    checkedAt?: string | null;
 }
 
 export interface ShoppingListRequest {
@@ -30,10 +34,19 @@ export interface ShoppingListRequest {
 export interface ShoppingItemRequest {
     name: string;
     quantity?: number;
+    category?: string;
     unit?: string;
     estimatedPriceMinor?: number;
     isChecked?: boolean;
     note?: string;
+}
+
+export interface ShoppingRecommendation {
+    productKey: string;
+    itemName: string;
+    category?: string | null;
+    score: number;
+    reasons: string[];
 }
 
 export interface ShoppingListSummary {

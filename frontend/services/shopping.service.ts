@@ -5,6 +5,7 @@ import type {
     ShoppingItemRequest,
     ShoppingList,
     ShoppingListRequest,
+    ShoppingRecommendation,
     ShoppingListSummary,
 } from '../src/models/shopping.model';
 
@@ -68,5 +69,15 @@ export const shoppingService = {
 
     deleteItem: async (listId: string, itemId: string): Promise<void> => {
         await shoppingApi.deleteItem(listId, itemId);
+    },
+
+    getRecommendations: async (listId?: string, topK = 10): Promise<ShoppingRecommendation[]> => {
+        const response = await shoppingApi.getRecommendations(listId, topK);
+        return response.data.data || [];
+    },
+
+    trainRecommendations: async (): Promise<{ success: boolean; trained: boolean; loaded: boolean; interactionCount: number }> => {
+        const response = await shoppingApi.trainRecommendations();
+        return response.data.data;
     },
 };

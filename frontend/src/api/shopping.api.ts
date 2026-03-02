@@ -7,6 +7,7 @@ import type {
     ShoppingList,
     ShoppingListPage,
     ShoppingListRequest,
+    ShoppingRecommendation,
     ShoppingListSummary,
 } from '../models/shopping.model';
 import apiClient from './client';
@@ -50,4 +51,15 @@ export const shoppingApi = {
 
     deleteItem: (listId: string, itemId: string) =>
         apiClient.delete<ApiResponse<void>>(`${BASE_PATH}/lists/${listId}/items/${itemId}`),
+
+    getRecommendations: (listId?: string, topK = 10) =>
+        apiClient.get<ApiResponse<ShoppingRecommendation[]>>(`${BASE_PATH}/recommendations`, {
+            params: { listId, topK },
+        }),
+
+    trainRecommendations: () =>
+        apiClient.post<ApiResponse<{ success: boolean; trained: boolean; loaded: boolean; interactionCount: number }>>(
+            `${BASE_PATH}/recommendations/train`,
+            {},
+        ),
 };

@@ -9,9 +9,16 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.aiasistan.common.ApiResponse;
+import com.aiasistan.dto.request.ContactPrivacyUpdateRequest;
 import com.aiasistan.dto.request.UserProfileUpsertRequest;
 import com.aiasistan.dto.request.UserVisibilityUpdateRequest;
 import com.aiasistan.dto.response.UserProfileResponse;
@@ -19,8 +26,9 @@ import com.aiasistan.model.User;
 import com.aiasistan.service.UserProfileService;
 import com.aiasistan.service.UserProfileService.ModuleCompletionStatus;
 import com.aiasistan.service.UserService;
-import jakarta.validation.Valid;
+
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/v1/profile")
@@ -83,6 +91,20 @@ public class ProfileController {
     UserProfileResponse profile = userProfileService.upsertModuleProfile(userId, module, request);
     return ResponseEntity.ok(ApiResponse.ok(profile, "Module profile updated"));
   }
+
+  @PatchMapping("/contact-privacy")
+@Operation(summary = "İletişim bilgilerinin görünürlüğünü güncelle (Telefon/Email)")
+public ResponseEntity<ApiResponse<UserProfileResponse>> updateContactPrivacy(
+        Authentication authentication,
+        @Valid @RequestBody ContactPrivacyUpdateRequest request) {
+    
+    String email = authentication.getName();
+    UUID userId = userService.getUserIdByEmail(email);
+    
+    UserProfileResponse response = userProfileService.updateContactPrivacy(userId, request);
+    
+    return ResponseEntity.ok(ApiResponse.ok(response, "İletişim gizlilik ayarları güncellendi."));
+}
 
   @PatchMapping("/visibility")
   @Operation(summary = "Gorunurluk guncelle")

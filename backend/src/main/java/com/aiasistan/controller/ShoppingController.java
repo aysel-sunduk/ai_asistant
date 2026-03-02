@@ -28,6 +28,8 @@ import com.aiasistan.common.ApiResponse;
 import com.aiasistan.common.dto.PageResponse;
 import com.aiasistan.dto.ShoppingItemDto;
 import com.aiasistan.dto.ShoppingListDto;
+import com.aiasistan.dto.ShoppingRecommendationDto;
+import com.aiasistan.service.ShoppingRecommendationService;
 import com.aiasistan.service.ShoppingService;
 
 import jakarta.validation.Valid;
@@ -43,9 +45,14 @@ public class ShoppingController {
   private static final Set<String> ITEM_SORT_FIELDS = Set.of("name", "quantity", "estimatedPriceMinor", "isChecked");
 
   private final ShoppingService shoppingService;
+  private final ShoppingRecommendationService shoppingRecommendationService;
 
-  public ShoppingController(ShoppingService shoppingService) {
+  public ShoppingController(
+    ShoppingService shoppingService,
+    ShoppingRecommendationService shoppingRecommendationService
+  ) {
     this.shoppingService = shoppingService;
+    this.shoppingRecommendationService = shoppingRecommendationService;
   }
 
   @PostMapping("/lists")
@@ -224,5 +231,40 @@ public class ShoppingController {
   ) {
     shoppingService.deleteItem(authentication.getName(), listId, itemId);
     return ResponseEntity.ok(ApiResponse.ok(null, "Alisveris urunu silindi"));
+  }
+
+  @GetMapping("/recommendations")
+  @Operation(summary = "Shopping onerilerini getir")
+  public ResponseEntity<ApiResponse<java.util.List<ShoppingRecommendationDto.Response>>> getRecommendations(
+    Authentication authentication,
+    @RequestParam(required = false) UUID listId,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(50) int topK
+  ) {
+    var response = shoppingRecommendationService.getRecommendations(
+      authentication.getName(),
+      listId,
+      topK
+    );
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @PostMapping("/recommendations/train")
+  @Operation(summary = "Shopping recommendation modelini egit")
+  public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> trainRecommendations(
+    Authentication authentication
+  ) {
+    var response = shoppingRecommendationService.trainModelFromDatabase(authentication.getName());
+    return ResponseEntity.ok(ApiResponse.ok(response, "Shopping recommendation modeli guncellendi"));
+  }
+
+  @GetMapping("/recommendations/metrics")
+  @Operation(summary = "Shopping recommendation metriklerini getir")
+  public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getRecommendationMetrics(
+    Authentication authentication,
+    @RequestParam(defaultValue = "10") @Min(1) @Max(50) int topK,
+    @RequestParam(defaultValue = "200") @Min(10) @Max(2000) int maxUsers
+  ) {
+    var response = shoppingRecommendationService.getRecommendationMetrics(authentication.getName(), topK, maxUsers);
+    return ResponseEntity.ok(ApiResponse.ok(response));
   }
 }

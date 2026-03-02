@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import pandas as pd
 
 from app.models.shopping_recommender import (
+    evaluate_model,
     is_model_loaded,
     recommend_for_user,
     reload_model,
@@ -63,20 +64,44 @@ async def reload_shopping_recommender():
     return {"success": True, "message": "Shopping recommender artifacts loaded."}
 
 
-@router.get("/recommendations/{user_id}")
+@router.get("/recommendations/user/{user_id}")
 async def get_shopping_recommendations(
     user_id: str,
     top_k: int = 20,
-    w_assoc: float = 0.45,
-    w_repl: float = 0.35,
+    w_assoc: float = 0.35,
+    w_repl: float = 0.25,
     w_cf: float = 0.20,
+    w_pop: float = 0.10,
+    w_cat: float = 0.10,
 ):
-    if abs((w_assoc + w_repl + w_cf) - 1.0) > 1e-6:
+    if abs((w_assoc + w_repl + w_cf + w_pop + w_cat) - 1.0) > 1e-3:
         raise HTTPException(status_code=400, detail="Weights must sum to 1.0")
-    if not is_model_loaded():
+    if not is_model_loaded() and not reload_model():
         raise HTTPException(status_code=503, detail="Shopping recommender model is not loaded.")
     try:
-        data = recommend_for_user(user_id, top_k=top_k, w_assoc=w_assoc, w_repl=w_repl, w_cf=w_cf)
+        data = recommend_for_user(
+            user_id,
+            top_k=top_k,
+            w_assoc=w_assoc,
+            w_repl=w_repl,
+            w_cf=w_cf,
+            w_pop=w_pop,
+            w_cat=w_cat,
+        )
+        return {"success": True, "data": data}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/recommendations/metrics")
+async def get_shopping_recommendation_metrics(
+    top_k: int = 10,
+    max_users: int = 200,
+):
+    if not is_model_loaded() and not reload_model():
+        raise HTTPException(status_code=503, detail="Shopping recommender model is not loaded.")
+    try:
+        data = evaluate_model(top_k=top_k, max_users=max_users)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))

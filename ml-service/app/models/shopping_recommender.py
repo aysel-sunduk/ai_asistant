@@ -3,10 +3,12 @@ Shopping recommendation hybrid engine:
 - Association (FP-Growth rules)
 - Replenishment (repeat timing)
 - Collaborative filtering (user-based KNN)
+- Popularity + user category affinity boosters
 """
 
 from __future__ import annotations
 
+import ast
 import logging
 from pathlib import Path
 
@@ -23,6 +25,7 @@ MODEL_DIR = Path(__file__).resolve().parent.parent / "models_saved" / "shopping_
 
 _rules_df = pd.DataFrame()
 _purchases_df = pd.DataFrame()
+_item_popularity_df = pd.DataFrame()
 _loaded = False
 
 
@@ -52,6 +55,10 @@ def ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
         out["category"] = "GENEL"
     out["category"] = out["category"].fillna("GENEL").astype(str)
 
+    if "quantity" not in out.columns:
+        out["quantity"] = 1
+    out["quantity"] = pd.to_numeric(out["quantity"], errors="coerce").fillna(1).clip(lower=1)
+
     if "added_at" not in out.columns:
         out["added_at"] = out.get("list_created_at")
     if "checked_at" not in out.columns:
@@ -71,8 +78,43 @@ def ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _serialize_itemset(x) -> list[str]:
+    if isinstance(x, (set, frozenset, list, tuple)):
+        return sorted([str(v) for v in x])
+    if pd.isna(x):
+        return []
+    return [str(x)]
+
+
+def _deserialize_itemset(x) -> set[str]:
+    if isinstance(x, (set, frozenset)):
+        return {str(v) for v in x}
+    if isinstance(x, list):
+        return {str(v) for v in x}
+    if isinstance(x, str):
+        raw = x.strip()
+        if not raw:
+            return set()
+        if raw.startswith("[") or raw.startswith("{") or raw.startswith("("):
+            try:
+                parsed = ast.literal_eval(raw)
+                if isinstance(parsed, (set, frozenset, list, tuple)):
+                    return {str(v) for v in parsed}
+            except (ValueError, SyntaxError):
+                pass
+        return {raw}
+    return set()
+
+
+def _compute_item_popularity(purchases: pd.DataFrame) -> pd.DataFrame:
+    if purchases.empty:
+        return pd.DataFrame(columns=["product_key", "pop"])
+    pop = purchases.groupby("product_key").size().reset_index(name="pop")
+    return pop
+
+
 def train_and_save_artifacts(df: pd.DataFrame) -> None:
-    global _rules_df, _purchases_df, _loaded
+    global _rules_df, _purchases_df, _item_popularity_df, _loaded
 
     normalized = ensure_columns(df)
     purchases = normalized[normalized["is_checked"]].copy()
@@ -89,27 +131,41 @@ def train_and_save_artifacts(df: pd.DataFrame) -> None:
         rules = association_rules(freq, metric="confidence", min_threshold=0.05)
         rules = rules.sort_values(["lift", "confidence", "support"], ascending=False)
 
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    rules.to_parquet(MODEL_DIR / "association_rules.parquet", index=False)
-    purchases.to_parquet(MODEL_DIR / "purchases.parquet", index=False)
+    rules_to_save = rules.copy()
+    if not rules_to_save.empty:
+        rules_to_save["antecedents"] = rules_to_save["antecedents"].apply(_serialize_itemset)
+        rules_to_save["consequents"] = rules_to_save["consequents"].apply(_serialize_itemset)
 
-    _rules_df = rules
+    item_popularity = _compute_item_popularity(purchases)
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    rules_to_save.to_parquet(MODEL_DIR / "association_rules.parquet", index=False)
+    purchases.to_parquet(MODEL_DIR / "purchases.parquet", index=False)
+    item_popularity.to_parquet(MODEL_DIR / "item_popularity.parquet", index=False)
+
+    _rules_df = rules_to_save
     _purchases_df = purchases
+    _item_popularity_df = item_popularity
     _loaded = True
     logger.info("Shopping recommender artifacts saved at %s", MODEL_DIR)
 
 
 def _load_artifacts() -> bool:
-    global _rules_df, _purchases_df, _loaded
+    global _rules_df, _purchases_df, _item_popularity_df, _loaded
     try:
         rules_path = MODEL_DIR / "association_rules.parquet"
         purchases_path = MODEL_DIR / "purchases.parquet"
+        item_popularity_path = MODEL_DIR / "item_popularity.parquet"
         if not rules_path.exists() or not purchases_path.exists():
             logger.info("Shopping artifacts not found in %s", MODEL_DIR)
             _loaded = False
             return False
         _rules_df = pd.read_parquet(rules_path)
         _purchases_df = pd.read_parquet(purchases_path)
+        if item_popularity_path.exists():
+            _item_popularity_df = pd.read_parquet(item_popularity_path)
+        else:
+            _item_popularity_df = _compute_item_popularity(_purchases_df)
         _loaded = True
         logger.info("Shopping recommender artifacts loaded.")
         return True
@@ -127,29 +183,27 @@ def reload_model() -> bool:
     return _load_artifacts()
 
 
-def _latest_basket_for_user(user_id: str) -> set[str]:
-    u = _purchases_df[_purchases_df["user_id"].astype(str) == str(user_id)].copy()
+def _latest_basket_for_user(user_id: str, purchases_df: pd.DataFrame) -> set[str]:
+    u = purchases_df[purchases_df["user_id"].astype(str) == str(user_id)].copy()
     if u.empty:
         return set()
     latest_list = u.sort_values("checked_at").iloc[-1]["list_id"]
     return set(u[u["list_id"] == latest_list]["product_key"].unique().tolist())
 
 
-def _association_scores(seed_items: set[str]) -> pd.DataFrame:
-    if _rules_df.empty or not seed_items:
+def _association_scores(seed_items: set[str], rules_df: pd.DataFrame) -> pd.DataFrame:
+    if rules_df.empty or not seed_items:
         return pd.DataFrame(columns=["product_key", "assoc"])
 
     scores: dict[str, float] = {}
-    for _, r in _rules_df.iterrows():
-        ant = set(r["antecedents"]) if not isinstance(r["antecedents"], set) else r["antecedents"]
-        con = set(r["consequents"]) if not isinstance(r["consequents"], set) else r["consequents"]
+    for _, r in rules_df.iterrows():
+        ant = _deserialize_itemset(r.get("antecedents"))
+        con = _deserialize_itemset(r.get("consequents"))
         overlap = len(seed_items & ant)
         if overlap == 0:
             continue
         strength = float(r.get("lift", 0)) * float(r.get("confidence", 0)) * overlap / max(len(ant), 1)
         for item in con:
-            if item in seed_items:
-                continue
             scores[item] = max(scores.get(item, 0.0), strength)
 
     if not scores:
@@ -157,8 +211,8 @@ def _association_scores(seed_items: set[str]) -> pd.DataFrame:
     return pd.DataFrame({"product_key": list(scores.keys()), "assoc": list(scores.values())})
 
 
-def _replenishment_scores(user_id: str) -> pd.DataFrame:
-    u = _purchases_df[_purchases_df["user_id"].astype(str) == str(user_id)].copy()
+def _replenishment_scores(user_id: str, purchases_df: pd.DataFrame) -> pd.DataFrame:
+    u = purchases_df[purchases_df["user_id"].astype(str) == str(user_id)].copy()
     if u.empty:
         return pd.DataFrame(columns=["product_key", "repl"])
 
@@ -179,8 +233,8 @@ def _replenishment_scores(user_id: str) -> pd.DataFrame:
     return out[out["repl"] >= 0.8]
 
 
-def _cf_scores(user_id: str, k_neighbors: int = 30) -> pd.DataFrame:
-    ui = _purchases_df.groupby(["user_id", "product_key"]).size().reset_index(name="cnt")
+def _cf_scores(user_id: str, purchases_df: pd.DataFrame, k_neighbors: int = 40) -> pd.DataFrame:
+    ui = purchases_df.groupby(["user_id", "product_key"]).size().reset_index(name="cnt")
     if ui.empty:
         return pd.DataFrame(columns=["product_key", "cf"])
 
@@ -193,7 +247,7 @@ def _cf_scores(user_id: str, k_neighbors: int = 30) -> pd.DataFrame:
 
     rows = ui["user_id"].astype(str).map(user2idx).values
     cols = ui["product_key"].astype(str).map(item2idx).values
-    vals = ui["cnt"].astype(float).values
+    vals = np.log1p(ui["cnt"].astype(float).values)
     mat = csr_matrix((vals, (rows, cols)), shape=(len(user_ids), len(item_ids)))
 
     uidx = user2idx[str(user_id)]
@@ -206,67 +260,97 @@ def _cf_scores(user_id: str, k_neighbors: int = 30) -> pd.DataFrame:
     dists, nbrs = knn.kneighbors(mat[uidx], return_distance=True)
 
     nbr_idxs = nbrs[0][1:]
-    sims = 1.0 - dists[0][1:]
+    sims = np.clip(1.0 - dists[0][1:], 0.0, 1.0)
+    if sims.size == 0:
+        return pd.DataFrame(columns=["product_key", "cf"])
+
     profile = mat[nbr_idxs].multiply(sims.reshape(-1, 1)).sum(axis=0)
     profile = np.asarray(profile).ravel()
-    owned = set(mat[uidx].indices.tolist())
-    if owned:
-        profile[list(owned)] = 0.0
 
     idx2item = {v: k for k, v in item2idx.items()}
     recs = [{"product_key": idx2item[i], "cf": float(profile[i])} for i in np.where(profile > 0)[0]]
     return pd.DataFrame(recs)
 
 
+def _category_preference_scores(user_id: str, purchases_df: pd.DataFrame) -> pd.DataFrame:
+    u = purchases_df[purchases_df["user_id"].astype(str) == str(user_id)].copy()
+    if u.empty:
+        return pd.DataFrame(columns=["product_key", "cat_pref"])
+    cat_pref = u.groupby("category").size()
+    if cat_pref.empty:
+        return pd.DataFrame(columns=["product_key", "cat_pref"])
+    cat_pref = cat_pref / max(cat_pref.max(), 1)
+    item_cat = purchases_df[["product_key", "category"]].drop_duplicates("product_key")
+    item_cat["cat_pref"] = item_cat["category"].map(cat_pref).fillna(0.0)
+    return item_cat[["product_key", "cat_pref"]]
+
+
 def _normalize(df: pd.DataFrame, col: str, out_col: str) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=["product_key", out_col])
+    work = df.copy()
     scaler = MinMaxScaler()
-    vals = df[[col]].astype(float).values
+    vals = work[[col]].astype(float).values
     if np.allclose(vals.max(), vals.min()):
-        df[out_col] = 1.0
+        work[out_col] = 1.0
     else:
-        df[out_col] = scaler.fit_transform(vals)
-    return df[["product_key", out_col]]
+        work[out_col] = scaler.fit_transform(vals)
+    return work[["product_key", out_col]]
 
 
-def recommend_for_user(
+def _recommend_with_data(
     user_id: str,
+    purchases_df: pd.DataFrame,
+    rules_df: pd.DataFrame,
+    item_popularity_df: pd.DataFrame,
     top_k: int = 20,
-    w_assoc: float = 0.45,
-    w_repl: float = 0.35,
+    w_assoc: float = 0.35,
+    w_repl: float = 0.25,
     w_cf: float = 0.20,
+    w_pop: float = 0.10,
+    w_cat: float = 0.10,
+    seed_items_override: set[str] | None = None,
+    exclude_items: set[str] | None = None,
 ) -> list[dict]:
-    if not _loaded or _purchases_df.empty:
-        raise ValueError("Shopping recommender model is not loaded.")
+    if purchases_df.empty:
+        return []
 
-    seed_items = _latest_basket_for_user(user_id)
-    assoc = _normalize(_association_scores(seed_items), "assoc", "assoc_norm")
-    repl = _normalize(_replenishment_scores(user_id), "repl", "repl_norm")
-    cf = _normalize(_cf_scores(user_id), "cf", "cf_norm")
+    seed_items = seed_items_override if seed_items_override is not None else _latest_basket_for_user(user_id, purchases_df)
+    assoc = _normalize(_association_scores(seed_items, rules_df), "assoc", "assoc_norm")
+    repl = _normalize(_replenishment_scores(user_id, purchases_df), "repl", "repl_norm")
+    cf = _normalize(_cf_scores(user_id, purchases_df), "cf", "cf_norm")
+    pop = _normalize(item_popularity_df.rename(columns={"pop": "pop_raw"}), "pop_raw", "pop_norm")
+    cat = _normalize(_category_preference_scores(user_id, purchases_df), "cat_pref", "cat_norm")
 
-    candidates = pd.DataFrame({"product_key": _purchases_df["product_key"].unique()})
+    candidates = pd.DataFrame({"product_key": purchases_df["product_key"].astype(str).unique()})
     candidates = candidates.merge(assoc, on="product_key", how="left")
     candidates = candidates.merge(repl, on="product_key", how="left")
     candidates = candidates.merge(cf, on="product_key", how="left")
+    candidates = candidates.merge(pop, on="product_key", how="left")
+    candidates = candidates.merge(cat, on="product_key", how="left")
     candidates = candidates.fillna(0.0)
-    if seed_items:
+
+    if exclude_items is None and seed_items:
         candidates = candidates[~candidates["product_key"].isin(seed_items)]
+    elif exclude_items:
+        candidates = candidates[~candidates["product_key"].isin(exclude_items)]
 
     candidates["hybrid_score"] = (
         w_assoc * candidates["assoc_norm"]
         + w_repl * candidates["repl_norm"]
         + w_cf * candidates["cf_norm"]
+        + w_pop * candidates["pop_norm"]
+        + w_cat * candidates["cat_norm"]
     )
     candidates = candidates[candidates["hybrid_score"] > 0].sort_values("hybrid_score", ascending=False).head(top_k)
 
     name_map = (
-        _purchases_df.groupby("product_key")["item_name"]
+        purchases_df.groupby("product_key")["item_name"]
         .agg(lambda s: s.value_counts().index[0])
         .to_dict()
     )
     cat_map = (
-        _purchases_df.groupby("product_key")["category"]
+        purchases_df.groupby("product_key")["category"]
         .agg(lambda s: s.value_counts().index[0])
         .to_dict()
     )
@@ -280,6 +364,8 @@ def recommend_for_user(
             reasons.append("replenishment")
         if row["cf_norm"] > 0:
             reasons.append("collaborative")
+        if row["cat_norm"] > 0:
+            reasons.append("category_affinity")
         result.append(
             {
                 "productKey": row["product_key"],
@@ -290,3 +376,114 @@ def recommend_for_user(
             }
         )
     return result
+
+
+def recommend_for_user(
+    user_id: str,
+    top_k: int = 20,
+    w_assoc: float = 0.35,
+    w_repl: float = 0.25,
+    w_cf: float = 0.20,
+    w_pop: float = 0.10,
+    w_cat: float = 0.10,
+) -> list[dict]:
+    if not _loaded or _purchases_df.empty:
+        raise ValueError("Shopping recommender model is not loaded.")
+    return _recommend_with_data(
+        user_id=user_id,
+        purchases_df=_purchases_df,
+        rules_df=_rules_df,
+        item_popularity_df=_item_popularity_df,
+        top_k=top_k,
+        w_assoc=w_assoc,
+        w_repl=w_repl,
+        w_cf=w_cf,
+        w_pop=w_pop,
+        w_cat=w_cat,
+    )
+
+
+def evaluate_model(top_k: int = 10, max_users: int = 200) -> dict:
+    if not _loaded or _purchases_df.empty:
+        raise ValueError("Shopping recommender model is not loaded.")
+
+    user_groups = _purchases_df.groupby("user_id")
+    eligible_users: list[str] = []
+    for user_id, g in user_groups:
+        if g["list_id"].nunique() >= 2:
+            eligible_users.append(str(user_id))
+    if not eligible_users:
+        return {
+            "topK": top_k,
+            "usersEvaluated": 0,
+            "recallAtK": 0.0,
+            "hitRateAtK": 0.0,
+            "ndcgAtK": 0.0,
+            "coverageAtK": 0.0,
+        }
+
+    if max_users > 0 and len(eligible_users) > max_users:
+        eligible_users = eligible_users[:max_users]
+
+    recalls = []
+    hits = []
+    ndcgs = []
+    all_recommended = set()
+    all_catalog = set(_purchases_df["product_key"].astype(str).unique().tolist())
+
+    for user_id in eligible_users:
+        g = _purchases_df[_purchases_df["user_id"].astype(str) == user_id].copy()
+        list_time = (
+            g.groupby("list_id")["checked_at"]
+            .max()
+            .reset_index()
+            .sort_values("checked_at")
+        )
+        if len(list_time) < 2:
+            continue
+
+        seed_list = list_time.iloc[-2]["list_id"]
+        target_list = list_time.iloc[-1]["list_id"]
+
+        seed_items = set(g[g["list_id"] == seed_list]["product_key"].astype(str).unique().tolist())
+        expected = set(g[g["list_id"] == target_list]["product_key"].astype(str).unique().tolist())
+        if not expected:
+            continue
+
+        recs = _recommend_with_data(
+            user_id=user_id,
+            purchases_df=_purchases_df,
+            rules_df=_rules_df,
+            item_popularity_df=_item_popularity_df,
+            top_k=top_k,
+            seed_items_override=seed_items,
+            exclude_items=set(),  # next-basket tahmini icin tekrar urunleri de izinli.
+        )
+        pred = [r["productKey"] for r in recs[:top_k]]
+        if not pred:
+            recalls.append(0.0)
+            hits.append(0.0)
+            ndcgs.append(0.0)
+            continue
+
+        all_recommended.update(pred)
+        hit_count = len(set(pred) & expected)
+        recalls.append(hit_count / max(len(expected), 1))
+        hits.append(1.0 if hit_count > 0 else 0.0)
+
+        dcg = 0.0
+        for i, item in enumerate(pred, start=1):
+            if item in expected:
+                dcg += 1.0 / np.log2(i + 1)
+        idcg = sum(1.0 / np.log2(i + 1) for i in range(1, min(len(expected), top_k) + 1))
+        ndcgs.append(dcg / idcg if idcg > 0 else 0.0)
+
+    users_eval = len(recalls)
+    return {
+        "topK": top_k,
+        "usersEvaluated": users_eval,
+        "recallAtK": float(np.mean(recalls)) if recalls else 0.0,
+        "hitRateAtK": float(np.mean(hits)) if hits else 0.0,
+        "ndcgAtK": float(np.mean(ndcgs)) if ndcgs else 0.0,
+        "coverageAtK": float(len(all_recommended) / max(len(all_catalog), 1)),
+    }

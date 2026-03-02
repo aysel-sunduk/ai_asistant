@@ -81,6 +81,14 @@ export function useShopping() {
         removeItem(itemId);
     }, [removeItem]);
 
+    const fetchRecommendations = useCallback(async (listId?: string, topK = 10) => {
+        return shoppingService.getRecommendations(listId, topK);
+    }, []);
+
+    const trainRecommendations = useCallback(async () => {
+        return shoppingService.trainRecommendations();
+    }, []);
+
     return {
         lists,
         selectedListItems,
@@ -93,5 +101,7 @@ export function useShopping() {
         addItem,
         updateItemCheck,
         deleteItem,
+        fetchRecommendations,
+        trainRecommendations,
     };
 }

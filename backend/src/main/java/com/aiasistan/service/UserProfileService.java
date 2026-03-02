@@ -4,10 +4,10 @@
 
 package com.aiasistan.service;
 
-import java.util.Locale;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aiasistan.dto.request.ContactPrivacyUpdateRequest;
 import com.aiasistan.dto.request.UserProfileUpsertRequest;
 import com.aiasistan.dto.response.UserProfileResponse;
 import com.aiasistan.exception.BadRequestException;
@@ -157,6 +158,16 @@ public class UserProfileService {
         return toResponse(getOrCreateProfile(userId));
     }
 
+    @Transactional
+public UserProfileResponse updateContactPrivacy(UUID userId, ContactPrivacyUpdateRequest request) {
+    UserProfile profile = getOrCreateProfile(userId);
+    
+    profile.setShowPhone(request.getShowPhone());
+    profile.setShowEmail(request.getShowEmail());
+    
+    UserProfile saved = userProfileRepository.save(profile);
+    return toResponse(saved);
+}
     private UserProfile createDefaultProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));

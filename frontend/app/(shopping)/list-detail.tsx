@@ -17,7 +17,7 @@ import {
 import Toast from '../../components/ui/Toast';
 import { shoppingService } from '../../services/shopping.service';
 import { useShopping } from '../../src/hooks/useShopping';
-import type { ShoppingItem, ShoppingListSummary } from '../../src/models/shopping.model';
+import type { ShoppingItem, ShoppingListSummary, ShoppingRecommendation } from '../../src/models/shopping.model';
 
 const COLOR = '#F472B6';
 
@@ -42,13 +42,25 @@ export default function ListDetailScreen() {
     const listId = typeof params.listId === 'string' ? params.listId : '';
     const listName = typeof params.name === 'string' ? params.name : 'Liste Detay';
 
-    const { selectedListItems, isLoading, fetchItems, addItem, updateItemCheck, deleteItem } = useShopping();
+    const {
+        selectedListItems,
+        isLoading,
+        fetchItems,
+        addItem,
+        updateItemCheck,
+        deleteItem,
+        fetchRecommendations,
+        trainRecommendations,
+    } = useShopping();
 
     const [summary, setSummary] = useState<ShoppingListSummary>(defaultSummary);
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState('1');
     const [newItemUnit, setNewItemUnit] = useState('adet');
+    const [newItemCategory, setNewItemCategory] = useState('');
     const [newItemPrice, setNewItemPrice] = useState('');
+    const [recommendations, setRecommendations] = useState<ShoppingRecommendation[]>([]);
+    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
     const [saving, setSaving] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
@@ -75,10 +87,15 @@ export default function ListDetailScreen() {
         try {
             await fetchItems(listId);
             await loadSummary();
+            setLoadingRecommendations(true);
+            const recs = await fetchRecommendations(listId, 8);
+            setRecommendations(recs);
         } catch (error: any) {
             showToast('error', error?.response?.data?.message || 'Liste urunleri alinamadi.');
+        } finally {
+            setLoadingRecommendations(false);
         }
-    }, [fetchItems, listId, loadSummary]);
+    }, [fetchItems, listId, loadSummary, fetchRecommendations]);
 
     useFocusEffect(
         useCallback(() => {
@@ -97,6 +114,7 @@ export default function ListDetailScreen() {
         const name = newItemName.trim();
         const qty = Math.max(1, Number.parseInt(newItemQty, 10) || 1);
         const unit = newItemUnit.trim();
+        const category = newItemCategory.trim();
         const normalizedPrice = newItemPrice.trim().replace(',', '.');
         const estimatedPriceMinor = normalizedPrice
             ? Math.round(Math.max(0, Number.parseFloat(normalizedPrice) || 0) * 100)
@@ -112,6 +130,7 @@ export default function ListDetailScreen() {
             await addItem(listId, {
                 name,
                 quantity: qty,
+                category: category || undefined,
                 unit: unit || undefined,
                 estimatedPriceMinor,
                 isChecked: false,
@@ -119,8 +138,10 @@ export default function ListDetailScreen() {
             setNewItemName('');
             setNewItemQty('1');
             setNewItemUnit('adet');
+            setNewItemCategory('');
             setNewItemPrice('');
             await loadSummary();
+            setRecommendations(await fetchRecommendations(listId, 8));
             showToast('success', 'Urun eklendi.');
         } catch (error: any) {
             showToast('error', error?.response?.data?.message || 'Urun eklenemedi.');
@@ -164,11 +185,39 @@ export default function ListDetailScreen() {
         const lines = [
             `Urun: ${item.name}`,
             `Durum: ${item.isChecked ? 'Alindi' : 'Alinacak'}`,
+            `Kategori: ${item.category || '-'}`,
             `Miktar: ${item.quantity} ${item.unit || 'adet'}`,
             `Tahmini fiyat: ${typeof item.estimatedPriceMinor === 'number' ? `${money(item.estimatedPriceMinor)} TL` : '-'}`,
             `Not: ${item.note || '-'}`,
         ];
         Alert.alert('Urun Detayi', lines.join('\n'));
+    };
+
+    const onAddRecommendation = async (recommendation: ShoppingRecommendation) => {
+        if (!listId) return;
+        try {
+            await addItem(listId, {
+                name: recommendation.itemName,
+                category: recommendation.category || undefined,
+                quantity: 1,
+                unit: 'adet',
+                isChecked: false,
+            });
+            await loadSummary();
+            setRecommendations((prev) =>
+                prev.filter((item) => item.productKey !== recommendation.productKey),
+            );
+            showToast('success', 'Oneri listene eklendi.');
+        } catch (error: any) {
+            if (error?.response?.status === 503) {
+                await trainRecommendations();
+                const recs = await fetchRecommendations(listId, 8);
+                setRecommendations(recs);
+                showToast('info', 'Model hazirlaniyor, oneriler yenilendi.');
+                return;
+            }
+            showToast('error', error?.response?.data?.message || 'Oneri eklenemedi.');
+        }
     };
 
 
@@ -238,6 +287,12 @@ export default function ListDetailScreen() {
                         />
                     </View>
                     <TextInput
+                        value={newItemCategory}
+                        onChangeText={setNewItemCategory}
+                        placeholder="Kategori (istege bagli)"
+                        style={[styles.input, { marginTop: 8 }]}
+                    />
+                    <TextInput
                         value={newItemPrice}
                         onChangeText={setNewItemPrice}
                         keyboardType="decimal-pad"
@@ -290,6 +345,35 @@ export default function ListDetailScreen() {
 
                                 <TouchableOpacity style={styles.itemDeleteBtn} onPress={() => onDeleteItem(item.id)}>
                                     <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                                </TouchableOpacity>
+                            </View>
+                        ))
+                    )}
+                </View>
+
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Akilli Oneriler</Text>
+                    {loadingRecommendations ? (
+                        <View style={styles.loadingInline}>
+                            <ActivityIndicator size="small" color={COLOR} />
+                        </View>
+                    ) : recommendations.length === 0 ? (
+                        <Text style={styles.emptySub}>Su an gosterilecek oneri yok.</Text>
+                    ) : (
+                        recommendations.map((recommendation) => (
+                            <View key={recommendation.productKey} style={styles.recommendationRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.itemName}>{recommendation.itemName}</Text>
+                                    <Text style={styles.itemMeta}>
+                                        {(recommendation.category || 'GENEL').toString()}  |  Skor: {recommendation.score.toFixed(2)}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.recommendationAddBtn}
+                                    onPress={() => void onAddRecommendation(recommendation)}
+                                >
+                                    <Ionicons name="add" size={16} color="#fff" />
+                                    <Text style={styles.recommendationAddBtnText}>Ekle</Text>
                                 </TouchableOpacity>
                             </View>
                         ))
@@ -408,6 +492,29 @@ const styles = StyleSheet.create({
         backgroundColor: '#FEF2F2',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    recommendationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        paddingTop: 10,
+        marginTop: 10,
+    },
+    recommendationAddBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLOR,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+    },
+    recommendationAddBtnText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '800',
     },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
     summaryLabel: { fontSize: 13, color: '#475569' },
