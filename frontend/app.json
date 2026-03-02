@@ -42,6 +42,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       "react-native-health",
       "expo-health-connect",
       "./plugins/withHealthPermissions",

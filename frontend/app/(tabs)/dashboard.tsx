@@ -25,6 +25,7 @@ import type { Reminder } from '../../src/models/reminder.model';
 import type { FollowRequestItem } from '../../src/models/social.model';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMenuStore } from '../../src/store/menu.store';
+import { sendTestNotification } from '../../src/hooks/usePushNotifications';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -201,6 +202,12 @@ export default function DashboardScreen() {
                     <Text style={styles.aiCardText}>
                         Yaklasan hatirlaticilarin ve modullerden son hareketlerin burada gorunur.
                     </Text>
+                    <TouchableOpacity
+                        style={{ marginTop: 15, backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start' }}
+                        onPress={sendTestNotification}
+                    >
+                        <Text style={{ color: PURPLE, fontWeight: '700', fontSize: 13 }}>Test Bildirimi Gonder</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {financeReport && (

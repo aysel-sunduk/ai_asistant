@@ -1,10 +1,12 @@
-// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 const PURPLE = '#6C63FF';
 
 export default function TabsLayout() {
+  usePushNotifications();
+
   return (
     <Tabs
       screenOptions={{
