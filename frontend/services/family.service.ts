@@ -9,6 +9,7 @@ import type {
     FamilyTransactionPage,
     FamilyTransactionRequest,
     FamilyTransactionResponse,
+    MonthlyFinanceSummaryResponse,
 } from '../src/models/family.model';
 
 export const familyService = {
@@ -31,8 +32,8 @@ export const familyService = {
         await familyApi.deleteBirthday(id);
     },
 
-    getTransactions: async (page = 0, size = 100): Promise<FamilyTransactionPage> => {
-        const response = await familyApi.getTransactions(page, size);
+    getTransactions: async (page = 0, size = 100, startDate?: string, endDate?: string): Promise<FamilyTransactionPage> => {
+        const response = await familyApi.getTransactions(page, size, startDate, endDate);
         return response.data.data;
     },
 
@@ -57,6 +58,11 @@ export const familyService = {
 
     getTransactionsReport: async (period: 'WEEKLY' | 'MONTHLY'): Promise<FamilyFinanceReportResponse> => {
         const response = await familyApi.getTransactionsReport(period);
+        return response.data.data;
+    },
+
+    getFinanceHistory: async (months = 12, startDate?: string, endDate?: string): Promise<MonthlyFinanceSummaryResponse[]> => {
+        const response = await familyApi.getFinanceHistory(months, startDate, endDate);
         return response.data.data;
     },
 };

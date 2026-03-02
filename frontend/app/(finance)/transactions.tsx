@@ -1,6 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -28,10 +28,14 @@ const PURPLE = '#6C63FF';
 
 type Period = 'WEEKLY' | 'MONTHLY';
 
-const currency = (v: number) => `?${Number(v || 0).toFixed(2)}`;
+const currency = (v: number) => `₺${Number(v || 0).toFixed(2)}`;
 
 export default function TransactionsScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const externalStartDate = params.startDate as string | undefined;
+    const externalEndDate = params.endDate as string | undefined;
+
     const [period, setPeriod] = useState<Period>('MONTHLY');
     const [report, setReport] = useState<FamilyFinanceReportResponse | null>(null);
     const [transactions, setTransactions] = useState<FamilyTransactionResponse[]>([]);
@@ -56,9 +60,12 @@ export default function TransactionsScreen() {
     const load = useCallback(async (selectedPeriod: Period) => {
         setLoading(true);
         try {
+            const start = externalStartDate;
+            const end = externalEndDate;
+
             const [reportRes, txPage] = await Promise.all([
                 familyService.getTransactionsReport(selectedPeriod),
-                familyService.getTransactions(0, 100),
+                familyService.getTransactions(0, 100, start, end),
             ]);
             setReport(reportRes);
             setTransactions(txPage.content || []);
@@ -67,7 +74,7 @@ export default function TransactionsScreen() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [externalStartDate, externalEndDate]);
 
     useFocusEffect(
         useCallback(() => {
@@ -88,10 +95,13 @@ export default function TransactionsScreen() {
 
     const inPeriodTransactions = useMemo(() => {
         if (!report) return [];
+        if (externalStartDate && externalEndDate) {
+            return transactions.sort((a, b) => +new Date(b.occurredOn) - +new Date(a.occurredOn));
+        }
         return transactions
             .filter((tx) => tx.occurredOn >= report.startDate && tx.occurredOn <= report.endDate)
             .sort((a, b) => +new Date(b.occurredOn) - +new Date(a.occurredOn));
-    }, [report, transactions]);
+    }, [report, transactions, externalStartDate, externalEndDate]);
 
     const onCreateTransaction = async () => {
         const parsed = Number.parseFloat(amount.trim().replace(',', '.'));
@@ -182,6 +192,10 @@ export default function TransactionsScreen() {
         }
     };
 
+    const clearFilter = () => {
+        router.setParams({ startDate: undefined as any, endDate: undefined as any });
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
@@ -194,10 +208,22 @@ export default function TransactionsScreen() {
                     <Text style={styles.headerTitle}>Gelir / Gider Raporu</Text>
                     <View style={styles.headerBackBtnPlaceholder} />
                 </View>
-                <View style={styles.periodRow}>
-                    <PeriodBtn label="Haftalik" active={period === 'WEEKLY'} onPress={() => switchPeriod('WEEKLY')} />
-                    <PeriodBtn label="Aylik" active={period === 'MONTHLY'} onPress={() => switchPeriod('MONTHLY')} />
-                </View>
+                {!externalStartDate && (
+                    <View style={styles.periodRow}>
+                        <PeriodBtn label="Haftalik" active={period === 'WEEKLY'} onPress={() => switchPeriod('WEEKLY')} />
+                        <PeriodBtn label="Aylik" active={period === 'MONTHLY'} onPress={() => switchPeriod('MONTHLY')} />
+                    </View>
+                )}
+                {externalStartDate && (
+                    <View style={styles.filterInfoRow}>
+                        <Text style={styles.filterInfoText}>
+                            {externalStartDate} / {externalEndDate} araligi filtrelendi
+                        </Text>
+                        <TouchableOpacity onPress={clearFilter} style={styles.clearFilterBtn}>
+                            <Ionicons name="close-circle" size={18} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
 
             {loading ? (
@@ -206,34 +232,39 @@ export default function TransactionsScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Donem Ozet</Text>
-                        <View style={styles.summaryRow}>
-                            <MiniStat title="Gelir" value={currency(Number(report?.totalIncome || 0))} color="#16A34A" />
-                            <MiniStat title="Gider" value={currency(Number(report?.totalExpense || 0))} color="#DC2626" />
-                            <MiniStat
-                                title="Net"
-                                value={currency(Number(report?.balance || 0))}
-                                color={Number(report?.balance || 0) >= 0 ? '#16A34A' : '#DC2626'}
-                            />
+                    {!externalStartDate && (
+                        <View style={styles.card}>
+                            <Text style={styles.cardTitle}>Donem Ozet</Text>
+                            <View style={styles.summaryRow}>
+                                <MiniStat title="Gelir" value={currency(Number(report?.totalIncome || 0))} color="#16A34A" />
+                                <MiniStat title="Gider" value={currency(Number(report?.totalExpense || 0))} color="#DC2626" />
+                                <MiniStat
+                                    title="Net"
+                                    value={currency(Number(report?.balance || 0))}
+                                    color={Number(report?.balance || 0) >= 0 ? '#16A34A' : '#DC2626'}
+                                />
+                            </View>
+                            <View style={styles.divider} />
+                            <Text style={styles.compareText}>
+                                Onceki doneme gore net degisim: %{Number(report?.balanceChangePct || 0).toFixed(1)}
+                            </Text>
                         </View>
-                        <Text style={styles.compareText}>
-                            Onceki doneme gore net degisim: %{Number(report?.balanceChangePct || 0).toFixed(1)}
-                        </Text>
-                    </View>
+                    )}
 
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Trend Grafigi</Text>
-                        <View style={styles.chartWrap}>
-                            {(report?.buckets || []).map((b) => (
-                                <ChartGroup key={`${b.label}-${b.startDate}`} bucket={b} maxValue={chartMax} />
-                            ))}
+                    {!externalStartDate && (
+                        <View style={styles.card}>
+                            <Text style={styles.cardTitle}>Trend Grafigi</Text>
+                            <View style={styles.chartWrap}>
+                                {(report?.buckets || []).map((b) => (
+                                    <ChartGroup key={`${b.label}-${b.startDate}`} bucket={b} maxValue={chartMax} />
+                                ))}
+                            </View>
+                            <View style={styles.chartLegendRow}>
+                                <LegendDot color="#16A34A" label="Gelir" />
+                                <LegendDot color="#DC2626" label="Gider" />
+                            </View>
                         </View>
-                        <View style={styles.chartLegendRow}>
-                            <LegendDot color="#16A34A" label="Gelir" />
-                            <LegendDot color="#DC2626" label="Gider" />
-                        </View>
-                    </View>
+                    )}
 
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Hizli Islem Ekle</Text>
@@ -245,7 +276,7 @@ export default function TransactionsScreen() {
                             value={amount}
                             onChangeText={setAmount}
                             keyboardType="decimal-pad"
-                            placeholder="Tutar (TL)"
+                            placeholder="Tutar (₺)"
                             style={styles.input}
                         />
                         <TextInput
@@ -266,11 +297,20 @@ export default function TransactionsScreen() {
                     </View>
 
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Son Islemler</Text>
+                        <View style={styles.txHeaderRow}>
+                            <Text style={styles.cardTitle}>
+                                {externalStartDate ? 'Filtrelenmis Islemler' : 'Son Islemler'}
+                            </Text>
+                            {externalStartDate && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{inPeriodTransactions.length} Islem</Text>
+                                </View>
+                            )}
+                        </View>
                         {inPeriodTransactions.length === 0 ? (
-                            <Text style={styles.emptyText}>Bu donem icin islem kaydi yok.</Text>
+                            <Text style={styles.emptyText}>Bu aralikta islem kaydi yok.</Text>
                         ) : (
-                            inPeriodTransactions.slice(0, 20).map((tx) => (
+                            inPeriodTransactions.slice(0, 100).map((tx) => (
                                 <TouchableOpacity
                                     key={tx.id}
                                     style={styles.txRow}
@@ -288,9 +328,11 @@ export default function TransactionsScreen() {
                                         <Text style={styles.txTitle}>{tx.category || (tx.type === 'INCOME' ? 'Gelir' : 'Gider')}</Text>
                                         <Text style={styles.txSub}>{tx.occurredOn}{tx.note ? ` | ${tx.note}` : ''}</Text>
                                     </View>
-                                    <Text style={[styles.txAmount, tx.type === 'INCOME' ? styles.incomeText : styles.expenseText]}>
-                                        {tx.type === 'INCOME' ? '+' : '-'}?{(tx.amountMinor / 100).toFixed(2)}
-                                    </Text>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={[styles.txAmount, tx.type === 'INCOME' ? styles.incomeText : styles.expenseText]}>
+                                            {tx.type === 'INCOME' ? '+' : '-'}₺{(tx.amountMinor / 100).toFixed(2)}
+                                        </Text>
+                                    </View>
                                     <TouchableOpacity style={styles.deleteBtn} onPress={() => onDeleteTransaction(tx.id)}>
                                         <Ionicons name="trash-outline" size={14} color="#DC2626" />
                                     </TouchableOpacity>
@@ -393,6 +435,24 @@ const styles = StyleSheet.create({
     periodBtnActive: { backgroundColor: '#fff' },
     periodBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
     periodBtnTextActive: { color: PURPLE },
+    filterInfoRow: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        justifyContent: 'space-between',
+    },
+    filterInfoText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    clearFilterBtn: {
+        padding: 2,
+    },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     content: { padding: 14, paddingBottom: 24, gap: 10 },
     card: {
@@ -407,13 +467,14 @@ const styles = StyleSheet.create({
     miniStat: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#E2E8F0' },
     miniTitle: { fontSize: 11, color: '#64748B' },
     miniValue: { marginTop: 3, fontSize: 13, fontWeight: '800' },
-    compareText: { marginTop: 8, fontSize: 12, color: '#475569' },
-    chartWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, minHeight: 120 },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 10 },
+    compareText: { fontSize: 12, color: '#475569' },
+    chartWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, minHeight: 120, justifyContent: 'center' },
     chartGroup: { alignItems: 'center' },
     barArea: { height: 94, flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
     bar: { width: 10, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
     chartLabel: { marginTop: 6, fontSize: 10, color: '#64748B' },
-    chartLegendRow: { marginTop: 8, flexDirection: 'row', gap: 14 },
+    chartLegendRow: { marginTop: 8, flexDirection: 'row', gap: 14, justifyContent: 'center' },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     legendDot: { width: 10, height: 10, borderRadius: 3 },
     legendText: { fontSize: 11, color: '#64748B' },
@@ -442,6 +503,23 @@ const styles = StyleSheet.create({
     },
     saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
     emptyText: { fontSize: 12, color: '#64748B' },
+    txHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    badge: {
+        backgroundColor: PURPLE + '15',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: PURPLE,
+    },
     txRow: {
         marginTop: 8,
         borderTopWidth: 1,
@@ -465,9 +543,9 @@ const styles = StyleSheet.create({
     incomeText: { color: '#16A34A' },
     expenseText: { color: '#DC2626' },
     deleteBtn: {
-        width: 24,
-        height: 24,
-        borderRadius: 7,
+        width: 28,
+        height: 28,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#FEF2F2',

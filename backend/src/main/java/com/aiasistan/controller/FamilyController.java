@@ -36,6 +36,7 @@ import com.aiasistan.dto.response.FamilyBirthdayResponse;
 import com.aiasistan.dto.response.FamilyFinanceSummaryResponse;
 import com.aiasistan.dto.response.FamilyFinanceReportResponse;
 import com.aiasistan.dto.response.FamilyTransactionResponse;
+import com.aiasistan.dto.response.MonthlyFinanceSummaryResponse;
 import com.aiasistan.service.FamilyService;
 
 import jakarta.validation.Valid;
@@ -64,8 +65,11 @@ public class FamilyController {
   @Operation(summary = "Islemleri listele")
   public ResponseEntity<ApiResponse<Page<FamilyTransactionResponse>>> getTransactions(
       Authentication authentication,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
       @ParameterObject Pageable pageable) {
-    Page<FamilyTransactionResponse> response = familyService.getTransactions(authentication.getName(), pageable);
+    Page<FamilyTransactionResponse> response = familyService.getTransactions(authentication.getName(), startDate,
+        endDate, pageable);
 
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -115,6 +119,22 @@ public class FamilyController {
       @RequestParam(defaultValue = "MONTHLY") String period) {
     FamilyFinanceReportResponse response = familyService.getFinanceReport(authentication.getName(), period);
     return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/transactions/history")
+  @Operation(summary = "Gecmis aylarin finansal ozetini getir")
+  public ResponseEntity<ApiResponse<List<MonthlyFinanceSummaryResponse>>> getFinanceHistory(
+      Authentication authentication,
+      @RequestParam(defaultValue = "12") int months,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+    List<MonthlyFinanceSummaryResponse> history;
+    if (startDate != null && endDate != null) {
+      history = familyService.getFinanceHistory(authentication.getName(), startDate, endDate);
+    } else {
+      history = familyService.getFinanceHistory(authentication.getName(), months);
+    }
+    return ResponseEntity.ok(ApiResponse.ok(history));
   }
 
   @PostMapping("/birthdays")

@@ -47,8 +47,8 @@ public class ShoppingRecommendationService {
     private String mlServiceUrl;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(5))
-        .build();
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ShoppingItemRepository shoppingItemRepository;
@@ -61,10 +61,9 @@ public class ShoppingRecommendationService {
 
     @Transactional(readOnly = true)
     public List<ShoppingRecommendationDto.Response> getRecommendations(
-        String userEmail,
-        UUID listId,
-        int topK
-    ) {
+            String userEmail,
+            UUID listId,
+            int topK) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         List<ShoppingItem> allItems = shoppingItemRepository.findAll();
         if (allItems.isEmpty()) {
@@ -74,11 +73,13 @@ public class ShoppingRecommendationService {
         if (tryEnsureMlModel(allItems)) {
             List<ShoppingRecommendationDto.Response> mlResponse = fetchFromMl(userId, topK);
             if (!mlResponse.isEmpty()) {
+                logger.info("Shopping recommendations fetched from ML for userId={}, count={}", userId,
+                        mlResponse.size());
                 return filterForList(mlResponse, listId, topK);
             }
         }
 
-        logger.info("Shopping ML recommendation fallback is used for userId={}", userId);
+        logger.info("Shopping ML recommendation fallback is used for userId={} (allItems={})", userId, allItems.size());
         return localFallback(userId, allItems, listId, topK);
     }
 
@@ -88,18 +89,16 @@ public class ShoppingRecommendationService {
         List<ShoppingItem> allItems = shoppingItemRepository.findAll();
         if (allItems.isEmpty()) {
             return Map.of(
-                "success", false,
-                "message", "Egitim icin shopping verisi bulunamadi."
-            );
+                    "success", false,
+                    "message", "Egitim icin shopping verisi bulunamadi.");
         }
         boolean trained = trainRemoteModel(allItems);
         boolean loaded = reloadRemoteModel();
         return Map.of(
-            "success", trained && loaded,
-            "trained", trained,
-            "loaded", loaded,
-            "interactionCount", allItems.size()
-        );
+                "success", trained && loaded,
+                "trained", trained,
+                "loaded", loaded,
+                "interactionCount", allItems.size());
     }
 
     @Transactional(readOnly = true)
@@ -107,32 +106,29 @@ public class ShoppingRecommendationService {
         userService.getUserIdByEmail(userEmail);
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(
-                    mlServiceUrl
-                        + "/api/shopping/recommendations/metrics?top_k="
-                        + topK
-                        + "&max_users="
-                        + maxUsers
-                ))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(20))
-                .GET()
-                .build();
+                    .uri(URI.create(
+                            mlServiceUrl
+                                    + "/api/shopping/recommendations/metrics?top_k="
+                                    + topK
+                                    + "&max_users="
+                                    + maxUsers))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(20))
+                    .GET()
+                    .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 return Map.of(
-                    "success", false,
-                    "status", response.statusCode(),
-                    "message", "ML service metrics endpoint cagrisinda hata."
-                );
+                        "success", false,
+                        "status", response.statusCode(),
+                        "message", "ML service metrics endpoint cagrisinda hata.");
             }
             JsonNode root = objectMapper.readTree(response.body());
             JsonNode dataNode = root.get("data");
             if (dataNode == null || dataNode.isNull()) {
                 return Map.of(
-                    "success", false,
-                    "message", "ML service metrics verisi bos dondu."
-                );
+                        "success", false,
+                        "message", "ML service metrics verisi bos dondu.");
             }
             return objectMapper.convertValue(dataNode, Map.class);
         } catch (InterruptedException ex) {
@@ -156,16 +152,16 @@ public class ShoppingRecommendationService {
     private boolean trainRemoteModel(List<ShoppingItem> allItems) {
         try {
             List<Map<String, Object>> interactions = allItems.stream()
-                .map(this::toInteractionPayload)
-                .toList();
+                    .map(this::toInteractionPayload)
+                    .toList();
             String body = objectMapper.writeValueAsString(Map.of("interactions", interactions));
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(mlServiceUrl + "/api/shopping/recommendations/train"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(30))
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
+                    .uri(URI.create(mlServiceUrl + "/api/shopping/recommendations/train"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
@@ -182,11 +178,11 @@ public class ShoppingRecommendationService {
     private boolean reloadRemoteModel() {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(mlServiceUrl + "/api/shopping/recommendations/reload"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(10))
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
+                    .uri(URI.create(mlServiceUrl + "/api/shopping/recommendations/reload"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             return response.statusCode() >= 200 && response.statusCode() < 300;
         } catch (Exception ex) {
@@ -199,17 +195,17 @@ public class ShoppingRecommendationService {
         try {
             String encodedUserId = URLEncoder.encode(userId.toString(), StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(
-                    mlServiceUrl + "/api/shopping/recommendations/user/" + encodedUserId + "?top_k=" + topK
-                ))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(15))
-                .GET()
-                .build();
+                    .uri(URI.create(
+                            mlServiceUrl + "/api/shopping/recommendations/user/" + encodedUserId + "?top_k=" + topK))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                logger.warn("Shopping recommendation call failed. status={} body={}", response.statusCode(), response.body());
+                logger.warn("Shopping recommendation call failed. status={} body={}", response.statusCode(),
+                        response.body());
                 return List.of();
             }
 
@@ -253,55 +249,61 @@ public class ShoppingRecommendationService {
     }
 
     private List<ShoppingRecommendationDto.Response> filterForList(
-        List<ShoppingRecommendationDto.Response> recommendations,
-        UUID listId,
-        int topK
-    ) {
+            List<ShoppingRecommendationDto.Response> recommendations,
+            UUID listId,
+            int topK) {
         if (listId == null) {
             return recommendations.stream().limit(topK).toList();
         }
         Set<String> existing = shoppingItemRepository.findByList_Id(listId, Pageable.unpaged())
-            .getContent()
-            .stream()
-            .map(ShoppingItem::getProductKey)
-            .filter(k -> k != null && !k.isBlank())
-            .collect(Collectors.toSet());
-
-        return recommendations.stream()
-            .filter(r -> r.getProductKey() != null && !existing.contains(r.getProductKey()))
-            .limit(topK)
-            .toList();
-    }
-
-    private List<ShoppingRecommendationDto.Response> localFallback(
-        UUID userId,
-        List<ShoppingItem> allItems,
-        UUID listId,
-        int topK
-    ) {
-        List<ShoppingItem> checked = allItems.stream()
-            .filter(i -> Boolean.TRUE.equals(i.getIsChecked()))
-            .filter(i -> i.getProductKey() != null && !i.getProductKey().isBlank())
-            .toList();
-        if (checked.isEmpty()) {
-            return List.of();
-        }
-
-        Map<String, Long> globalFrequency = checked.stream()
-            .collect(Collectors.groupingBy(ShoppingItem::getProductKey, Collectors.counting()));
-
-        List<ShoppingItem> userChecked = checked.stream()
-            .filter(i -> userId.equals(i.getList().getUserId()))
-            .toList();
-
-        Set<String> listExisting = new HashSet<>();
-        if (listId != null) {
-            listExisting = shoppingItemRepository.findByList_Id(listId, Pageable.unpaged())
                 .getContent()
                 .stream()
                 .map(ShoppingItem::getProductKey)
                 .filter(k -> k != null && !k.isBlank())
                 .collect(Collectors.toSet());
+
+        return recommendations.stream()
+                .filter(r -> r.getProductKey() != null && !existing.contains(r.getProductKey()))
+                .limit(topK)
+                .toList();
+    }
+
+    private List<ShoppingRecommendationDto.Response> localFallback(
+            UUID userId,
+            List<ShoppingItem> allItems,
+            UUID listId,
+            int topK) {
+        List<ShoppingItem> checked = allItems.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getIsChecked()))
+                .filter(i -> i.getProductKey() != null && !i.getProductKey().isBlank())
+                .toList();
+
+        if (checked.isEmpty()) {
+            // Hiç satin alinan yoksa, en azindan daha once listeye eklenenleri dikkate al
+            checked = allItems.stream()
+                    .filter(i -> i.getProductKey() != null && !i.getProductKey().isBlank())
+                    .toList();
+        }
+
+        if (checked.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Long> globalFrequency = checked.stream()
+                .collect(Collectors.groupingBy(ShoppingItem::getProductKey, Collectors.counting()));
+
+        List<ShoppingItem> userChecked = checked.stream()
+                .filter(i -> userId.equals(i.getList().getUserId()))
+                .toList();
+
+        Set<String> listExisting = new HashSet<>();
+        if (listId != null) {
+            listExisting = shoppingItemRepository.findByList_Id(listId, Pageable.unpaged())
+                    .getContent()
+                    .stream()
+                    .map(ShoppingItem::getProductKey)
+                    .filter(k -> k != null && !k.isBlank())
+                    .collect(Collectors.toSet());
         }
 
         Map<String, Double> score = new HashMap<>();
@@ -318,11 +320,10 @@ public class ShoppingRecommendationService {
         }
 
         Map<String, List<OffsetDateTime>> userTimes = userChecked.stream()
-            .filter(i -> i.getCheckedAt() != null)
-            .collect(Collectors.groupingBy(
-                ShoppingItem::getProductKey,
-                Collectors.mapping(ShoppingItem::getCheckedAt, Collectors.toList())
-            ));
+                .filter(i -> i.getCheckedAt() != null)
+                .collect(Collectors.groupingBy(
+                        ShoppingItem::getProductKey,
+                        Collectors.mapping(ShoppingItem::getCheckedAt, Collectors.toList())));
         OffsetDateTime now = OffsetDateTime.now();
         for (Map.Entry<String, List<OffsetDateTime>> entry : userTimes.entrySet()) {
             List<OffsetDateTime> times = entry.getValue();
@@ -337,11 +338,12 @@ public class ShoppingRecommendationService {
         }
 
         List<String> userRecentProducts = userChecked.stream()
-            .sorted(Comparator.comparing(ShoppingItem::getCheckedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-            .limit(5)
-            .map(ShoppingItem::getProductKey)
-            .filter(k -> k != null && !k.isBlank())
-            .toList();
+                .sorted(Comparator.comparing(ShoppingItem::getCheckedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .map(ShoppingItem::getProductKey)
+                .filter(k -> k != null && !k.isBlank())
+                .toList();
         Set<String> recentSet = new HashSet<>(userRecentProducts);
         for (String productKey : recentSet) {
             score.remove(productKey);
@@ -350,19 +352,31 @@ public class ShoppingRecommendationService {
             score.remove(productKey);
         }
 
+        if (score.isEmpty() && !listExisting.isEmpty()) {
+            // Eğer her şey filtrelendiyse, listedekileri çok düşük puanla geri getir (hiç
+            // yoktan iyidir)
+            for (String pk : listExisting) {
+                if (names.containsKey(pk)) {
+                    score.put(pk, 0.01);
+                }
+            }
+        }
+
+        logger.info("Local fallback generated {} candidates for userId={}", score.size(), userId);
+
         return score.entrySet().stream()
-            .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-            .limit(topK)
-            .map(entry -> {
-                ShoppingRecommendationDto.Response response = new ShoppingRecommendationDto.Response();
-                response.setProductKey(entry.getKey());
-                response.setItemName(names.getOrDefault(entry.getKey(), entry.getKey()));
-                response.setCategory(normalizeCategory(categories.get(entry.getKey())));
-                response.setScore(entry.getValue());
-                response.setReasons(Collections.singletonList("fallback_popularity"));
-                return response;
-            })
-            .toList();
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(topK)
+                .map(entry -> {
+                    ShoppingRecommendationDto.Response response = new ShoppingRecommendationDto.Response();
+                    response.setProductKey(entry.getKey());
+                    response.setItemName(names.getOrDefault(entry.getKey(), entry.getKey()));
+                    response.setCategory(normalizeCategory(categories.get(entry.getKey())));
+                    response.setScore(entry.getValue());
+                    response.setReasons(Collections.singletonList("fallback_popularity"));
+                    return response;
+                })
+                .toList();
     }
 
     private Map<String, Object> toInteractionPayload(ShoppingItem item) {
@@ -380,9 +394,8 @@ public class ShoppingRecommendationService {
         payload.put("added_at", item.getAddedAt() != null ? item.getAddedAt().toString() : null);
         payload.put("checked_at", item.getCheckedAt() != null ? item.getCheckedAt().toString() : null);
         payload.put(
-            "list_created_at",
-            item.getList().getCreatedAt() != null ? item.getList().getCreatedAt().toString() : null
-        );
+                "list_created_at",
+                item.getList().getCreatedAt() != null ? item.getList().getCreatedAt().toString() : null);
         payload.put("recurrence_type", item.getList().getRecurrenceType());
         return payload;
     }

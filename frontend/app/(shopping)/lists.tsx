@@ -20,13 +20,16 @@ import { useShopping } from '../../src/hooks/useShopping';
 import type { ShoppingItem, ShoppingRecurrenceType } from '../../src/models/shopping.model';
 
 const COLOR = '#F472B6';
-const DATE_FILTERS: { key: ShoppingRecurrenceType; label: string }[] = [
+const DATE_FILTERS: { key: ShoppingRecurrenceType | 'ALL' | 'ARCHIVED'; label: string }[] = [
     { key: 'DAILY', label: 'Gunluk' },
     { key: 'WEEKLY', label: 'Haftalik' },
     { key: 'MONTHLY', label: 'Aylik' },
+    { key: 'ALL', label: 'Tumu' },
+    { key: 'ARCHIVED', label: 'Arsiv' },
 ];
 
-const isInCurrentPeriod = (dateStr: string, period: ShoppingRecurrenceType) => {
+const isInCurrentPeriod = (dateStr: string, period: ShoppingRecurrenceType | 'ALL' | 'ARCHIVED') => {
+    if (period === 'ALL' || period === 'ARCHIVED') return true;
     const d = new Date(dateStr);
     const now = new Date();
     if (Number.isNaN(d.getTime())) return false;
@@ -50,7 +53,7 @@ export default function ListsScreen() {
     const { lists, isLoading, fetchLists, createList, deleteList, updateListArchive } = useShopping();
 
     const [newListName, setNewListName] = useState('');
-    const [dateFilter, setDateFilter] = useState<ShoppingRecurrenceType>('WEEKLY');
+    const [dateFilter, setDateFilter] = useState<ShoppingRecurrenceType | 'ALL' | 'ARCHIVED'>('WEEKLY');
     const [overviewTab, setOverviewTab] = useState<'PENDING' | 'DONE'>('PENDING');
     const [allPendingItems, setAllPendingItems] = useState<ShoppingItem[]>([]);
     const [allDoneItems, setAllDoneItems] = useState<ShoppingItem[]>([]);
@@ -59,6 +62,7 @@ export default function ListsScreen() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
+    const [showArchived, setShowArchived] = useState(false);
 
     const showToast = (type: 'success' | 'error' | 'info', message: string) => {
         setToastType(type);
@@ -107,7 +111,10 @@ export default function ListsScreen() {
 
         setCreating(true);
         try {
-            await createList({ name, recurrenceType: dateFilter });
+            await createList({
+                name,
+                recurrenceType: (dateFilter === 'ALL' || dateFilter === 'ARCHIVED') ? 'WEEKLY' : dateFilter
+            });
             setNewListName('');
             await loadData();
             showToast('success', 'Liste olusturuldu.');
@@ -165,12 +172,18 @@ export default function ListsScreen() {
     };
 
     const filteredLists = useMemo(
-        () => lists.filter((list) => isInCurrentPeriod(list.createdAt, dateFilter)),
+        () => lists.filter((list) => {
+            if (dateFilter === 'ARCHIVED') {
+                return list.isArchived;
+            }
+            const periodMatch = isInCurrentPeriod(list.createdAt, dateFilter);
+            return periodMatch && !list.isArchived;
+        }),
         [dateFilter, lists],
     );
 
     const recurrenceBadgeLabel = (recurrenceType?: string) => {
-        const found = DATE_FILTERS.find((r) => r.key === recurrenceType);
+        const found = DATE_FILTERS.find((r) => r.key === (recurrenceType as any));
         return found ? found.label : 'Haftalik';
     };
     const overviewItems = overviewTab === 'PENDING' ? allPendingItems : allDoneItems;
@@ -311,7 +324,9 @@ export default function ListsScreen() {
                         </View>
                     ) : (
                         <View style={styles.sectionWrap}>
-                            <Text style={styles.sectionTitle}>{dateFilter === 'DAILY' ? 'Bugun' : dateFilter === 'WEEKLY' ? 'Bu Hafta' : 'Bu Ay'} Listeleri</Text>
+                            <Text style={styles.sectionTitle}>
+                                {dateFilter === 'DAILY' ? 'Bugun' : dateFilter === 'WEEKLY' ? 'Bu Hafta' : dateFilter === 'MONTHLY' ? 'Bu Ay' : 'Tum'} Listeleri
+                            </Text>
                             {filteredLists.length === 0 ? (
                                 <Text style={styles.emptySub}>Secili tarih araliginda liste bulunamadi.</Text>
                             ) : (
@@ -384,7 +399,8 @@ export default function ListsScreen() {
                         </View>
                     )}
                 </ScrollView>
-            )}
+            )
+            }
 
             <Toast
                 visible={toastVisible}
@@ -392,7 +408,7 @@ export default function ListsScreen() {
                 message={toastMessage}
                 onHide={() => setToastVisible(false)}
             />
-        </View>
+        </View >
     );
 }
 
@@ -600,4 +616,23 @@ const styles = StyleSheet.create({
     },
     actionText: { fontSize: 12, color: '#475569', fontWeight: '700' },
     actionDangerText: { fontSize: 12, color: '#DC2626', fontWeight: '700' },
+    archiveToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        gap: 6,
+    },
+    archiveToggleActive: {
+        backgroundColor: '#fff',
+    },
+    archiveToggleText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    archiveToggleTextActive: {
+        color: COLOR,
+    },
 });

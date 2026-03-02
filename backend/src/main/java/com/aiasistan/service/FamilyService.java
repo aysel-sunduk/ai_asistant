@@ -11,6 +11,7 @@ import com.aiasistan.dto.response.FamilyBirthdayResponse;
 import com.aiasistan.dto.response.FamilyFinanceSummaryResponse;
 import com.aiasistan.dto.response.FamilyFinanceReportResponse;
 import com.aiasistan.dto.response.FamilyTransactionResponse;
+import com.aiasistan.dto.response.MonthlyFinanceSummaryResponse;
 import com.aiasistan.exception.NotFoundException;
 import com.aiasistan.model.FamilyBirthday;
 import com.aiasistan.model.FamilyTransaction;
@@ -75,8 +76,14 @@ public class FamilyService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FamilyTransactionResponse> getTransactions(String userEmail, Pageable pageable) {
+    public Page<FamilyTransactionResponse> getTransactions(String userEmail, LocalDate startDate, LocalDate endDate,
+            Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
+        if (startDate != null && endDate != null) {
+            return transactionRepository
+                    .findByUserIdAndOccurredOnBetweenOrderByOccurredOnDesc(userId, startDate, endDate, pageable)
+                    .map(this::toTransactionResponse);
+        }
         return transactionRepository.findByUserIdOrderByOccurredOnDesc(userId, pageable)
                 .map(this::toTransactionResponse);
     }
@@ -188,6 +195,47 @@ public class FamilyService {
         response.setBalanceChangePct(calculateChangePct(previousBalance, balance));
         response.setBuckets(buildBuckets(userId, startDate, endDate, normalized));
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthlyFinanceSummaryResponse> getFinanceHistory(String userEmail, LocalDate startDate,
+            LocalDate endDate) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        List<MonthlyFinanceSummaryResponse> history = new java.util.ArrayList<>();
+
+        LocalDate currentMonthStart = endDate.withDayOfMonth(1);
+        while (!currentMonthStart.isBefore(startDate.withDayOfMonth(1))) {
+            LocalDate monthStart = currentMonthStart;
+            LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+            if (monthEnd.isAfter(endDate))
+                monthEnd = endDate;
+            if (monthStart.isBefore(startDate))
+                monthStart = startDate;
+
+            Long incomeMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "INCOME", monthStart,
+                    monthEnd);
+            Long expenseMinor = transactionRepository.sumAmountMinorByTypeAndDateRange(userId, "EXPENSE", monthStart,
+                    monthEnd);
+
+            MonthlyFinanceSummaryResponse summary = new MonthlyFinanceSummaryResponse();
+            summary.setMonthLabel(monthStart.getYear() + "-" + String.format("%02d", monthStart.getMonthValue()));
+            summary.setStartDate(monthStart);
+            summary.setEndDate(monthEnd);
+            summary.setIncome(minorToAmount(incomeMinor));
+            summary.setExpense(minorToAmount(expenseMinor));
+            summary.setBalance(summary.getIncome().subtract(summary.getExpense()).setScale(2, RoundingMode.HALF_UP));
+            history.add(summary);
+
+            currentMonthStart = currentMonthStart.minusMonths(1);
+        }
+        return history;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthlyFinanceSummaryResponse> getFinanceHistory(String userEmail, int months) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusMonths(months - 1).withDayOfMonth(1);
+        return getFinanceHistory(userEmail, startDate, endDate);
     }
 
     @Transactional

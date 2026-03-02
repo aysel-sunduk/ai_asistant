@@ -152,7 +152,11 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refres
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.headerTitle}>Finans</Text>
-                        <Text style={styles.headerSubtitle}>Portföy Yönetimi</Text>
+                        <TouchableOpacity onPress={() => router.push('/(finance)/history')}>
+                            <Text style={[styles.headerSubtitle, { color: PURPLE, fontWeight: '600' }]}>
+                                Geçmişi Gör <Ionicons name="chevron-forward" size={12} />
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                     <View style={styles.headerActions}>
                         <TouchableOpacity style={styles.iconBtn} onPress={onRefresh}>

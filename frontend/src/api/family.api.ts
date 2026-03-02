@@ -9,6 +9,7 @@ import type {
     FamilyTransactionPage,
     FamilyTransactionRequest,
     FamilyTransactionResponse,
+    MonthlyFinanceSummaryResponse,
 } from '../models/family.model';
 import apiClient from './client';
 
@@ -29,9 +30,9 @@ export const familyApi = {
     deleteBirthday: (id: string) =>
         apiClient.delete<ApiResponse<void>>(`${BASE_PATH}/birthdays/${id}`),
 
-    getTransactions: (page = 0, size = 100) =>
+    getTransactions: (page = 0, size = 100, startDate?: string, endDate?: string) =>
         apiClient.get<ApiResponse<FamilyTransactionPage>>(`${BASE_PATH}/transactions`, {
-            params: { page, size, sort: 'occurredOn,desc' },
+            params: { page, size, startDate, endDate, sort: 'occurredOn,desc' },
         }),
 
     createTransaction: (data: FamilyTransactionRequest) =>
@@ -51,5 +52,10 @@ export const familyApi = {
     getTransactionsReport: (period: 'WEEKLY' | 'MONTHLY') =>
         apiClient.get<ApiResponse<FamilyFinanceReportResponse>>(`${BASE_PATH}/transactions/report`, {
             params: { period },
+        }),
+
+    getFinanceHistory: (months = 12, startDate?: string, endDate?: string) =>
+        apiClient.get<ApiResponse<MonthlyFinanceSummaryResponse[]>>(`${BASE_PATH}/transactions/history`, {
+            params: { months, startDate, endDate },
         }),
 };

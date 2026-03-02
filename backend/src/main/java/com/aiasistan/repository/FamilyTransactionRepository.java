@@ -20,23 +20,29 @@ import java.util.UUID;
 @Repository
 public interface FamilyTransactionRepository extends JpaRepository<FamilyTransaction, UUID> {
 
-    Page<FamilyTransaction> findByUserIdOrderByOccurredOnDesc(UUID userId, Pageable pageable);
+        Page<FamilyTransaction> findByUserIdOrderByOccurredOnDesc(UUID userId, Pageable pageable);
 
-    Page<FamilyTransaction> findByUserIdAndTypeOrderByOccurredOnDesc(UUID userId, String type, Pageable pageable);
+        Page<FamilyTransaction> findByUserIdAndTypeOrderByOccurredOnDesc(UUID userId, String type, Pageable pageable);
 
-    Optional<FamilyTransaction> findByIdAndUserId(UUID id, UUID userId);
+        Optional<FamilyTransaction> findByIdAndUserId(UUID id, UUID userId);
 
-    Optional<FamilyTransaction> findByUserIdAndNote(UUID userId, String note);
+        Optional<FamilyTransaction> findByUserIdAndNote(UUID userId, String note);
 
-    List<FamilyTransaction> findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(
-            UUID userId,
-            LocalDate startDate,
-            LocalDate endDate);
+        List<FamilyTransaction> findByUserIdAndOccurredOnBetweenOrderByOccurredOnAsc(
+                        UUID userId,
+                        LocalDate startDate,
+                        LocalDate endDate);
 
-    @Query("SELECT COALESCE(SUM(ft.amountMinor), 0) FROM FamilyTransaction ft WHERE ft.userId = :userId AND ft.type = :type AND ft.occurredOn BETWEEN :startDate AND :endDate")
-    Long sumAmountMinorByTypeAndDateRange(
-            @Param("userId") UUID userId,
-            @Param("type") String type,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
+        Page<FamilyTransaction> findByUserIdAndOccurredOnBetweenOrderByOccurredOnDesc(
+                        UUID userId,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        Pageable pageable);
+
+        @Query("SELECT COALESCE(SUM(ft.amountMinor), 0) FROM FamilyTransaction ft WHERE ft.userId = :userId AND ft.type = :type AND ft.occurredOn BETWEEN :startDate AND :endDate")
+        Long sumAmountMinorByTypeAndDateRange(
+                        @Param("userId") UUID userId,
+                        @Param("type") String type,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
 }

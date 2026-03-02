@@ -24,18 +24,39 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Uygulama başlarken ve kapanırken çalışır."""
     logger.info("AI Asistan ML Service başlatılıyor...")
-    # ML modellerini ön yükle
-    from app.models.profanity_filter import _load_ml_model
-    from app.models.title_generator import _load_model as _load_title_model
-    from app.models.game_analyzer import _load_models as _load_game_models
-    from app.models.motivation_predictor import _load_models as _load_motivation_model
-    from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
-    _load_ml_model()
-    _load_title_model()
-    _load_game_models()
-    _load_motivation_model()
-    _load_shopping_artifacts()
-    logger.info("ML Service hazır.")
+    
+    # ML modellerini ön yükle - Her biri bağımsız yüklensin ki biri hata verirse servis çökmesin
+    try:
+        from app.models.profanity_filter import _load_ml_model
+        _load_ml_model()
+    except Exception as e:
+        logger.error(f"Argo filtresi yuklenemedi: {e}")
+
+    try:
+        from app.models.title_generator import _load_model as _load_title_model
+        _load_title_model()
+    except Exception as e:
+        logger.error(f"Baslik onerici yuklenemedi: {e}")
+
+    try:
+        from app.models.game_analyzer import _load_models as _load_game_models
+        _load_game_models()
+    except Exception as e:
+        logger.error(f"Oyun analizoru yuklenemedi: {e}")
+
+    try:
+        from app.models.motivation_predictor import _load_models as _load_motivation_model
+        _load_motivation_model()
+    except Exception as e:
+        logger.error(f"Motivasyon tahminci yuklenemedi: {e}")
+
+    try:
+        from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
+        _load_shopping_artifacts()
+    except Exception as e:
+        logger.error(f"Alisveris onerici yuklenemedi: {e}")
+
+    logger.info("ML Service yukleme süreci tamamlandı.")
     yield
     logger.info("ML Service kapatılıyor...")
 
@@ -43,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Asistan ML Service",
     description="Türkçe argo/küfür filtresi, başlık önerisi ve AI modülleri",
-    version="1.1.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 

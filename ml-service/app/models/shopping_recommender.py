@@ -26,6 +26,11 @@ MODEL_DIR = Path(__file__).resolve().parent.parent / "models_saved" / "shopping_
 _rules_df = pd.DataFrame()
 _purchases_df = pd.DataFrame()
 _item_popularity_df = pd.DataFrame()
+_svd_user_factors = None
+_svd_item_factors = None
+_svd_mappings = {}
+_tfidf_matrix = None
+_tfidf_vectorizer = None
 _loaded = False
 
 
@@ -152,20 +157,48 @@ def train_and_save_artifacts(df: pd.DataFrame) -> None:
 
 def _load_artifacts() -> bool:
     global _rules_df, _purchases_df, _item_popularity_df, _loaded
+    global _svd_user_factors, _svd_item_factors, _svd_mappings
+    global _tfidf_matrix, _tfidf_vectorizer
     try:
         rules_path = MODEL_DIR / "association_rules.parquet"
         purchases_path = MODEL_DIR / "purchases.parquet"
         item_popularity_path = MODEL_DIR / "item_popularity.parquet"
+        svd_user_path = MODEL_DIR / "svd_user_factors.npy"
+        svd_item_path = MODEL_DIR / "svd_item_factors.npy"
+        svd_mapping_path = MODEL_DIR / "svd_mappings.pkl"
+        tfidf_matrix_path = MODEL_DIR / "tfidf_matrix.npz"
+        tfidf_model_path = MODEL_DIR / "tfidf_model.pkl"
+
         if not rules_path.exists() or not purchases_path.exists():
-            logger.info("Shopping artifacts not found in %s", MODEL_DIR)
+            logger.info("Basic shopping artifacts not found in %s", MODEL_DIR)
             _loaded = False
             return False
+
         _rules_df = pd.read_parquet(rules_path)
         _purchases_df = pd.read_parquet(purchases_path)
+
         if item_popularity_path.exists():
             _item_popularity_df = pd.read_parquet(item_popularity_path)
         else:
             _item_popularity_df = _compute_item_popularity(_purchases_df)
+
+        # SVD Yükleme
+        import pickle
+        if svd_user_path.exists() and svd_item_path.exists() and svd_mapping_path.exists():
+            _svd_user_factors = np.load(str(svd_user_path))
+            _svd_item_factors = np.load(str(svd_item_path))
+            with open(svd_mapping_path, "rb") as f:
+                _svd_mappings = pickle.load(f)
+            logger.info("SVD artifacts loaded.")
+
+        # TF-IDF Yükleme
+        from scipy.sparse import load_npz
+        if tfidf_matrix_path.exists() and tfidf_model_path.exists():
+            _tfidf_matrix = load_npz(str(tfidf_matrix_path))
+            with open(tfidf_model_path, "rb") as f:
+                _tfidf_vectorizer = pickle.load(f)
+            logger.info("TF-IDF artifacts loaded.")
+
         _loaded = True
         logger.info("Shopping recommender artifacts loaded.")
         return True
@@ -233,7 +266,56 @@ def _replenishment_scores(user_id: str, purchases_df: pd.DataFrame) -> pd.DataFr
     return out[out["repl"] >= 0.8]
 
 
-def _cf_scores(user_id: str, purchases_df: pd.DataFrame, k_neighbors: int = 40) -> pd.DataFrame:
+def _tfidf_similar_scores(cart_products: List[str], top_n: int = 20) -> pd.DataFrame:
+    if _tfidf_matrix is None or _tfidf_vectorizer is None or not cart_products:
+        return pd.DataFrame(columns=["product_key", "tfidf"])
+
+    # This is a bit simplified compared to notebook but uses the same principle
+    # Mapping cart product keys to indices
+    item2idx = {v: k for k, v in _svd_mappings.get("idx2item", {}).items()}
+    cart_indices = [item2idx[pk] for pk in cart_products if pk in item2idx]
+
+    if not cart_indices:
+        return pd.DataFrame(columns=["product_key", "tfidf"])
+
+    from sklearn.metrics.pairwise import cosine_similarity
+    # Average vector of cart items
+    cart_vec = _tfidf_matrix[cart_indices].mean(axis=0)
+    sim_scores = cosine_similarity(cart_vec, _tfidf_matrix).flatten()
+
+    idx2item = _svd_mappings["idx2item"]
+    recs = []
+    # Get top N similar items excluding the ones already in cart
+    top_indices = sim_scores.argsort()[-(top_n + len(cart_indices)) :][::-1]
+    for idx in top_indices:
+        pk = idx2item[idx]
+        if pk not in cart_products:
+            recs.append({"product_key": pk, "tfidf": float(sim_scores[idx])})
+
+    return pd.DataFrame(recs)
+
+
+def _svd_scores(user_id: str) -> pd.DataFrame:
+    if _svd_user_factors is None or str(user_id) not in _svd_mappings.get("user2idx", {}):
+        return pd.DataFrame(columns=["product_key", "svd"])
+
+    user2idx = _svd_mappings["user2idx"]
+    idx2item = _svd_mappings["idx2item"]
+    uidx = user2idx[str(user_id)]
+
+    scores = _svd_item_factors @ _svd_user_factors[uidx]
+    recs = []
+    for i, s in enumerate(scores):
+        if s > 0:
+            recs.append({"product_key": idx2item[i], "svd": float(s)})
+    return pd.DataFrame(recs)
+
+
+def _cf_scores(user_id: str, purchases_df: pd.DataFrame) -> pd.DataFrame:
+    # Fallback to KNN CF if SVD is not available
+    if _svd_user_factors is not None:
+        return _svd_scores(user_id).rename(columns={"svd": "cf"})
+
     ui = purchases_df.groupby(["user_id", "product_key"]).size().reset_index(name="cnt")
     if ui.empty:
         return pd.DataFrame(columns=["product_key", "cf"])
@@ -251,6 +333,7 @@ def _cf_scores(user_id: str, purchases_df: pd.DataFrame, k_neighbors: int = 40) 
     mat = csr_matrix((vals, (rows, cols)), shape=(len(user_ids), len(item_ids)))
 
     uidx = user2idx[str(user_id)]
+    k_neighbors = 40 # Default value
     n_neighbors = min(k_neighbors + 1, mat.shape[0])
     if n_neighbors <= 1:
         return pd.DataFrame(columns=["product_key", "cf"])
@@ -311,16 +394,30 @@ def _recommend_with_data(
     w_cat: float = 0.10,
     seed_items_override: set[str] | None = None,
     exclude_items: set[str] | None = None,
+    cart_items: list[dict] | None = None, # Added cart_items parameter
 ) -> list[dict]:
     if purchases_df.empty:
         return []
 
     seed_items = seed_items_override if seed_items_override is not None else _latest_basket_for_user(user_id, purchases_df)
-    assoc = _normalize(_association_scores(seed_items, rules_df), "assoc", "assoc_norm")
-    repl = _normalize(_replenishment_scores(user_id, purchases_df), "repl", "repl_norm")
-    cf = _normalize(_cf_scores(user_id, purchases_df), "cf", "cf_norm")
-    pop = _normalize(item_popularity_df.rename(columns={"pop": "pop_raw"}), "pop_raw", "pop_norm")
-    cat = _normalize(_category_preference_scores(user_id, purchases_df), "cat_pref", "cat_norm")
+    assoc_scores = _association_scores(seed_items, rules_df)
+    repl_scores = _replenishment_scores(user_id, purchases_df)
+    cf_scores = _cf_scores(user_id, purchases_df)
+    pop_scores = item_popularity_df.rename(columns={"pop": "pop_raw"})
+    cat_scores = _category_preference_scores(user_id, purchases_df)
+
+    tfidf_scores = pd.DataFrame(columns=["product_key", "tfidf"])
+    if cart_items:
+        cart_pks = [item.get("product_key") for item in cart_items if item.get("product_key")]
+        if cart_pks:
+            tfidf_scores = _tfidf_similar_scores(cart_pks)
+
+    assoc = _normalize(assoc_scores, "assoc", "assoc_norm")
+    repl = _normalize(repl_scores, "repl", "repl_norm")
+    cf = _normalize(cf_scores, "cf", "cf_norm")
+    pop = _normalize(pop_scores, "pop_raw", "pop_norm")
+    cat = _normalize(cat_scores, "cat_pref", "cat_norm")
+    tfidf = _normalize(tfidf_scores, "tfidf", "tfidf_norm") # Normalize TF-IDF scores
 
     candidates = pd.DataFrame({"product_key": purchases_df["product_key"].astype(str).unique()})
     candidates = candidates.merge(assoc, on="product_key", how="left")
@@ -328,6 +425,7 @@ def _recommend_with_data(
     candidates = candidates.merge(cf, on="product_key", how="left")
     candidates = candidates.merge(pop, on="product_key", how="left")
     candidates = candidates.merge(cat, on="product_key", how="left")
+    candidates = candidates.merge(tfidf, on="product_key", how="left") # Merge TF-IDF scores
     candidates = candidates.fillna(0.0)
 
     if exclude_items is None and seed_items:
@@ -335,10 +433,12 @@ def _recommend_with_data(
     elif exclude_items:
         candidates = candidates[~candidates["product_key"].isin(exclude_items)]
 
+    w_tfidf = 0.5 # New weight for hybrid v3
     candidates["hybrid_score"] = (
         w_assoc * candidates["assoc_norm"]
         + w_repl * candidates["repl_norm"]
         + w_cf * candidates["cf_norm"]
+        + w_tfidf * candidates.get("tfidf", 0).fillna(0) # Scaling could be added but let's keep it simple
         + w_pop * candidates["pop_norm"]
         + w_cat * candidates["cat_norm"]
     )
@@ -354,18 +454,25 @@ def _recommend_with_data(
         .agg(lambda s: s.value_counts().index[0])
         .to_dict()
     )
+    candidates = candidates[candidates["hybrid_score"] > 0]
 
-    result: list[dict] = []
-    for _, row in candidates.iterrows():
+    # En son isimleri ve kategorileri al
+    meta = purchases_df.sort_values("checked_at", ascending=False).drop_duplicates("product_key")
+    candidates = candidates.merge(meta[["product_key", "item_name", "category"]], on="product_key", how="left")
+
+    result = []
+    for _, row in candidates.sort_values("hybrid_score", ascending=False).head(top_k).iterrows():
         reasons = []
         if row["assoc_norm"] > 0:
             reasons.append("association")
         if row["repl_norm"] > 0:
             reasons.append("replenishment")
         if row["cf_norm"] > 0:
-            reasons.append("collaborative")
+            reasons.append("personalized" if _svd_user_factors is not None else "collaborative")
         if row["cat_norm"] > 0:
             reasons.append("category_affinity")
+        if row.get("tfidf", 0) > 0:
+            reasons.append("similar_to_cart")
         result.append(
             {
                 "productKey": row["product_key"],

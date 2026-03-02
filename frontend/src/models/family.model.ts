@@ -93,3 +93,12 @@ export interface FamilyFinanceReportResponse {
     balanceChangePct: number;
     buckets: FamilyFinanceBucket[];
 }
+
+export interface MonthlyFinanceSummaryResponse {
+    monthLabel: string;
+    startDate: string;
+    endDate: string;
+    income: number;
+    expense: number;
+    balance: number;
+}
