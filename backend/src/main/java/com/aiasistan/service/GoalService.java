@@ -26,10 +26,13 @@ public class GoalService {
 
     private final GoalRepository goalRepository;
     private final UserService userService;
+    private final OpenRouterAiService openRouterAiService;
 
-    public GoalService(GoalRepository goalRepository, UserService userService) {
+    public GoalService(GoalRepository goalRepository, UserService userService,
+            OpenRouterAiService openRouterAiService) {
         this.goalRepository = goalRepository;
         this.userService = userService;
+        this.openRouterAiService = openRouterAiService;
     }
 
     @Transactional
@@ -55,8 +58,8 @@ public class GoalService {
     public PageResponse<GoalDto.Response> getGoals(String userEmail, Boolean completed, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Page<Goal> page = completed == null
-            ? goalRepository.findByUserId(userId, pageable)
-            : goalRepository.findByUserIdAndIsCompleted(userId, completed, pageable);
+                ? goalRepository.findByUserId(userId, pageable)
+                : goalRepository.findByUserIdAndIsCompleted(userId, completed, pageable);
 
         return PageResponse.of(page.map(GoalDto.Response::from));
     }
@@ -124,6 +127,27 @@ public class GoalService {
         goalRepository.save(goal);
     }
 
+    /**
+     * Hedef için AI motivasyon mesajı üretir.
+     */
+    @Transactional(readOnly = true)
+    public GoalDto.MotivationResponse getGoalMotivation(String userEmail, UUID goalId) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        Goal goal = findOwnedGoal(goalId, userId);
+
+        String message = openRouterAiService.generateGoalMotivation(
+                goal.getTitle(),
+                goal.getDescription(),
+                goal.getCategory(),
+                goal.getProgressPct());
+
+        GoalDto.MotivationResponse response = new GoalDto.MotivationResponse();
+        response.setMessage(message);
+        response.setGoalTitle(goal.getTitle());
+        response.setProgressPct(goal.getProgressPct());
+        return response;
+    }
+
     private void applyRequest(Goal goal, GoalDto.Request request) {
         String normalizedTitle = request.getTitle().trim();
         if (normalizedTitle.length() < 3 || normalizedTitle.length() > 120) {
@@ -134,7 +158,8 @@ public class GoalService {
         goal.setCategory(normalizeCategory(request.getCategory()));
         goal.setTargetDate(request.getTargetDate());
 
-        int progress = normalizeProgress(request.getProgressPct() != null ? request.getProgressPct() : goal.getProgressPct());
+        int progress = normalizeProgress(
+                request.getProgressPct() != null ? request.getProgressPct() : goal.getProgressPct());
         boolean completed = request.getIsCompleted() != null ? request.getIsCompleted() : progress >= 100;
 
         if (completed && progress < 100) {
@@ -175,6 +200,6 @@ public class GoalService {
 
     private Goal findOwnedGoal(UUID id, UUID userId) {
         return goalRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Hedef bulunamadi"));
+                .orElseThrow(() -> new NotFoundException("Hedef bulunamadi"));
     }
 }

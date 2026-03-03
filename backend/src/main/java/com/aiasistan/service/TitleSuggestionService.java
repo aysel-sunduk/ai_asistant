@@ -1,5 +1,5 @@
 /**
- * Kisa aciklama: Blog başlık önerisi servisi — ML microservice ile iletişim kurar.
+ * Kisa aciklama: Blog baslik onerisi servisi - ML microservice ve OpenRouter AI ile iletisim kurar.
  */
 
 package com.aiasistan.service;
@@ -21,9 +21,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Blog başlık önerisi servisi.
- * GPT-2 Turkish ile eğitilmiş modele istek gönderir.
- * Model yoksa kural-tabanlı fallback öneriler döner.
+ * Blog baslik onerisi servisi.
+ * 3 kademeli: ML microservice -> OpenRouter AI -> Kural tabanli fallback.
  */
 @Service
 public class TitleSuggestionService {
@@ -33,25 +32,52 @@ public class TitleSuggestionService {
     @Value("${ML_SERVICE_URL:http://localhost:8001}")
     private String mlServiceUrl;
 
+    // ML service icin kisa timeout (hizli fail-over)
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(Duration.ofSeconds(2))
             .build();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final OpenRouterAiService openRouterAiService;
+
+    public TitleSuggestionService(OpenRouterAiService openRouterAiService) {
+        this.openRouterAiService = openRouterAiService;
+    }
 
     /**
-     * Blog içeriğinden başlık önerileri al.
-     *
-     * @param content        Blog içeriği (en az 20 karakter)
-     * @param category       Kategori (teknoloji, spor, ekonomi, genel...)
-     * @param numSuggestions Kaç öneri isteniyor (1-5)
-     * @return Başlık önerilerinin listesi
+     * Blog iceriginden baslik onerileri al.
+     * Once ML service, sonra OpenRouter AI, en son kural tabanli fallback.
      */
     public List<String> suggestTitles(String content, String category, int numSuggestions) {
         if (content == null || content.isBlank()) {
             return List.of();
         }
 
+        // 1. Kademe: ML microservice (hizli timeout)
+        List<String> mlTitles = tryMlService(content, category, numSuggestions);
+        if (mlTitles != null && !mlTitles.isEmpty()) {
+            logger.info("Blog baslik onerisi ML service ile uretildi");
+            return mlTitles;
+        }
+
+        // 2. Kademe: OpenRouter AI
+        logger.info("ML service basarisiz, OpenRouter AI deneniyor...");
+        List<String> aiTitles = openRouterAiService.generateBlogTitleSuggestions(content, category, numSuggestions);
+        if (!aiTitles.isEmpty()) {
+            logger.info("Blog baslik onerisi OpenRouter AI ile uretildi ({} adet)", aiTitles.size());
+            return aiTitles;
+        }
+
+        // 3. Kademe: Kural tabanli fallback
+        logger.info("OpenRouter AI basarisiz, fallback kullaniliyor");
+        return fallbackTitles(content);
+    }
+
+    /**
+     * ML microservice'e baslik onerisi istegi gonderir.
+     * Kisa timeout ile calisiyor - ML service yoksa hizli fail-over.
+     */
+    private List<String> tryMlService(String content, String category, int numSuggestions) {
         try {
             String safeCategory = (category == null || category.isBlank()) ? "genel" : category;
             int safeNum = Math.min(Math.max(numSuggestions, 1), 5);
@@ -65,7 +91,7 @@ public class TitleSuggestionService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(mlServiceUrl + "/api/blog/suggest-title"))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(15))
+                    .timeout(Duration.ofSeconds(5))
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
@@ -76,7 +102,7 @@ public class TitleSuggestionService {
                 JsonNode json = objectMapper.readTree(response.body());
                 JsonNode titlesNode = json.get("titles");
                 String modelUsed = json.has("model_used") ? json.get("model_used").asText() : "unknown";
-                logger.debug("Başlık önerisi alındı (model: {})", modelUsed);
+                logger.debug("ML baslik onerisi alindi (model: {})", modelUsed);
 
                 if (titlesNode != null && titlesNode.isArray()) {
                     List<String> titles = new java.util.ArrayList<>();
@@ -86,32 +112,29 @@ public class TitleSuggestionService {
                     return titles;
                 }
             } else {
-                logger.warn("ML service başlık önerisi HTTP {}", response.statusCode());
+                logger.warn("ML service baslik onerisi HTTP {}", response.statusCode());
             }
 
         } catch (Exception e) {
-            logger.warn("ML service başlık önerisi alınamadı, fallback kullanılıyor: {}", e.getMessage());
+            logger.debug("ML service baglanti hatasi (beklenen): {}", e.getMessage());
         }
 
-        return fallbackTitles(content);
+        return null;
     }
 
     /**
-     * Kural tabanlı fallback: içeriğin ilk cümlesini başlık öner.
+     * Kural tabanli fallback: icerigin ilk cumlesini baslik oner.
      */
     private List<String> fallbackTitles(String content) {
         String trimmed = content.trim();
 
-        // İlk nokta/soru/ünlemde böl
         String[] sentences = trimmed.split("[.!?]\\s+");
         String firstSentence = sentences.length > 0 ? sentences[0].trim() : trimmed;
 
-        // Max 100 karakter
         if (firstSentence.length() > 100) {
             firstSentence = firstSentence.substring(0, 100) + "...";
         }
 
-        // İlk 5 kelime
         String[] words = trimmed.split("\\s+");
         String shortTitle = String.join(" ",
                 java.util.Arrays.copyOfRange(words, 0, Math.min(5, words.length)));

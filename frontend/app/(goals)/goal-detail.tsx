@@ -1,9 +1,10 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useGoals } from '../../src/hooks/useGoals';
+import { goalsService } from '../../services/goals.service';
 
 const COLOR = '#FFD93D';
 const DARK = '#B8860B';
@@ -29,10 +30,16 @@ export default function GoalDetailScreen() {
     const [busy, setBusy] = useState(false);
     const [progressInput, setProgressInput] = useState('0');
 
+    // AI Motivation States
+    const [motivationMessage, setMotivationMessage] = useState<string | null>(null);
+    const [motivationLoading, setMotivationLoading] = useState(false);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
     useFocusEffect(
         useCallback(() => {
             if (goalId) {
                 fetchGoalById(goalId);
+                setMotivationMessage(null);
             }
         }, [goalId, fetchGoalById]),
     );
@@ -79,6 +86,26 @@ export default function GoalDetailScreen() {
             await updateCompletion(selectedGoal.id, !selectedGoal.isCompleted);
         } finally {
             setBusy(false);
+        }
+    };
+
+    const fetchMotivation = async () => {
+        if (!selectedGoal || motivationLoading) return;
+        setMotivationLoading(true);
+        setMotivationMessage(null);
+        try {
+            const result = await goalsService.getMotivation(selectedGoal.id);
+            setMotivationMessage(result.message);
+            fadeAnim.setValue(0);
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }).start();
+        } catch (err) {
+            Alert.alert('Hata', 'Motivasyon mesaji alinamadi.');
+        } finally {
+            setMotivationLoading(false);
         }
     };
 
@@ -151,6 +178,34 @@ export default function GoalDetailScreen() {
                                     </TouchableOpacity>
                                 ))}
                             </View>
+                        </View>
+
+                        {/* AI Motivation Section */}
+                        <View style={styles.motivationSection}>
+                            <TouchableOpacity
+                                style={[styles.motivationBtn, motivationLoading && { opacity: 0.7 }]}
+                                onPress={fetchMotivation}
+                                disabled={motivationLoading}
+                            >
+                                {motivationLoading ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Ionicons name="sparkles" size={18} color="#fff" />
+                                )}
+                                <Text style={styles.motivationBtnText}>
+                                    {motivationLoading ? 'Düşünüyorum...' : '✨ AI Motivasyon Al'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {motivationMessage && (
+                                <Animated.View style={[styles.motivationCard, { opacity: fadeAnim }]}>
+                                    <View style={styles.motivationHeader}>
+                                        <Ionicons name="bulb-outline" size={18} color="#F59E0B" />
+                                        <Text style={styles.motivationLabel}>AI Motivasyon</Text>
+                                    </View>
+                                    <Text style={styles.motivationText}>{motivationMessage}</Text>
+                                </Animated.View>
+                            )}
                         </View>
 
                         <View style={styles.actionsRow}>
@@ -237,6 +292,42 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
     quickChipText: { fontSize: 12, color: '#92400E', fontWeight: '700' },
+
+    // AI Motivation Styles
+    motivationSection: { marginTop: 16 },
+    motivationBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#F59E0B',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    motivationBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    motivationCard: {
+        marginTop: 12,
+        backgroundColor: '#FFFBEB',
+        borderRadius: 14,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    motivationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
+    motivationLabel: { fontSize: 13, fontWeight: '800', color: '#92400E' },
+    motivationText: { fontSize: 14, color: '#78350F', lineHeight: 22 },
+
     actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
     completeBtn: {
         paddingVertical: 10,

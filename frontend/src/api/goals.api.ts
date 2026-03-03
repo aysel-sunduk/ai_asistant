@@ -1,6 +1,6 @@
 // Kisa aciklama: Backend API cagrilarini toplar.
 import type { ApiResponse } from '../models/auth.model';
-import type { Goal, GoalPage, GoalRequest } from '../models/goal.model';
+import type { Goal, GoalMotivationResponse, GoalPage, GoalRequest } from '../models/goal.model';
 import apiClient from './client';
 
 const BASE_PATH = '/v1/goals';
@@ -18,4 +18,6 @@ export const goalsApi = {
     updateCompletion: (id: string, isCompleted: boolean) =>
         apiClient.patch<ApiResponse<Goal>>(`${BASE_PATH}/${id}/completion`, { isCompleted }),
     deleteGoal: (id: string) => apiClient.delete<ApiResponse<void>>(`${BASE_PATH}/${id}`),
+    getMotivation: (id: string) =>
+        apiClient.post<ApiResponse<GoalMotivationResponse>>(`${BASE_PATH}/${id}/motivation`, {}, { timeout: 60000 }),
 };

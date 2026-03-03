@@ -30,5 +30,5 @@ export const blogApi = {
             content,
             category,
             numSuggestions,
-        }),
+        }, { timeout: 60000 }),
 };

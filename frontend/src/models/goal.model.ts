@@ -41,3 +41,9 @@ export interface GoalPage {
     first: boolean;
     last: boolean;
 }
+
+export interface GoalMotivationResponse {
+    message: string;
+    goalTitle: string;
+    progressPct: number;
+}

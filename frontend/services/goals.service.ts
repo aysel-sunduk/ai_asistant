@@ -1,6 +1,6 @@
 // Kisa aciklama: Servis akislarini yonetir.
 import { goalsApi } from '../src/api/goals.api';
-import type { Goal, GoalRequest } from '../src/models/goal.model';
+import type { Goal, GoalMotivationResponse, GoalRequest } from '../src/models/goal.model';
 
 export const goalsService = {
     getAll: async (completed?: boolean): Promise<Goal[]> => {
@@ -35,5 +35,10 @@ export const goalsService = {
 
     delete: async (id: string): Promise<void> => {
         await goalsApi.deleteGoal(id);
+    },
+
+    getMotivation: async (id: string): Promise<GoalMotivationResponse> => {
+        const response = await goalsApi.getMotivation(id);
+        return response.data.data;
     },
 };
