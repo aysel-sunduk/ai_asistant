@@ -56,7 +56,8 @@ public class BlogPostService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, UserRepository userRepository,
+    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService,
+            UserRepository userRepository,
             SocialFollowService socialFollowService, ContentFilterService contentFilterService,
             PushNotificationService pushNotificationService) {
         this.blogPostRepository = blogPostRepository;
@@ -230,7 +231,9 @@ public class BlogPostService {
         comments.add(comment);
         post.setComments(comments);
 
-        return toResponseForViewer(blogPostRepository.save(post), viewerId);
+        BlogPost updated = blogPostRepository.save(post);
+        pushNotificationService.sendBlogCommentNotification(updated.getUserId(), viewerId, updated.getTitle());
+        return toResponseForViewer(updated, viewerId);
     }
 
     @Transactional

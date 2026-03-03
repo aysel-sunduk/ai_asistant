@@ -7,6 +7,7 @@ export interface Contact {
     phone?: string;
     email?: string;
     notes?: string;
+    bloodType?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -18,6 +19,7 @@ export interface ContactRequest {
     phone?: string;
     email?: string;
     notes?: string;
+    bloodType?: string;
 }
 
 export interface ContactPage {
