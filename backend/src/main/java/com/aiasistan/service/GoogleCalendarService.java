@@ -3,8 +3,8 @@ package com.aiasistan.service;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +128,10 @@ public class GoogleCalendarService {
         token.setTokenType(textOrNull(tokenResult.get("token_type")));
         token.setScope(textOrNull(tokenResult.get("scope")));
         token.setExpiresAt(extractExpiry(tokenResult.get("expires_in")));
+        if (token.getSelectedCalendarId() == null || token.getSelectedCalendarId().isBlank()) {
+            token.setSelectedCalendarId(calendarId);
+            token.setSelectedCalendarSummary("Primary");
+        }
         token.setDeletedAt(null);
         UserGoogleCalendarToken saved = tokenRepository.save(token);
 
@@ -135,6 +139,8 @@ public class GoogleCalendarService {
         response.setConnected(true);
         response.setConnectedAt(saved.getCreatedAt() == null ? null : saved.getCreatedAt().toString());
         response.setExpiresAt(saved.getExpiresAt() == null ? null : saved.getExpiresAt().toString());
+        response.setSelectedCalendarId(saved.getSelectedCalendarId());
+        response.setSelectedCalendarSummary(saved.getSelectedCalendarSummary());
         return response;
     }
 
@@ -146,6 +152,67 @@ public class GoogleCalendarService {
         response.setConnected(maybe.isPresent());
         response.setConnectedAt(maybe.map(UserGoogleCalendarToken::getCreatedAt).map(OffsetDateTime::toString).orElse(null));
         response.setExpiresAt(maybe.map(UserGoogleCalendarToken::getExpiresAt).map(OffsetDateTime::toString).orElse(null));
+        response.setSelectedCalendarId(maybe.map(UserGoogleCalendarToken::getSelectedCalendarId).orElse(null));
+        response.setSelectedCalendarSummary(maybe.map(UserGoogleCalendarToken::getSelectedCalendarSummary).orElse(null));
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<GoogleCalendarDto.CalendarItem> listCalendars(String userEmail) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        ensureEnabled();
+        UserGoogleCalendarToken token = tokenRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("Google Calendar baglantisi bulunamadi"));
+        String accessToken = ensureValidAccessToken(token);
+        String url = apiBaseUrl + "/users/me/calendarList";
+
+        try {
+            HttpHeaders headers = bearerHeaders(accessToken);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode items = root.path("items");
+            if (!items.isArray()) {
+                return List.of();
+            }
+            List<GoogleCalendarDto.CalendarItem> out = new ArrayList<>();
+            for (JsonNode item : items) {
+                GoogleCalendarDto.CalendarItem row = new GoogleCalendarDto.CalendarItem();
+                row.setId(textOrNull(item.path("id").asText(null)));
+                row.setSummary(textOrNull(item.path("summary").asText(null)));
+                row.setPrimary(item.path("primary").asBoolean(false) ? "true" : "false");
+                row.setAccessRole(textOrNull(item.path("accessRole").asText(null)));
+                if (row.getId() != null) {
+                    out.add(row);
+                }
+            }
+            return out;
+        } catch (Exception ex) {
+            throw new BadRequestException("Google calendar listesi alinamadi");
+        }
+    }
+
+    @Transactional
+    public GoogleCalendarDto.SelectCalendarResponse selectCalendar(String userEmail, GoogleCalendarDto.SelectCalendarRequest request) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        ensureEnabled();
+        UserGoogleCalendarToken token = tokenRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("Google Calendar baglantisi bulunamadi"));
+
+        String selectedId = request.getCalendarId().trim();
+        List<GoogleCalendarDto.CalendarItem> calendars = listCalendars(userEmail);
+        GoogleCalendarDto.CalendarItem selected = calendars.stream()
+                .filter(c -> selectedId.equals(c.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Secilen calendarId kullaniciya ait degil"));
+
+        token.setSelectedCalendarId(selected.getId());
+        String summary = request.getCalendarSummary();
+        token.setSelectedCalendarSummary(summary != null && !summary.isBlank() ? summary.trim() : selected.getSummary());
+        tokenRepository.save(token);
+
+        GoogleCalendarDto.SelectCalendarResponse response = new GoogleCalendarDto.SelectCalendarResponse();
+        response.setSelectedCalendarId(token.getSelectedCalendarId());
+        response.setSelectedCalendarSummary(token.getSelectedCalendarSummary());
         return response;
     }
 
@@ -293,8 +360,9 @@ public class GoogleCalendarService {
         if (maybeToken.isEmpty()) {
             return null;
         }
-        String token = ensureValidAccessToken(maybeToken.get());
-        String encodedCalendarId = encPath(calendarId);
+        UserGoogleCalendarToken userToken = maybeToken.get();
+        String token = ensureValidAccessToken(userToken);
+        String encodedCalendarId = encPath(resolveCalendarId(userToken));
         String urlBase = apiBaseUrl + "/calendars/" + encodedCalendarId + "/events";
         try {
             if (existingEventId != null && !existingEventId.isBlank()) {
@@ -324,8 +392,9 @@ public class GoogleCalendarService {
         if (maybeToken.isEmpty()) {
             return;
         }
-        String token = ensureValidAccessToken(maybeToken.get());
-        String url = apiBaseUrl + "/calendars/" + encPath(calendarId) + "/events/" + encPath(eventId);
+        UserGoogleCalendarToken userToken = maybeToken.get();
+        String token = ensureValidAccessToken(userToken);
+        String url = apiBaseUrl + "/calendars/" + encPath(resolveCalendarId(userToken)) + "/events/" + encPath(eventId);
         HttpHeaders headers = bearerHeaders(token);
         try {
             restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
@@ -484,6 +553,13 @@ public class GoogleCalendarService {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String resolveCalendarId(UserGoogleCalendarToken token) {
+        if (token == null || token.getSelectedCalendarId() == null || token.getSelectedCalendarId().isBlank()) {
+            return calendarId;
+        }
+        return token.getSelectedCalendarId().trim();
     }
 
     private String enc(String value) {

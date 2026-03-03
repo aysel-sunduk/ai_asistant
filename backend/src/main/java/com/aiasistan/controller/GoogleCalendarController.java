@@ -6,6 +6,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,6 +50,20 @@ public class GoogleCalendarController {
     public ResponseEntity<ApiResponse<GoogleCalendarDto.StatusResponse>> status(Authentication authentication) {
         GoogleCalendarDto.StatusResponse response = googleCalendarService.getStatus(authentication.getName());
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/calendars")
+    public ResponseEntity<ApiResponse<java.util.List<GoogleCalendarDto.CalendarItem>>> listCalendars(Authentication authentication) {
+        java.util.List<GoogleCalendarDto.CalendarItem> response = googleCalendarService.listCalendars(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PutMapping("/selected-calendar")
+    public ResponseEntity<ApiResponse<GoogleCalendarDto.SelectCalendarResponse>> selectCalendar(
+            Authentication authentication,
+            @Valid @RequestBody GoogleCalendarDto.SelectCalendarRequest request) {
+        GoogleCalendarDto.SelectCalendarResponse response = googleCalendarService.selectCalendar(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Google Calendar secimi guncellendi"));
     }
 
     @DeleteMapping("/disconnect")

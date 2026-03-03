@@ -34,6 +34,12 @@ public class UserGoogleCalendarToken extends BaseEntity {
     @Column(name = "expires_at", columnDefinition = "timestamptz")
     private OffsetDateTime expiresAt;
 
+    @Column(name = "selected_calendar_id", length = 255)
+    private String selectedCalendarId;
+
+    @Column(name = "selected_calendar_summary", length = 255)
+    private String selectedCalendarSummary;
+
     public UUID getUserId() {
         return userId;
     }
@@ -80,5 +86,21 @@ public class UserGoogleCalendarToken extends BaseEntity {
 
     public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public String getSelectedCalendarId() {
+        return selectedCalendarId;
+    }
+
+    public void setSelectedCalendarId(String selectedCalendarId) {
+        this.selectedCalendarId = selectedCalendarId;
+    }
+
+    public String getSelectedCalendarSummary() {
+        return selectedCalendarSummary;
+    }
+
+    public void setSelectedCalendarSummary(String selectedCalendarSummary) {
+        this.selectedCalendarSummary = selectedCalendarSummary;
     }
 }
