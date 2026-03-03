@@ -219,12 +219,12 @@ public class InvestmentService {
     }
     
     private InvestmentResponse mapToResponse(Investment investment) {
-        BigDecimal currentValue = BigDecimal.ZERO;
-        if (investment.getAvgCostMinor() != null) {
-            currentValue = BigDecimal.valueOf(investment.getAvgCostMinor())
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .multiply(investment.getQuantity());
-        }
+        BigDecimal quantity = investment.getQuantity() != null ? investment.getQuantity() : BigDecimal.ZERO;
+        BigDecimal avgCost = toMoney(investment.getAvgCostMinor());
+        BigDecimal currentUnitPrice = resolveCurrentUnitPrice(investment, avgCost);
+        BigDecimal changeRate = resolveDailyChange(investment);
+        BigDecimal currentValue = currentUnitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal dailyChangeValue = changeRate.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
         
         return InvestmentResponse.builder()
             .id(investment.getId())
@@ -233,6 +233,9 @@ public class InvestmentService {
             .quantity(investment.getQuantity())
             .avgCostMinor(investment.getAvgCostMinor())
             .currentValue(currentValue)
+            .currentRate(currentUnitPrice.setScale(4, RoundingMode.HALF_UP))
+            .changeRate(changeRate.setScale(4, RoundingMode.HALF_UP))
+            .dailyChangeValue(dailyChangeValue)
             .currency(investment.getCurrency() != null ? normalizeCurrency(investment.getCurrency()) : "TRY")
             .updatedAt(investment.getUpdatedAt())
             .build();

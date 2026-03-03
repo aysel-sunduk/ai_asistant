@@ -101,24 +101,6 @@ public class PushNotificationService {
     }
 
     @Transactional
-    public void sendBlogCommentNotification(UUID postOwnerUserId, UUID actorUserId, String postTitle) {
-        if (postOwnerUserId == null || actorUserId == null || postOwnerUserId.equals(actorUserId)) {
-            return;
-        }
-        String actorName = resolveDisplayName(actorUserId);
-        String normalizedPostTitle = postTitle == null ? "" : postTitle.trim();
-        String suffix = normalizedPostTitle.isBlank() ? "gonderinize yorum yapti."
-                : ("\"" + normalizedPostTitle + "\" gonderinize yorum yapti.");
-        sendToUser(
-                postOwnerUserId,
-                "Yeni Yorum",
-                actorName + " " + suffix,
-                Map.of(
-                        "type", "blog_comment",
-                        "actorUserId", actorUserId.toString()));
-    }
-
-    @Transactional
     protected void sendToUser(UUID userId, String title, String body, Map<String, Object> data) {
         if (!enabled || userId == null) {
             return;

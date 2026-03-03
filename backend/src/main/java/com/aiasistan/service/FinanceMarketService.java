@@ -7,7 +7,6 @@ package com.aiasistan.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +14,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ import com.aiasistan.repository.UserFavoriteCurrencyRepository;
 
 @Service
 public class FinanceMarketService {
+    private static final Logger logger = LoggerFactory.getLogger(FinanceMarketService.class);
 
     private static final String ASSET_TYPE_CURRENCY = "currency";
 
@@ -91,7 +93,12 @@ public class FinanceMarketService {
         if (popularCodes.isEmpty()) {
             popularCodes = List.of("USD", "EUR", "GBP", "CHF", "JPY");
         }
-        return currencyService.getLiveRatesViaAlphaVantage(base, popularCodes, refresh);
+        try {
+            return currencyService.getLiveRatesViaAlphaVantage(base, popularCodes, refresh);
+        } catch (Exception ex) {
+            logger.warn("Popular rates AlphaVantage fallback devreye girdi: {}", ex.getMessage());
+            return currencyService.getLatestRatesByBase(base, popularCodes, refresh);
+        }
     }
 
     @Transactional
@@ -233,10 +240,48 @@ public class FinanceMarketService {
         FinanceDashboardResponse response = new FinanceDashboardResponse();
         response.setBaseCurrency(base);
         response.setGeneratedAt(OffsetDateTime.now());
-        response.setPopularRates(getPopularRates(base, refresh));
-        response.setFavoriteRates(getFavoriteRates(userId, base, refresh));
-        response.setHoldings(getCurrencyHoldings(userId, pageable, base, refresh));
-        response.setPortfolioSummary(getCurrencyHoldingSummary(userId, base, refresh));
+
+        try {
+            response.setPopularRates(getPopularRates(base, refresh));
+        } catch (Exception ex) {
+            logger.warn("Dashboard popular rates alinamadi: {}", ex.getMessage());
+            response.setPopularRates(List.of());
+        }
+
+        try {
+            response.setFavoriteRates(getFavoriteRates(userId, base, refresh));
+        } catch (Exception ex) {
+            logger.warn("Dashboard favorite rates alinamadi: {}", ex.getMessage());
+            response.setFavoriteRates(List.of());
+        }
+
+        try {
+            response.setHoldings(getCurrencyHoldings(userId, pageable, base, refresh));
+        } catch (Exception ex) {
+            logger.warn("Dashboard holdings alinamadi: {}", ex.getMessage());
+            PageResponse<CurrencyHoldingResponse> emptyPage = new PageResponse<>();
+            emptyPage.setContent(List.of());
+            emptyPage.setPage(pageable.getPageNumber());
+            emptyPage.setSize(pageable.getPageSize());
+            emptyPage.setTotalElements(0);
+            emptyPage.setTotalPages(0);
+            emptyPage.setFirst(true);
+            emptyPage.setLast(true);
+            response.setHoldings(emptyPage);
+        }
+
+        try {
+            response.setPortfolioSummary(getCurrencyHoldingSummary(userId, base, refresh));
+        } catch (Exception ex) {
+            logger.warn("Dashboard portfolio summary alinamadi: {}", ex.getMessage());
+            CurrencyHoldingSummaryResponse empty = new CurrencyHoldingSummaryResponse();
+            empty.setBaseCurrency(base);
+            empty.setTotalCost(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            empty.setTotalCurrentValue(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            empty.setTotalDailyChange(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            empty.setTotalUnrealizedPnl(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+            response.setPortfolioSummary(empty);
+        }
         return response;
     }
 

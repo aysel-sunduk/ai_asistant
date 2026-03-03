@@ -547,16 +547,31 @@ public class CurrencyService {
         OffsetDateTime screenRefreshedAt
     ) {
         LocalDateTime dbRecordedAt = LocalDateTime.now();
-        BigDecimal changeRate = resolveChangeRateFromHistory(baseCurrency, currencyCode, market, source, rate);
-
         CurrencyRateLatest latest = currencyRateLatestRepository
             .findByBaseCurrencyAndCurrencyCodeAndMarket(baseCurrency, currencyCode, market)
             .orElseGet(CurrencyRateLatest::new);
+
+        BigDecimal previousRate = latest.getRate();
+        if (previousRate == null) {
+            previousRate = currencyRateRepository
+                .findTopByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
+                    currencyCode,
+                    baseCurrency,
+                    market
+                )
+                .map(CurrencyRate::getRate)
+                .orElse(null);
+        }
+        if (previousRate != null && previousRate.compareTo(rate) == 0) {
+            previousRate = findMostRecentDifferentRate(currencyCode, baseCurrency, market, rate);
+        }
+        BigDecimal changeRate = resolveChangeRate(previousRate, rate);
+        BigDecimal normalizedChangeRate = normalizeChangeRate(changeRate);
         latest.setCurrencyCode(currencyCode);
         latest.setBaseCurrency(baseCurrency);
         latest.setMarket(market);
         latest.setRate(rate);
-        latest.setChangeRate(changeRate);
+        latest.setChangeRate(normalizedChangeRate);
         latest.setProviderTimestamp(providerTimestamp);
         latest.setRateDate(dbRecordedAt);
         latest.setSource(source);
@@ -567,7 +582,7 @@ public class CurrencyService {
         history.setBaseCurrency(baseCurrency);
         history.setMarket(market);
         history.setRate(rate);
-        history.setChangeRate(changeRate);
+        history.setChangeRate(normalizedChangeRate);
         history.setProviderTimestamp(providerTimestamp);
         history.setRateDate(dbRecordedAt);
         history.setSource(source);
@@ -578,7 +593,7 @@ public class CurrencyService {
             currencyCode,
             baseCurrency,
             rate,
-            changeRate,
+            normalizedChangeRate,
             providerTimestamp,
             dbRecordedAt,
             source,
@@ -587,33 +602,50 @@ public class CurrencyService {
         );
     }
 
-    private BigDecimal resolveChangeRateFromHistory(
-        String baseCurrency,
+    private BigDecimal resolveChangeRate(BigDecimal previousRate, BigDecimal currentRate) {
+        if (previousRate == null || currentRate == null) {
+            return null;
+        }
+        return currentRate.subtract(previousRate).setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal normalizeChangeRate(BigDecimal changeRate) {
+        if (changeRate == null) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return changeRate.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal findMostRecentDifferentRate(
         String currencyCode,
+        String baseCurrency,
         String market,
-        String source,
         BigDecimal currentRate
     ) {
-        return currencyRateRepository
-            .findTopByCurrencyCodeAndBaseCurrencyAndMarketAndSourceOrderByRateDateDesc(
+        List<CurrencyRate> recent = currencyRateRepository
+            .findTop20ByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
                 currencyCode,
                 baseCurrency,
-                market,
-                source
-            )
-            .map(CurrencyRate::getRate)
-            .map(previous -> currentRate.subtract(previous).setScale(4, RoundingMode.HALF_UP))
-            .orElse(null);
+                market
+            );
+        for (CurrencyRate row : recent) {
+            BigDecimal candidate = row.getRate();
+            if (candidate != null && candidate.compareTo(currentRate) != 0) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private CurrencyRateResponse toResponseFromHistory(CurrencyRate rate) {
         OffsetDateTime screenRefreshedAt = OffsetDateTime.now(ZoneOffset.UTC);
+        BigDecimal changeRate = normalizeChangeRate(rate.getChangeRate());
         return toResponse(
             rate.getId(),
             rate.getCurrencyCode(),
             rate.getBaseCurrency(),
             rate.getRate(),
-            rate.getChangeRate(),
+            changeRate,
             rate.getProviderTimestamp(),
             rate.getRateDate(),
             rate.getSource(),
@@ -626,12 +658,13 @@ public class CurrencyService {
         String fallbackSource = (latest.getSource() == null || latest.getSource().isBlank())
             ? "db-fallback"
             : latest.getSource() + "-db-fallback";
+        BigDecimal changeRate = normalizeChangeRate(latest.getChangeRate());
         return toResponse(
             latest.getId(),
             latest.getCurrencyCode(),
             latest.getBaseCurrency(),
             latest.getRate(),
-            latest.getChangeRate(),
+            changeRate,
             latest.getProviderTimestamp(),
             latest.getRateDate(),
             fallbackSource,
