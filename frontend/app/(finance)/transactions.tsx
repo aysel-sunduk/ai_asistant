@@ -13,7 +13,9 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Dimensions,
 } from 'react-native';
+import { PieChart } from 'react-native-chart-kit';
 import Toast from '../../components/ui/Toast';
 import { familyService } from '../../services/family.service';
 import { shoppingService } from '../../services/shopping.service';
@@ -46,6 +48,9 @@ export default function TransactionsScreen() {
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
     const [note, setNote] = useState('');
+
+    const [isIncomeChartExpanded, setIsIncomeChartExpanded] = useState(false);
+    const [isExpenseChartExpanded, setIsExpenseChartExpanded] = useState(false);
 
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
@@ -102,6 +107,45 @@ export default function TransactionsScreen() {
             .filter((tx) => tx.occurredOn >= report.startDate && tx.occurredOn <= report.endDate)
             .sort((a, b) => +new Date(b.occurredOn) - +new Date(a.occurredOn));
     }, [report, transactions, externalStartDate, externalEndDate]);
+
+    const incomeCategories = useMemo(() => {
+        const incomeTxs = inPeriodTransactions.filter(tx => tx.type === 'INCOME');
+        const grouped = incomeTxs.reduce((acc, tx) => {
+            const cat = tx.category || 'Diğer';
+            acc[cat] = (acc[cat] || 0) + (tx.amountMinor / 100);
+            return acc;
+        }, {} as Record<string, number>);
+
+        const colors = ['#16A34A', '#22C55E', '#4ADE80', '#86EFAC', '#BBF7D0'];
+        return Object.entries(grouped).map(([name, amount], index) => ({
+            name,
+            amount: Number(amount.toFixed(2)),
+            color: colors[index % colors.length],
+            legendFontColor: '#475569',
+            legendFontSize: 12,
+        })).sort((a, b) => b.amount - a.amount);
+    }, [inPeriodTransactions]);
+
+    const expenseCategories = useMemo(() => {
+        const expenseTxs = inPeriodTransactions.filter(tx => tx.type === 'EXPENSE');
+        const grouped = expenseTxs.reduce((acc, tx) => {
+            const cat = tx.category || 'Diğer';
+            acc[cat] = (acc[cat] || 0) + (tx.amountMinor / 100);
+            return acc;
+        }, {} as Record<string, number>);
+
+        const colors = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#991B1B', '#B91C1C', '#7F1D1D'];
+        return Object.entries(grouped).map(([name, amount], index) => ({
+            name,
+            amount: Number(amount.toFixed(2)),
+            color: colors[index % colors.length],
+            legendFontColor: '#475569',
+            legendFontSize: 12,
+        })).sort((a, b) => b.amount - a.amount);
+    }, [inPeriodTransactions]);
+
+    const INCOME_CATEGORIES = ['Maaş', 'Yatırım', 'Kira', 'Ek / Düzensiz Gelir'];
+    const EXPENSE_CATEGORIES = ['Barınma', 'Faturalar & Abonelikler', 'Gıda', 'Ulaşım', 'Sağlık', 'Kişisel', 'Borç & Finans', 'Eğitim & Gelişim'];
 
     const onCreateTransaction = async () => {
         const parsed = Number.parseFloat(amount.trim().replace(',', '.'));
@@ -266,6 +310,108 @@ export default function TransactionsScreen() {
                         </View>
                     )}
 
+                    {incomeCategories.length > 0 && (
+                        <View style={styles.card}>
+                            <TouchableOpacity
+                                style={styles.cardHeader}
+                                onPress={() => setIsIncomeChartExpanded(!isIncomeChartExpanded)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.cardHeaderTitle}>Gelir Dağılımı</Text>
+                                <Ionicons name={isIncomeChartExpanded ? "chevron-up" : "chevron-down"} size={20} color="#64748B" />
+                            </TouchableOpacity>
+                            {isIncomeChartExpanded && (
+                                <View>
+                                    <PieChart
+                                        data={incomeCategories}
+                                        width={Dimensions.get('window').width - 60}
+                                        height={180}
+                                        chartConfig={{
+                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                        }}
+                                        accessor={"amount"}
+                                        backgroundColor={"transparent"}
+                                        paddingLeft={"0"}
+                                        center={[10, 0]}
+                                        absolute
+                                        hasLegend={false}
+                                    />
+                                    <View style={styles.categoryList}>
+                                        {incomeCategories.map((cat, idx) => {
+                                            const total = incomeCategories.reduce((sum, c) => sum + c.amount, 0);
+                                            const percentage = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : '0.0';
+                                            return (
+                                                <View key={idx} style={styles.categoryListItem}>
+                                                    <View style={styles.categoryListLeft}>
+                                                        <View style={[styles.categoryListColor, { backgroundColor: cat.color }]} />
+                                                        <Text style={styles.categoryListName}>{cat.name}</Text>
+                                                    </View>
+                                                    <View style={styles.categoryListRight}>
+                                                        <Text style={styles.categoryListPercentage}>%{percentage}</Text>
+                                                        <Text style={[styles.categoryListAmount, styles.incomeText]}>
+                                                            +{currency(cat.amount)}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            )
+                                        })}
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    {expenseCategories.length > 0 && (
+                        <View style={styles.card}>
+                            <TouchableOpacity
+                                style={styles.cardHeader}
+                                onPress={() => setIsExpenseChartExpanded(!isExpenseChartExpanded)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.cardHeaderTitle}>Gider Dağılımı</Text>
+                                <Ionicons name={isExpenseChartExpanded ? "chevron-up" : "chevron-down"} size={20} color="#64748B" />
+                            </TouchableOpacity>
+                            {isExpenseChartExpanded && (
+                                <View>
+                                    <PieChart
+                                        data={expenseCategories}
+                                        width={Dimensions.get('window').width - 60}
+                                        height={200}
+                                        chartConfig={{
+                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                        }}
+                                        accessor={"amount"}
+                                        backgroundColor={"transparent"}
+                                        paddingLeft={"0"}
+                                        center={[10, 0]}
+                                        absolute
+                                        hasLegend={false}
+                                    />
+                                    <View style={styles.categoryList}>
+                                        {expenseCategories.map((cat, idx) => {
+                                            const total = expenseCategories.reduce((sum, c) => sum + c.amount, 0);
+                                            const percentage = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : '0.0';
+                                            return (
+                                                <View key={idx} style={styles.categoryListItem}>
+                                                    <View style={styles.categoryListLeft}>
+                                                        <View style={[styles.categoryListColor, { backgroundColor: cat.color }]} />
+                                                        <Text style={styles.categoryListName}>{cat.name}</Text>
+                                                    </View>
+                                                    <View style={styles.categoryListRight}>
+                                                        <Text style={styles.categoryListPercentage}>%{percentage}</Text>
+                                                        <Text style={[styles.categoryListAmount, styles.expenseText]}>
+                                                            -{currency(cat.amount)}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            )
+                                        })}
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Hizli Islem Ekle</Text>
                         <View style={styles.typeRow}>
@@ -279,12 +425,35 @@ export default function TransactionsScreen() {
                             placeholder="Tutar (₺)"
                             style={styles.input}
                         />
-                        <TextInput
-                            value={category}
-                            onChangeText={setCategory}
-                            placeholder="Kategori (market, maas, kira...)"
-                            style={styles.input}
-                        />
+                        {type === 'INCOME' ? (
+                            <View style={styles.categoryContainer}>
+                                {INCOME_CATEGORIES.map(cat => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[styles.categoryChip, category === cat && styles.incomeCatChipActive]}
+                                        onPress={() => setCategory(cat)}
+                                    >
+                                        <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.categoryContainer}>
+                                {EXPENSE_CATEGORIES.map(cat => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[styles.categoryChip, category === cat && styles.expenseCatChipActive]}
+                                        onPress={() => setCategory(cat)}
+                                    >
+                                        <Text style={[styles.categoryText, category === cat && styles.categoryTextActive]}>
+                                            {cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
                         <TextInput
                             value={note}
                             onChangeText={setNote}
@@ -463,6 +632,21 @@ const styles = StyleSheet.create({
         padding: 12,
     },
     cardTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 10 },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    cardHeaderTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+    categoryList: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8 },
+    categoryListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+    categoryListLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    categoryListColor: { width: 12, height: 12, borderRadius: 4 },
+    categoryListName: { fontSize: 13, color: '#334155', fontWeight: '500' },
+    categoryListRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    categoryListPercentage: { fontSize: 13, color: '#64748B', fontWeight: '600', width: 45, textAlign: 'right' },
+    categoryListAmount: { fontSize: 13, fontWeight: '700', minWidth: 70, textAlign: 'right' },
     summaryRow: { flexDirection: 'row', gap: 8 },
     miniStat: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#E2E8F0' },
     miniTitle: { fontSize: 11, color: '#64748B' },
@@ -549,5 +733,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#FEF2F2',
+    },
+    categoryContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    categoryChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    incomeCatChipActive: {
+        backgroundColor: '#16A34A',
+        borderColor: '#16A34A',
+    },
+    expenseCatChipActive: {
+        backgroundColor: '#DC2626',
+        borderColor: '#DC2626',
+    },
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    categoryTextActive: {
+        color: '#fff',
     },
 });
