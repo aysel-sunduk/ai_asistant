@@ -11,6 +11,8 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,13 +27,20 @@ import com.aiasistan.repository.WorkEventRepository;
 
 @Service
 public class WorkEventService {
+    private static final Logger logger = LoggerFactory.getLogger(WorkEventService.class);
 
     private final WorkEventRepository workEventRepository;
     private final UserService userService;
+    private final GoogleCalendarService googleCalendarService;
 
-    public WorkEventService(WorkEventRepository workEventRepository, UserService userService) {
+    public WorkEventService(
+        WorkEventRepository workEventRepository,
+        UserService userService,
+        GoogleCalendarService googleCalendarService
+    ) {
         this.workEventRepository = workEventRepository;
         this.userService = userService;
+        this.googleCalendarService = googleCalendarService;
     }
 
     @Transactional
@@ -45,6 +54,7 @@ public class WorkEventService {
         applyRequest(event, request);
 
         WorkEvent saved = workEventRepository.save(event);
+        syncWorkEventToGoogle(saved);
         return WorkEventDto.Response.from(saved);
     }
 
@@ -237,6 +247,7 @@ public class WorkEventService {
         applyRequest(event, request);
 
         WorkEvent saved = workEventRepository.save(event);
+        syncWorkEventToGoogle(saved);
         return WorkEventDto.Response.from(saved);
     }
 
@@ -259,6 +270,7 @@ public class WorkEventService {
         }
 
         WorkEvent saved = workEventRepository.save(event);
+        syncWorkEventToGoogle(saved);
         return WorkEventDto.Response.from(saved);
     }
 
@@ -266,8 +278,33 @@ public class WorkEventService {
     public void deleteWorkEvent(String userEmail, UUID id) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         WorkEvent event = findOwnedEvent(id, userId);
+        deleteWorkEventFromGoogle(event);
         event.setDeletedAt(OffsetDateTime.now());
         workEventRepository.save(event);
+    }
+
+    private void syncWorkEventToGoogle(WorkEvent event) {
+        try {
+            String eventId = googleCalendarService.syncWorkEvent(event);
+            if (eventId != null && !eventId.equals(event.getGoogleCalendarEventId())) {
+                event.setGoogleCalendarEventId(eventId);
+                workEventRepository.save(event);
+            }
+        } catch (Exception ex) {
+            logger.warn("WorkEvent Google Calendar sync basarisiz. eventId={}, msg={}", event.getId(), ex.getMessage());
+        }
+    }
+
+    private void deleteWorkEventFromGoogle(WorkEvent event) {
+        try {
+            googleCalendarService.deleteWorkEvent(event);
+            if (event.getGoogleCalendarEventId() != null) {
+                event.setGoogleCalendarEventId(null);
+                workEventRepository.save(event);
+            }
+        } catch (Exception ex) {
+            logger.warn("WorkEvent Google Calendar silme basarisiz. eventId={}, msg={}", event.getId(), ex.getMessage());
+        }
     }
 
     @Transactional

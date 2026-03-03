@@ -41,6 +41,9 @@ public class FamilyBirthday extends UserOwnedEntity {
     @Column(name = "relation_degree", length = 30)
     private String relationDegree;
 
+    @Column(name = "google_calendar_event_id", length = 255)
+    private String googleCalendarEventId;
+
     public String getFullName() {
         return fullName;
     }
@@ -103,5 +106,13 @@ public class FamilyBirthday extends UserOwnedEntity {
 
     public void setRelationDegree(String relationDegree) {
         this.relationDegree = relationDegree;
+    }
+
+    public String getGoogleCalendarEventId() {
+        return googleCalendarEventId;
+    }
+
+    public void setGoogleCalendarEventId(String googleCalendarEventId) {
+        this.googleCalendarEventId = googleCalendarEventId;
     }
 }

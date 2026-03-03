@@ -79,6 +79,9 @@ public class WorkEvent extends BaseEntity {
     @Column(columnDefinition = "text")
     private String notes;
 
+    @Column(name = "google_calendar_event_id", length = 255)
+    private String googleCalendarEventId;
+
     public WorkEvent() {}
 
     // GETTERS & SETTERS
@@ -129,6 +132,9 @@ public class WorkEvent extends BaseEntity {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public String getGoogleCalendarEventId() { return googleCalendarEventId; }
+    public void setGoogleCalendarEventId(String googleCalendarEventId) { this.googleCalendarEventId = googleCalendarEventId; }
 
     @Override
     public boolean equals(Object o) {

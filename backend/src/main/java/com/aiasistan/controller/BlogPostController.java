@@ -141,6 +141,15 @@ public class BlogPostController {
     return ResponseEntity.ok(ApiResponse.ok(response, "Begeni durumu guncellendi"));
   }
 
+  @GetMapping("/{id}/likes")
+  @Operation(summary = "Gonderiyi begenen kullanicilari getir")
+  public ResponseEntity<ApiResponse<BlogPostDto.PostLikesResponse>> getPostLikes(
+      Authentication authentication,
+      @PathVariable UUID id) {
+    BlogPostDto.PostLikesResponse response = blogPostService.getPostLikes(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
   @PostMapping("/{id}/comments")
   @Operation(summary = "Yorum ekle")
   public ResponseEntity<ApiResponse<BlogPostDto.Response>> addComment(

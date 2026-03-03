@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,7 @@ import com.aiasistan.repository.WorkEventRepository;
 
 @Service
 public class ReminderService {
+    private static final Logger logger = LoggerFactory.getLogger(ReminderService.class);
 
     private static final Set<String> ALLOWED_MODULES = Set.of(
         "general", "business", "work", "family", "health", "finance", "social", "shopping", "goals"
@@ -40,15 +43,18 @@ public class ReminderService {
     private final ReminderRepository reminderRepository;
     private final WorkEventRepository workEventRepository;
     private final UserService userService;
+    private final GoogleCalendarService googleCalendarService;
 
     public ReminderService(
         ReminderRepository reminderRepository,
         WorkEventRepository workEventRepository,
-        UserService userService
+        UserService userService,
+        GoogleCalendarService googleCalendarService
     ) {
         this.reminderRepository = reminderRepository;
         this.workEventRepository = workEventRepository;
         this.userService = userService;
+        this.googleCalendarService = googleCalendarService;
     }
 
     @Transactional
@@ -69,6 +75,7 @@ public class ReminderService {
         reminder.setStatus("scheduled");
 
         reminder = saveWithConstraintHandling(reminder);
+        syncReminderToGoogle(reminder);
         return ReminderDto.Response.from(reminder);
     }
 
@@ -134,6 +141,7 @@ public class ReminderService {
         reminder.setChannel(normalizeChannel(request.getChannel()));
 
         reminder = saveWithConstraintHandling(reminder);
+        syncReminderToGoogle(reminder);
         return ReminderDto.Response.from(reminder);
     }
 
@@ -145,6 +153,11 @@ public class ReminderService {
 
         reminder.setStatus(normalizeStatus(status));
         reminder = reminderRepository.save(reminder);
+        if ("canceled".equalsIgnoreCase(reminder.getStatus())) {
+            deleteReminderFromGoogle(reminder);
+        } else {
+            syncReminderToGoogle(reminder);
+        }
         return ReminderDto.Response.from(reminder);
     }
 
@@ -178,8 +191,33 @@ public class ReminderService {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Reminder reminder = reminderRepository.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Hatirlatici bulunamadi"));
+        deleteReminderFromGoogle(reminder);
         reminder.setDeletedAt(OffsetDateTime.now());
         reminderRepository.save(reminder);
+    }
+
+    private void syncReminderToGoogle(Reminder reminder) {
+        try {
+            String eventId = googleCalendarService.syncReminder(reminder);
+            if (eventId != null && !eventId.equals(reminder.getGoogleCalendarEventId())) {
+                reminder.setGoogleCalendarEventId(eventId);
+                reminderRepository.save(reminder);
+            }
+        } catch (Exception ex) {
+            logger.warn("Reminder Google Calendar sync basarisiz. reminderId={}, msg={}", reminder.getId(), ex.getMessage());
+        }
+    }
+
+    private void deleteReminderFromGoogle(Reminder reminder) {
+        try {
+            googleCalendarService.deleteReminder(reminder);
+            if (reminder.getGoogleCalendarEventId() != null) {
+                reminder.setGoogleCalendarEventId(null);
+                reminderRepository.save(reminder);
+            }
+        } catch (Exception ex) {
+            logger.warn("Reminder Google Calendar silme basarisiz. reminderId={}, msg={}", reminder.getId(), ex.getMessage());
+        }
     }
 
     private String normalizeModule(String module) {

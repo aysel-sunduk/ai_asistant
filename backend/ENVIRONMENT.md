@@ -23,3 +23,11 @@ cd backend
 Notlar:
 - Production için: `JWT_SECRET` ve DB bilgilerini CI/CD veya secret manager aracılığıyla verin; `.env` yalnızca lokal geliştirme içindir.
 - Docker Compose kullanıyorsanız `docker-compose` zaten `.env` dosyasını otomatik okur.
+
+Google Calendar entegrasyonu icin ek degiskenler:
+```env
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_CREDENTIALS_FILE=D:/Downloads/client_secret_190553526852-o9h3vor5p59avtngjpbjfbitmtdo4g68.apps.googleusercontent.com.json
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_SCOPE=https://www.googleapis.com/auth/calendar.events
+```

@@ -312,4 +312,43 @@ public class BlogPostDto {
             this.updatedAt = updatedAt;
         }
     }
+
+    public static class PostLikesResponse {
+        private UUID postId;
+        private Integer likeCount;
+        private Boolean likedByMe;
+        private List<Map<String, Object>> likedUsers;
+
+        public UUID getPostId() {
+            return postId;
+        }
+
+        public void setPostId(UUID postId) {
+            this.postId = postId;
+        }
+
+        public Integer getLikeCount() {
+            return likeCount;
+        }
+
+        public void setLikeCount(Integer likeCount) {
+            this.likeCount = likeCount;
+        }
+
+        public Boolean getLikedByMe() {
+            return likedByMe;
+        }
+
+        public void setLikedByMe(Boolean likedByMe) {
+            this.likedByMe = likedByMe;
+        }
+
+        public List<Map<String, Object>> getLikedUsers() {
+            return likedUsers;
+        }
+
+        public void setLikedUsers(List<Map<String, Object>> likedUsers) {
+            this.likedUsers = likedUsers;
+        }
+    }
 }

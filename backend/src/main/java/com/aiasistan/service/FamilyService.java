@@ -19,6 +19,8 @@ import com.aiasistan.model.Reminder;
 import com.aiasistan.repository.FamilyBirthdayRepository;
 import com.aiasistan.repository.FamilyTransactionRepository;
 import com.aiasistan.repository.ReminderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,24 +43,28 @@ import java.util.stream.Collectors;
 
 @Service
 public class FamilyService {
+    private static final Logger logger = LoggerFactory.getLogger(FamilyService.class);
 
     private final FamilyTransactionRepository transactionRepository;
     private final FamilyBirthdayRepository birthdayRepository;
     private final ReminderRepository reminderRepository;
     private final UserService userService;
     private final CurrencyService currencyService;
+    private final GoogleCalendarService googleCalendarService;
 
     public FamilyService(
             FamilyTransactionRepository transactionRepository,
             FamilyBirthdayRepository birthdayRepository,
             ReminderRepository reminderRepository,
             UserService userService,
-            CurrencyService currencyService) {
+            CurrencyService currencyService,
+            GoogleCalendarService googleCalendarService) {
         this.transactionRepository = transactionRepository;
         this.birthdayRepository = birthdayRepository;
         this.reminderRepository = reminderRepository;
         this.userService = userService;
         this.currencyService = currencyService;
+        this.googleCalendarService = googleCalendarService;
     }
 
     @Transactional
@@ -253,6 +259,7 @@ public class FamilyService {
         birthday.setRelationDegree(request.getRelationDegree());
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         createBirthdayReminder(userId, savedBirthday);
+        syncBirthdayToGoogle(savedBirthday);
         return toBirthdayResponse(savedBirthday);
     }
 
@@ -287,6 +294,7 @@ public class FamilyService {
         birthday.setRelationDegree(request.getRelationDegree());
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         syncBirthdayReminder(userId, oldTitle, savedBirthday);
+        syncBirthdayToGoogle(savedBirthday);
         return toBirthdayResponse(savedBirthday);
     }
 
@@ -296,6 +304,7 @@ public class FamilyService {
         FamilyBirthday birthday = birthdayRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new NotFoundException("Family birthday not found"));
         deleteBirthdayReminder(userId, birthdayReminderTitle(birthday.getFullName()));
+        deleteBirthdayFromGoogle(birthday);
         birthday.setDeletedAt(OffsetDateTime.now());
         birthdayRepository.save(birthday);
     }
@@ -524,6 +533,32 @@ public class FamilyService {
 
     private String birthdayReminderTitle(String fullName) {
         return "Dogum Gunu: " + fullName;
+    }
+
+    private void syncBirthdayToGoogle(FamilyBirthday birthday) {
+        try {
+            String eventId = googleCalendarService.syncBirthday(birthday);
+            if (eventId != null && !eventId.equals(birthday.getGoogleCalendarEventId())) {
+                birthday.setGoogleCalendarEventId(eventId);
+                birthdayRepository.save(birthday);
+            }
+        } catch (Exception ex) {
+            logger.warn("Birthday Google Calendar sync basarisiz. birthdayId={}, msg={}", birthday.getId(),
+                    ex.getMessage());
+        }
+    }
+
+    private void deleteBirthdayFromGoogle(FamilyBirthday birthday) {
+        try {
+            googleCalendarService.deleteBirthday(birthday);
+            if (birthday.getGoogleCalendarEventId() != null) {
+                birthday.setGoogleCalendarEventId(null);
+                birthdayRepository.save(birthday);
+            }
+        } catch (Exception ex) {
+            logger.warn("Birthday Google Calendar silme basarisiz. birthdayId={}, msg={}", birthday.getId(),
+                    ex.getMessage());
+        }
     }
 
     @Transactional

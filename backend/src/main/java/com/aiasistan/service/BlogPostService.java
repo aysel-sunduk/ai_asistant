@@ -229,8 +229,34 @@ public class BlogPostService {
         comment.put("createdAt", java.time.OffsetDateTime.now().toString());
         comments.add(comment);
         post.setComments(comments);
+        BlogPost saved = blogPostRepository.save(post);
+        if (!viewerId.equals(saved.getUserId())) {
+            pushNotificationService.sendBlogCommentNotification(saved.getUserId(), viewerId, saved.getTitle());
+        }
+        return toResponseForViewer(saved, viewerId);
+    }
 
-        return toResponseForViewer(blogPostRepository.save(post), viewerId);
+    @Transactional(readOnly = true)
+    public BlogPostDto.PostLikesResponse getPostLikes(String userEmail, UUID id) {
+        ensureBlogSchemaForReactions();
+        UUID viewerId = userService.getUserIdByEmail(userEmail);
+        BlogPost post = findAccessiblePost(id, viewerId);
+
+        List<String> likedUserIds = List.of();
+        if (hasLikedUserIdsColumn()) {
+            try {
+                likedUserIds = getLikedUserIds(post.getId());
+            } catch (Exception ignored) {
+                likedUserIds = List.of();
+            }
+        }
+
+        BlogPostDto.PostLikesResponse response = new BlogPostDto.PostLikesResponse();
+        response.setPostId(post.getId());
+        response.setLikedUsers(resolveLikedUsers(likedUserIds));
+        response.setLikedByMe(likedUserIds.contains(viewerId.toString()));
+        response.setLikeCount(response.getLikedUsers().size());
+        return response;
     }
 
     @Transactional

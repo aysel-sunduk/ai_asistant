@@ -46,6 +46,9 @@ public class Reminder extends BaseEntity {
     @Column(name = "status", columnDefinition = "text")
     private String status = "scheduled";
 
+    @Column(name = "google_calendar_event_id", length = 255)
+    private String googleCalendarEventId;
+
     public Reminder() {}
 
     public Reminder(UUID userId, UUID workEventId, UUID contactId, String sourceModule,
@@ -88,4 +91,7 @@ public class Reminder extends BaseEntity {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getGoogleCalendarEventId() { return googleCalendarEventId; }
+    public void setGoogleCalendarEventId(String googleCalendarEventId) { this.googleCalendarEventId = googleCalendarEventId; }
 }
