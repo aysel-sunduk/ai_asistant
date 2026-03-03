@@ -12,7 +12,7 @@ export interface MenuModule {
 
 const DEFAULT_MODULES: MenuModule[] = [
     { id: 'work', title: 'İş', icon: 'briefcase', color: '#5B8DEF', route: '/(work)/events' },
-    { id: 'family', title: 'Aile', icon: 'people', color: '#FF8A65', route: '/(family)/contacts' },
+    { id: 'family', title: 'Kişiler', icon: 'people', color: '#FF8A65', route: '/(family)/contacts' },
     { id: 'finance', title: 'Finans', icon: 'wallet', color: '#4ECDC4', route: '/(tabs)/finance' },
     { id: 'goals', title: 'Hedefler', icon: 'trophy', color: '#FFD93D', route: '/(goals)/goals' },
     { id: 'games', title: 'Oyun', icon: 'game-controller', color: '#A78BFA', route: '/(games)/game-list' },
