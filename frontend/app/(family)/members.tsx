@@ -35,6 +35,7 @@ export default function MembersScreen() {
     const [notes, setNotes] = useState('');
     const [birthDate, setBirthDate] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [bloodType, setBloodType] = useState('');
     const [saving, setSaving] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
@@ -72,6 +73,7 @@ export default function MembersScreen() {
         setEmail('');
         setNotes('');
         setBirthDate(null);
+        setBloodType('');
     };
 
     const openCreate = () => {
@@ -87,6 +89,7 @@ export default function MembersScreen() {
         setEmail(contact.email || '');
         setNotes(contact.notes || '');
         setBirthDate(contact.birthDate ? new Date(contact.birthDate) : null);
+        setBloodType(contact.bloodType || '');
         setModalVisible(true);
     };
 
@@ -110,6 +113,7 @@ export default function MembersScreen() {
                 email: email.trim() || undefined,
                 notes: notes.trim() || undefined,
                 birthDate: birthDate ? birthDate.toISOString().slice(0, 10) : undefined,
+                bloodType: bloodType || undefined,
             };
             if (editing) {
                 await contactsService.update(editing.id, payload);
@@ -183,7 +187,7 @@ export default function MembersScreen() {
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.name}>{c.name}</Text>
-                                <Text style={styles.meta}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}</Text>
+                                <Text style={styles.meta}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}{c.bloodType ? ` | 🩸${c.bloodType}` : ''}</Text>
                             </View>
                             <View style={styles.actions}>
                                 <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(c)}>
@@ -228,6 +232,21 @@ export default function MembersScreen() {
                         <TextInput placeholder="Telefon (opsiyonel)" value={phone} onChangeText={setPhone} style={styles.input} />
                         <TextInput placeholder="E-posta (opsiyonel)" value={email} onChangeText={setEmail} style={styles.input} />
                         <TextInput placeholder="Not (opsiyonel)" value={notes} onChangeText={setNotes} style={[styles.input, { minHeight: 72, textAlignVertical: 'top' }]} multiline />
+                        <Text style={styles.label}>Kan Grubu</Text>
+                        <View style={styles.bloodRow}>
+                            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'].map((bt) => (
+                                <TouchableOpacity
+                                    key={bt}
+                                    style={[styles.bloodChip, bloodType === bt && styles.bloodChipActive]}
+                                    onPress={() => setBloodType(bloodType === bt ? '' : bt)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[styles.bloodChipText, bloodType === bt && styles.bloodChipTextActive]}>
+                                        {bt}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                         <View style={styles.modalActions}>
                             <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                                 <Text style={styles.cancelText}>Vazgec</Text>
@@ -294,4 +313,9 @@ const styles = StyleSheet.create({
     chipActive: { backgroundColor: COLOR, borderColor: COLOR },
     chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
     chipTextActive: { color: '#fff' },
+    bloodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    bloodChip: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+    bloodChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+    bloodChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+    bloodChipTextActive: { color: '#fff' },
 });

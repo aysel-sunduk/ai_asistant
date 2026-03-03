@@ -241,4 +241,5 @@ public class UserProfile {
     public void setShowEmail(boolean showEmail) {
         this.showEmail = showEmail;
     }
+
 }

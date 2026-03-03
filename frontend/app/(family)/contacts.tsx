@@ -52,6 +52,7 @@ export default function ContactsScreen() {
     const [note, setNote] = useState('');
     const [birthMonthDay, setBirthMonthDay] = useState(new Date(2000, 0, 1));
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [bloodType, setBloodType] = useState('');
     const [contactsPickerOpen, setContactsPickerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
@@ -113,6 +114,7 @@ export default function ContactsScreen() {
         setRelationship('');
         setNote('');
         setBirthMonthDay(new Date(2000, 0, 1));
+        setBloodType('');
         setEditingBirthdayId(null);
     };
 
@@ -128,6 +130,9 @@ export default function ContactsScreen() {
             const d = new Date(contact.birthDate);
             setBirthMonthDay(new Date(2000, d.getMonth(), d.getDate()));
         }
+        if (contact.bloodType) {
+            setBloodType(contact.bloodType);
+        }
         if (contact.notes && !note) {
             setNote(contact.notes);
         }
@@ -140,6 +145,7 @@ export default function ContactsScreen() {
         setFullName(birthday.fullName || '');
         setRelationship(birthday.relationship || '');
         setNote(birthday.note || '');
+        setBloodType(birthday.bloodType || '');
         setBirthMonthDay(new Date(2000, d.getMonth(), d.getDate()));
         setModalVisible(true);
     };
@@ -161,6 +167,7 @@ export default function ContactsScreen() {
                 fullName: fullName.trim(),
                 relationship: relationship.trim() || undefined,
                 birthDate: birthDateIso,
+                bloodType: bloodType || undefined,
                 note: note.trim() || undefined,
             };
 
@@ -296,88 +303,105 @@ export default function ContactsScreen() {
             >
                 <View style={styles.modalBackdrop}>
                     <View style={styles.modalSheet}>
-                        <Text style={styles.modalTitle}>{editingBirthdayId ? 'Dogum Gunu Duzenle' : 'Dogum Gunu Ekle'}</Text>
-                        {!editingBirthdayId && contacts.length > 0 && (
-                            <TouchableOpacity style={styles.selectContactBtn} onPress={() => setContactsPickerOpen(true)}>
-                                <Ionicons name="person-add-outline" size={16} color={COLOR} />
-                                <Text style={styles.selectContactText}>Kayitli kisiden sec (opsiyonel)</Text>
-                            </TouchableOpacity>
-                        )}
-                        <TextInput
-                            placeholder="Ad Soyad"
-                            value={fullName}
-                            onChangeText={setFullName}
-                            style={styles.input}
-                        />
-                        <Text style={styles.fieldLabel}>Yakinlik Derecesi</Text>
-                        <View style={styles.chipRow}>
-                            {['Aile', 'Arkadaş', 'İş'].map((type) => (
-                                <TouchableOpacity
-                                    key={type}
-                                    style={[styles.chip, relationship === type && styles.chipActive]}
-                                    onPress={() => setRelationship(type)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[styles.chipText, relationship === type && styles.chipTextActive]}>
-                                        {type}
+                        {!contactsPickerOpen ? (
+                            <>
+                                <Text style={styles.modalTitle}>{editingBirthdayId ? 'Dogum Gunu Duzenle' : 'Dogum Gunu Ekle'}</Text>
+                                {!editingBirthdayId && contacts.length > 0 && (
+                                    <TouchableOpacity style={styles.selectContactBtn} onPress={() => setContactsPickerOpen(true)}>
+                                        <Ionicons name="person-add-outline" size={16} color={COLOR} />
+                                        <Text style={styles.selectContactText}>Kayitli kisiden sec (opsiyonel)</Text>
+                                    </TouchableOpacity>
+                                )}
+                                <TextInput
+                                    placeholder="Ad Soyad"
+                                    value={fullName}
+                                    onChangeText={setFullName}
+                                    style={styles.input}
+                                />
+                                <Text style={styles.fieldLabel}>Yakinlik Derecesi</Text>
+                                <View style={styles.chipRow}>
+                                    {['Aile', 'Arkadaş', 'İş'].map((type) => (
+                                        <TouchableOpacity
+                                            key={type}
+                                            style={[styles.chip, relationship === type && styles.chipActive]}
+                                            onPress={() => setRelationship(type)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.chipText, relationship === type && styles.chipTextActive]}>
+                                                {type}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <Text style={styles.fieldLabel}>Dogum Gunu (Gun/Ay)</Text>
+                                <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+                                    <Text style={styles.dateText}>
+                                        {birthMonthDay.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })}
                                     </Text>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
-                        <Text style={styles.fieldLabel}>Dogum Gunu (Gun/Ay)</Text>
-                        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-                            <Text style={styles.dateText}>
-                                {birthMonthDay.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })}
-                            </Text>
-                        </TouchableOpacity>
-                        <TextInput
-                            placeholder="Not (opsiyonel)"
-                            value={note}
-                            onChangeText={setNote}
-                            style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                            multiline
-                        />
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.cancelBtn}
-                                onPress={() => {
-                                    setModalVisible(false);
-                                    resetForm();
-                                }}
-                            >
-                                <Text style={styles.cancelText}>Vazgec</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-                                disabled={saving}
-                                onPress={submitBirthday}
-                            >
-                                <Text style={styles.saveText}>
-                                    {saving ? 'Kaydediliyor...' : editingBirthdayId ? 'Guncelle' : 'Kaydet'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
 
-            <Modal visible={contactsPickerOpen} transparent animationType="fade" onRequestClose={() => setContactsPickerOpen(false)}>
-                <View style={styles.modalBackdrop}>
-                    <View style={[styles.modalSheet, { maxHeight: '70%' }]}>
-                        <Text style={styles.modalTitle}>Kisi Sec</Text>
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {contacts.map((c) => (
-                                <TouchableOpacity key={c.id} style={styles.contactPickItem} onPress={() => applyContactToForm(c)}>
-                                    <Text style={styles.contactPickName}>{c.name}</Text>
-                                    <Text style={styles.contactPickMeta}>
-                                        {c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}
-                                    </Text>
+                                <Text style={styles.fieldLabel}>Kan Grubu</Text>
+                                <View style={styles.bloodRow}>
+                                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'].map((bt) => (
+                                        <TouchableOpacity
+                                            key={bt}
+                                            style={[styles.bloodChip, bloodType === bt && styles.bloodChipActive]}
+                                            onPress={() => setBloodType(bloodType === bt ? '' : bt)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.bloodChipText, bloodType === bt && styles.bloodChipTextActive]}>
+                                                {bt}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <TextInput
+                                    placeholder="Not (opsiyonel)"
+                                    value={note}
+                                    onChangeText={setNote}
+                                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                                    multiline
+                                />
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity
+                                        style={styles.cancelBtn}
+                                        onPress={() => {
+                                            setModalVisible(false);
+                                            resetForm();
+                                        }}
+                                    >
+                                        <Text style={styles.cancelText}>Vazgec</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+                                        disabled={saving}
+                                        onPress={submitBirthday}
+                                    >
+                                        <Text style={styles.saveText}>
+                                            {saving ? 'Kaydediliyor...' : editingBirthdayId ? 'Guncelle' : 'Kaydet'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.modalTitle}>Kisi Sec</Text>
+                                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+                                    {contacts.map((c) => (
+                                        <TouchableOpacity key={c.id} style={styles.contactPickItem} onPress={() => applyContactToForm(c)}>
+                                            <Text style={styles.contactPickName}>{c.name}</Text>
+                                            <Text style={styles.contactPickMeta}>
+                                                {c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <TouchableOpacity style={[styles.cancelBtn, { marginTop: 16 }]} onPress={() => setContactsPickerOpen(false)}>
+                                    <Text style={styles.cancelText}>Kapat</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setContactsPickerOpen(false)}>
-                            <Text style={styles.cancelText}>Kapat</Text>
-                        </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -574,4 +598,9 @@ const styles = StyleSheet.create({
     chipActive: { backgroundColor: COLOR, borderColor: COLOR },
     chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
     chipTextActive: { color: '#fff' },
+    bloodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    bloodChip: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+    bloodChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+    bloodChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+    bloodChipTextActive: { color: '#fff' },
 });

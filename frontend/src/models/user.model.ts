@@ -54,6 +54,7 @@ export interface UpdateProfileRequest {
     notifications?: Record<string, any>;
     showEmail?: boolean;
     showPhone?: boolean;
+    bloodType?: string;
 }
 
 // ─── Helpers ───

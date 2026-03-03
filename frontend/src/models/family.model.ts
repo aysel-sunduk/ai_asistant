@@ -6,6 +6,7 @@ export interface FamilyBirthdayRequest {
     phone?: string;
     email?: string;
     note?: string;
+    bloodType?: string;
 }
 
 export interface FamilyBirthdayResponse {
@@ -16,6 +17,7 @@ export interface FamilyBirthdayResponse {
     phone?: string;
     email?: string;
     note?: string;
+    bloodType?: string;
     createdAt: string;
     updatedAt: string;
 }

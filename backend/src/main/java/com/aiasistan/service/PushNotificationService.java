@@ -56,14 +56,12 @@ public class PushNotificationService {
         }
         String requesterName = resolveDisplayName(requesterUserId);
         sendToUser(
-            targetUserId,
-            "Yeni Takip Istegi",
-            requesterName + " size takip istegi gonderdi.",
-            Map.of(
-                "type", "follow_request",
-                "requesterUserId", requesterUserId.toString()
-            )
-        );
+                targetUserId,
+                "Yeni Takip Istegi",
+                requesterName + " size takip istegi gonderdi.",
+                Map.of(
+                        "type", "follow_request",
+                        "requesterUserId", requesterUserId.toString()));
     }
 
     @Transactional
@@ -73,16 +71,33 @@ public class PushNotificationService {
         }
         String actorName = resolveDisplayName(actorUserId);
         String normalizedPostTitle = postTitle == null ? "" : postTitle.trim();
-        String suffix = normalizedPostTitle.isBlank() ? "gonderinizi begendi." : ("\"" + normalizedPostTitle + "\" gonderinizi begendi.");
+        String suffix = normalizedPostTitle.isBlank() ? "gonderinizi begendi."
+                : ("\"" + normalizedPostTitle + "\" gonderinizi begendi.");
         sendToUser(
-            postOwnerUserId,
-            "Yeni Begeni",
-            actorName + " " + suffix,
-            Map.of(
-                "type", "blog_like",
-                "actorUserId", actorUserId.toString()
-            )
-        );
+                postOwnerUserId,
+                "Yeni Begeni",
+                actorName + " " + suffix,
+                Map.of(
+                        "type", "blog_like",
+                        "actorUserId", actorUserId.toString()));
+    }
+
+    @Transactional
+    public void sendBlogCommentNotification(UUID postOwnerUserId, UUID actorUserId, String postTitle) {
+        if (postOwnerUserId == null || actorUserId == null || postOwnerUserId.equals(actorUserId)) {
+            return;
+        }
+        String actorName = resolveDisplayName(actorUserId);
+        String normalizedPostTitle = postTitle == null ? "" : postTitle.trim();
+        String suffix = normalizedPostTitle.isBlank() ? "gonderinize yorum yapti."
+                : ("\"" + normalizedPostTitle + "\" gonderinize yorum yapti.");
+        sendToUser(
+                postOwnerUserId,
+                "Yeni Yorum",
+                actorName + " " + suffix,
+                Map.of(
+                        "type", "blog_comment",
+                        "actorUserId", actorUserId.toString()));
     }
 
     @Transactional

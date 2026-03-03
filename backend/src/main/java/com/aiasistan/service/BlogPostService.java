@@ -56,7 +56,8 @@ public class BlogPostService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService, UserRepository userRepository,
+    public BlogPostService(BlogPostRepository blogPostRepository, UserService userService,
+            UserRepository userRepository,
             SocialFollowService socialFollowService, ContentFilterService contentFilterService,
             PushNotificationService pushNotificationService) {
         this.blogPostRepository = blogPostRepository;
@@ -235,7 +236,6 @@ public class BlogPostService {
         }
         return toResponseForViewer(saved, viewerId);
     }
-
     @Transactional(readOnly = true)
     public BlogPostDto.PostLikesResponse getPostLikes(String userEmail, UUID id) {
         ensureBlogSchemaForReactions();

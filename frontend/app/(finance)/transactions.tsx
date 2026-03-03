@@ -13,9 +13,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Dimensions,
 } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
 import Toast from '../../components/ui/Toast';
 import { familyService } from '../../services/family.service';
 import { shoppingService } from '../../services/shopping.service';
@@ -51,6 +49,7 @@ export default function TransactionsScreen() {
 
     const [isIncomeChartExpanded, setIsIncomeChartExpanded] = useState(false);
     const [isExpenseChartExpanded, setIsExpenseChartExpanded] = useState(false);
+    const [monthOffset, setMonthOffset] = useState(0);
 
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
@@ -62,24 +61,48 @@ export default function TransactionsScreen() {
         setToastVisible(true);
     };
 
-    const load = useCallback(async (selectedPeriod: Period) => {
+    const load = useCallback(async (selectedPeriod: Period, mOffset = monthOffset) => {
         setLoading(true);
         try {
             const start = externalStartDate;
             const end = externalEndDate;
 
-            const [reportRes, txPage] = await Promise.all([
-                familyService.getTransactionsReport(selectedPeriod),
-                familyService.getTransactions(0, 100, start, end),
-            ]);
-            setReport(reportRes);
-            setTransactions(txPage.content || []);
+            if (selectedPeriod === 'MONTHLY' && mOffset !== 0 && !start) {
+                const { startDate: mStart, endDate: mEnd } = getMonthDates(mOffset);
+                const [summaryRes, txPage] = await Promise.all([
+                    familyService.getTransactionsSummary(mStart, mEnd),
+                    familyService.getTransactions(0, 100, mStart, mEnd),
+                ]);
+                setReport({
+                    period: 'MONTHLY',
+                    startDate: mStart,
+                    endDate: mEnd,
+                    totalIncome: summaryRes.totalIncome,
+                    totalExpense: summaryRes.totalExpense,
+                    balance: summaryRes.balance,
+                    previousIncome: 0,
+                    previousExpense: 0,
+                    previousBalance: 0,
+                    incomeChangePct: 0,
+                    expenseChangePct: 0,
+                    balanceChangePct: 0,
+                    buckets: [],
+                } as any);
+                setTransactions(txPage.content || []);
+            } else {
+                const [reportRes, txPage] = await Promise.all([
+                    familyService.getTransactionsReport(selectedPeriod),
+                    familyService.getTransactions(0, 100, start, end),
+                ]);
+                setReport(reportRes);
+                setTransactions(txPage.content || []);
+            }
         } catch (error: any) {
             showToast('error', error?.response?.data?.message || 'Rapor verisi alinamadi.');
         } finally {
             setLoading(false);
         }
-    }, [externalStartDate, externalEndDate]);
+    }, [externalStartDate, externalEndDate, monthOffset]);
 
     useFocusEffect(
         useCallback(() => {
@@ -89,7 +112,30 @@ export default function TransactionsScreen() {
 
     const switchPeriod = (next: Period) => {
         setPeriod(next);
-        void load(next);
+        setMonthOffset(0);
+        void load(next, 0);
+    };
+
+    const TURKISH_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+    const getMonthDates = (offset: number) => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() + offset);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        const label = `${TURKISH_MONTHS[month]} ${year}`;
+        return { startDate, endDate, label };
+    };
+
+    const goMonth = (direction: -1 | 1) => {
+        const next = monthOffset + direction;
+        if (next > 0) return;
+        setMonthOffset(next);
+        void load(period, next);
     };
 
     const chartMax = useMemo(() => {
@@ -258,6 +304,21 @@ export default function TransactionsScreen() {
                         <PeriodBtn label="Aylik" active={period === 'MONTHLY'} onPress={() => switchPeriod('MONTHLY')} />
                     </View>
                 )}
+                {!externalStartDate && period === 'MONTHLY' && (
+                    <View style={styles.monthNavRow}>
+                        <TouchableOpacity onPress={() => goMonth(-1)} style={styles.monthNavBtn}>
+                            <Ionicons name="chevron-back" size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <Text style={styles.monthNavLabel}>{getMonthDates(monthOffset).label}</Text>
+                        <TouchableOpacity
+                            onPress={() => goMonth(1)}
+                            style={[styles.monthNavBtn, monthOffset >= 0 && { opacity: 0.3 }]}
+                            disabled={monthOffset >= 0}
+                        >
+                            <Ionicons name="chevron-forward" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                )}
                 {externalStartDate && (
                     <View style={styles.filterInfoRow}>
                         <Text style={styles.filterInfoText}>
@@ -322,20 +383,15 @@ export default function TransactionsScreen() {
                             </TouchableOpacity>
                             {isIncomeChartExpanded && (
                                 <View>
-                                    <PieChart
-                                        data={incomeCategories}
-                                        width={Dimensions.get('window').width - 60}
-                                        height={180}
-                                        chartConfig={{
-                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                        }}
-                                        accessor={"amount"}
-                                        backgroundColor={"transparent"}
-                                        paddingLeft={"0"}
-                                        center={[10, 0]}
-                                        absolute
-                                        hasLegend={false}
-                                    />
+                                    <View style={styles.chartBarWrapper}>
+                                        {incomeCategories.map((cat, idx) => {
+                                            const total = incomeCategories.reduce((sum, c) => sum + c.amount, 0);
+                                            const widthPct = total > 0 ? (cat.amount / total) * 100 : 0;
+                                            return widthPct > 0 ? (
+                                                <View key={idx} style={[styles.chartBarSegment, { width: `${widthPct}%`, backgroundColor: cat.color }]} />
+                                            ) : null;
+                                        })}
+                                    </View>
                                     <View style={styles.categoryList}>
                                         {incomeCategories.map((cat, idx) => {
                                             const total = incomeCategories.reduce((sum, c) => sum + c.amount, 0);
@@ -373,20 +429,15 @@ export default function TransactionsScreen() {
                             </TouchableOpacity>
                             {isExpenseChartExpanded && (
                                 <View>
-                                    <PieChart
-                                        data={expenseCategories}
-                                        width={Dimensions.get('window').width - 60}
-                                        height={200}
-                                        chartConfig={{
-                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                        }}
-                                        accessor={"amount"}
-                                        backgroundColor={"transparent"}
-                                        paddingLeft={"0"}
-                                        center={[10, 0]}
-                                        absolute
-                                        hasLegend={false}
-                                    />
+                                    <View style={styles.chartBarWrapper}>
+                                        {expenseCategories.map((cat, idx) => {
+                                            const total = expenseCategories.reduce((sum, c) => sum + c.amount, 0);
+                                            const widthPct = total > 0 ? (cat.amount / total) * 100 : 0;
+                                            return widthPct > 0 ? (
+                                                <View key={idx} style={[styles.chartBarSegment, { width: `${widthPct}%`, backgroundColor: cat.color }]} />
+                                            ) : null;
+                                        })}
+                                    </View>
                                     <View style={styles.categoryList}>
                                         {expenseCategories.map((cat, idx) => {
                                             const total = expenseCategories.reduce((sum, c) => sum + c.amount, 0);
@@ -595,6 +646,9 @@ const styles = StyleSheet.create({
     },
     headerTitle: { color: '#fff', fontSize: 19, fontWeight: '800' },
     periodRow: { marginTop: 12, flexDirection: 'row', gap: 8 },
+    monthNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 16 },
+    monthNavBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+    monthNavLabel: { fontSize: 15, fontWeight: '700', color: '#fff', minWidth: 120, textAlign: 'center' },
     periodBtn: {
         borderRadius: 999,
         backgroundColor: 'rgba(255,255,255,0.2)',
@@ -639,7 +693,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     cardHeaderTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
-    categoryList: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8 },
+    chartBarWrapper: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', marginTop: 4, marginBottom: 8 },
+    chartBarSegment: { height: '100%' },
+    categoryList: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8 },
     categoryListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
     categoryListLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     categoryListColor: { width: 12, height: 12, borderRadius: 4 },

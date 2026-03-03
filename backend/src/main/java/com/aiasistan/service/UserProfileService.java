@@ -159,15 +159,16 @@ public class UserProfileService {
     }
 
     @Transactional
-public UserProfileResponse updateContactPrivacy(UUID userId, ContactPrivacyUpdateRequest request) {
-    UserProfile profile = getOrCreateProfile(userId);
-    
-    profile.setShowPhone(request.getShowPhone());
-    profile.setShowEmail(request.getShowEmail());
-    
-    UserProfile saved = userProfileRepository.save(profile);
-    return toResponse(saved);
-}
+    public UserProfileResponse updateContactPrivacy(UUID userId, ContactPrivacyUpdateRequest request) {
+        UserProfile profile = getOrCreateProfile(userId);
+
+        profile.setShowPhone(request.getShowPhone());
+        profile.setShowEmail(request.getShowEmail());
+
+        UserProfile saved = userProfileRepository.save(profile);
+        return toResponse(saved);
+    }
+
     private UserProfile createDefaultProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));

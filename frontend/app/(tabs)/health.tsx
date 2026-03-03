@@ -607,10 +607,17 @@ export default function HealthTabScreen() {
             <Modal visible={activeModal === 'exercise'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}><Ionicons name="fitness" size={20} color={GREEN} /> Egzersiz Ekle</Text>
-                    <TextInput style={styles.modalInput} placeholder="Aktivite (orn. Yuruys)" value={exActivity} onChangeText={setExActivity} />
+                    <Text style={styles.modalFieldLabel}>Aktivite Adi</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: Yuruyus, Kosma, Yoga" value={exActivity} onChangeText={setExActivity} />
                     <View style={styles.modalInputRow}>
-                        <TextInput style={[styles.modalInput, { flex: 1, marginRight: 8 }]} placeholder="Sure (dk)" keyboardType="numeric" value={exDuration} onChangeText={setExDuration} />
-                        <TextInput style={[styles.modalInput, { flex: 1 }]} placeholder="Kalori" keyboardType="numeric" value={exCalories} onChangeText={setExCalories} />
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                            <Text style={styles.modalFieldLabel}>Sure (dk)</Text>
+                            <TextInput style={styles.modalInput} placeholder="30" keyboardType="numeric" value={exDuration} onChangeText={setExDuration} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.modalFieldLabel}>Kalori (opsiyonel)</Text>
+                            <TextInput style={styles.modalInput} placeholder="250" keyboardType="numeric" value={exCalories} onChangeText={setExCalories} />
+                        </View>
                     </View>
                     <View style={styles.modalBtnRow}>
                         <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setActiveModal(null)}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
@@ -622,6 +629,7 @@ export default function HealthTabScreen() {
             <Modal visible={activeModal === 'meal'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}><Ionicons name="restaurant" size={20} color={ORANGE} /> Ogun Ekle</Text>
+                    <Text style={styles.modalFieldLabel}>Ogun Tipi</Text>
                     <View style={styles.mealTypeRow}>
                         {([
                             { key: 'breakfast', label: 'Kahvalti' },
@@ -634,8 +642,10 @@ export default function HealthTabScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                    <TextInput style={styles.modalInput} placeholder="Ne yedin?" value={mealDesc} onChangeText={setMealDesc} />
-                    <TextInput style={styles.modalInput} placeholder="Kalori" keyboardType="numeric" value={mealCal} onChangeText={setMealCal} />
+                    <Text style={styles.modalFieldLabel}>Ne Yedin?</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: Tavuk salata, pilav" value={mealDesc} onChangeText={setMealDesc} />
+                    <Text style={styles.modalFieldLabel}>Kalori (opsiyonel)</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: 450 kcal" keyboardType="numeric" value={mealCal} onChangeText={setMealCal} />
                     <View style={styles.modalBtnRow}>
                         <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setActiveModal(null)}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
                         <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: ORANGE }]} onPress={handleAddMeal}><Text style={styles.modalSaveText}>Ekle</Text></TouchableOpacity>
@@ -646,21 +656,25 @@ export default function HealthTabScreen() {
             <Modal visible={activeModal === 'daily_summary'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}><Ionicons name="sunny" size={20} color={PURPLE} /> Gunluk Ozet</Text>
-                    <Text style={styles.modalLabel}>Ruh Hali</Text>
+                    <Text style={styles.modalFieldLabel}>Ruh Hali</Text>
                     <View style={styles.moodRow}>
                         {(Object.keys(MOOD_EMOJIS) as DailySummaryData['mood'][]).map((m) =>
                             m ? (
                                 <TouchableOpacity key={m} style={[styles.moodBtn, mood === m && { backgroundColor: PURPLE + '20', borderColor: PURPLE }]} onPress={() => setMood(m)}>
                                     <Text style={styles.moodEmoji}>{MOOD_EMOJIS[m]}</Text>
+                                    <Text style={[styles.moodLabel, mood === m && { color: PURPLE, fontWeight: '700' }]}>
+                                        {m === 'great' ? 'Harika' : m === 'good' ? 'Iyi' : m === 'neutral' ? 'Normal' : m === 'bad' ? 'Kotu' : 'Berbat'}
+                                    </Text>
                                 </TouchableOpacity>
                             ) : null,
                         )}
                     </View>
-                    <View style={styles.modalInputRow}>
-                        <TextInput style={[styles.modalInput, { flex: 1, marginRight: 8 }]} placeholder="Uyku (saat)" keyboardType="numeric" value={sleepHours} onChangeText={setSleepHours} />
-                        <TextInput style={[styles.modalInput, { flex: 1 }]} placeholder="Kilo (kg)" keyboardType="numeric" value={weightKg} onChangeText={setWeightKg} />
-                    </View>
-                    <TextInput style={styles.modalInput} placeholder="Adim sayisi" keyboardType="numeric" value={steps} onChangeText={setSteps} />
+                    <Text style={styles.modalFieldLabel}>Uyku Suresi</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: 7.5 saat" keyboardType="numeric" value={sleepHours} onChangeText={setSleepHours} />
+                    <Text style={styles.modalFieldLabel}>Kilo</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: 72.5 kg" keyboardType="numeric" value={weightKg} onChangeText={setWeightKg} />
+                    <Text style={styles.modalFieldLabel}>Adim Sayisi</Text>
+                    <TextInput style={styles.modalInput} placeholder="Ornek: 8500" keyboardType="numeric" value={steps} onChangeText={setSteps} />
                     <View style={styles.modalBtnRow}>
                         <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setActiveModal(null)}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
                         <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: PURPLE }]} onPress={handleAddSummary}><Text style={styles.modalSaveText}>Kaydet</Text></TouchableOpacity>
@@ -738,4 +752,5 @@ const styles = StyleSheet.create({
     moodRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
     moodBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center' },
     moodEmoji: { fontSize: 20 },
+    moodLabel: { fontSize: 10, fontWeight: '500', color: '#667085', marginTop: 2, textAlign: 'center' as const },
 });
