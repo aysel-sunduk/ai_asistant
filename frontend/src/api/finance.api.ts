@@ -116,4 +116,8 @@ export const financeApi = {
 
     getCurrencyHoldingsSummary: () =>
         apiClient.get<ApiResponse<CurrencyHoldingSummary>>('/v1/finance/currency-holdings/summary'),
+
+    // ─── AI Investment Recommendations ───
+    getInvestmentRecommendations: () =>
+        apiClient.get<ApiResponse<any[]>>('/v1/finance/investments/recommendations'),
 };

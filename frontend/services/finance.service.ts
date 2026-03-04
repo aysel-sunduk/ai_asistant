@@ -195,4 +195,15 @@ export const financeService = {
         const response = await financeApi.getCurrencyHoldingsSummary();
         return response.data.data;
     },
+
+    // ─── AI Investment Recommendations ───
+    getInvestmentRecommendations: async (): Promise<any[]> => {
+        try {
+            const response = await financeApi.getInvestmentRecommendations();
+            return response.data.data || [];
+        } catch (error) {
+            console.warn('[FinanceService] AI recommendations not available:', error);
+            return [];
+        }
+    },
 };

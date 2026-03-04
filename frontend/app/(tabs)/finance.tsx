@@ -1,9 +1,11 @@
-// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
+﻿// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
+    Modal,
     Platform,
     RefreshControl,
     ScrollView,
@@ -34,6 +36,9 @@ export default function FinanceScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [favCurrencies, setFavCurrencies] = useState<any[]>([]);
     const [favInvestments, setFavInvestments] = useState<any[]>([]);
+    const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+    const [selectedRec, setSelectedRec] = useState<any | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     const loadData = useCallback(async () => {
         try {
@@ -76,7 +81,13 @@ export default function FinanceScreen() {
                 setFavInvestments(Array.isArray(favInvRes) ? favInvRes : []);
             } catch (e: any) {
                 console.error("Fav Investments fetch failed:", e);
-                // Don't block UI for this
+            }
+
+            try {
+                const aiRecs = await financeService.getInvestmentRecommendations();
+                setAiRecommendations(Array.isArray(aiRecs) ? aiRecs : []);
+            } catch (e: any) {
+                console.error("AI Recommendations fetch failed:", e);
             }
 
         } finally {
@@ -110,19 +121,103 @@ export default function FinanceScreen() {
     }
 
     return (
-        <FinanceScreenContent
-            dashboard={dashboard}
-            favCurrencies={favCurrencies}
-            favInvestments={favInvestments}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            router={router}
-            errorMsg={errorMsg}
-        />
+        <>
+            <FinanceScreenContent
+                dashboard={dashboard}
+                favCurrencies={favCurrencies}
+                favInvestments={favInvestments}
+                aiRecommendations={aiRecommendations}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                router={router}
+                errorMsg={errorMsg}
+                onShowRecDetail={(rec: any) => {
+                    setSelectedRec(rec);
+                    setModalVisible(true);
+                }}
+            />
+            <RecommendationDetailModal
+                visible={modalVisible}
+                recommendation={selectedRec}
+                onClose={() => setModalVisible(false)}
+            />
+        </>
     );
 }
 
-function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refreshing, onRefresh, router, errorMsg }: any) {
+function RecommendationDetailModal({ visible, recommendation, onClose }: { visible: boolean, recommendation: any, onClose: () => void }) {
+    if (!recommendation) return null;
+
+    const actionColor = recommendation.recommendationType === 'BUY' ? '#10B981'
+        : recommendation.recommendationType === 'SELL' ? '#EF4444' : '#F59E0B';
+    const actionLabel = recommendation.recommendationType === 'BUY' ? 'AL'
+        : recommendation.recommendationType === 'SELL' ? 'SAT' : 'POZİSYONU KORU';
+    const riskLabel = recommendation.riskLevel === 'HIGH' ? 'Yüksek Risk'
+        : recommendation.riskLevel === 'MEDIUM' ? 'Orta Risk' : 'Düşük Risk';
+
+    return (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={visible}
+            onRequestClose={onClose}
+        >
+            <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={onClose}
+            >
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <View style={[styles.recActionBadge, { backgroundColor: actionColor + '18' }]}>
+                            <Text style={[styles.recActionText, { color: actionColor, fontSize: 13 }]}>{actionLabel}</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.modalCloseBtn}>
+                            <Ionicons name="close" size={24} color={GRAY} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.modalSymbol}>{recommendation.symbol}</Text>
+                    <Text style={styles.modalAssetType}>{recommendation.assetType}</Text>
+
+                    <View style={styles.modalStatsRow}>
+                        <View style={styles.modalStatItem}>
+                            <Text style={styles.modalStatLabel}>GÜVEN SKORU</Text>
+                            <Text style={[styles.modalStatValue, { color: actionColor }]}>%{Number(recommendation.confidenceScore || 0).toFixed(1)}</Text>
+                        </View>
+                        <View style={styles.modalStatItem}>
+                            <Text style={styles.modalStatLabel}>RİSK SEVİYESİ</Text>
+                            <Text style={[styles.modalStatValue, { color: actionColor }]}>{riskLabel}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.modalDivider} />
+
+                    <View style={styles.modalInfoBox}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={20} color={PURPLE} style={{ marginTop: 2 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.modalInfoTitle}>AI Analizi</Text>
+                            <Text style={styles.modalInfoDetail}>{recommendation.reason}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.modalDisclaimerBox}>
+                        <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+                        <Text style={styles.modalDisclaimerText}>
+                            Bu bir yatırım tavsiyesi değildir. Lütfen kendi araştırmanızı yapınız.
+                        </Text>
+                    </View>
+
+                    <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: PURPLE }]} onPress={onClose}>
+                        <Text style={styles.modalActionBtnText}>Anladım</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
+}
+
+function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiRecommendations, refreshing, onRefresh, router, errorMsg, onShowRecDetail }: any) {
     const [performance, setPerformance] = useState<any>(null);
 
     useEffect(() => {
@@ -266,6 +361,76 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, refres
                                 ))}
                             </View>
                         </View>
+                    </View>
+                )}
+
+                {/* ─── AI Yatırım Önerileri ─── */}
+                {aiRecommendations && aiRecommendations.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24 }}>
+                                <Ionicons name="bulb" size={16} color="#8B5CF6" />
+                                <Text style={[styles.sectionTitle, { paddingHorizontal: 0 }]}>AI Yatırım Önerileri</Text>
+                            </View>
+                            <View style={styles.aiBadge}>
+                                <Text style={styles.aiBadgeText}>AI</Text>
+                            </View>
+                        </View>
+
+                        {/* Disclaimer */}
+                        <View style={styles.disclaimerCard}>
+                            <Ionicons name="information-circle" size={16} color="#8B5CF6" />
+                            <Text style={styles.disclaimerText}>
+                                Bu öneriler yapay zeka tarafından üretilmiştir ve yatırım tavsiyesi niteliği taşımamaktadır. Yatırım kararlarınızı almadan önce kendi araştırmanızı yapınız.
+                            </Text>
+                        </View>
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 20 }}>
+                            {aiRecommendations.map((rec: any, index: number) => {
+                                const actionColor = rec.recommendationType === 'BUY' ? '#10B981'
+                                    : rec.recommendationType === 'SELL' ? '#EF4444' : '#F59E0B';
+                                const actionIcon = rec.recommendationType === 'BUY' ? 'trending-up'
+                                    : rec.recommendationType === 'SELL' ? 'trending-down' : 'pause';
+                                const actionLabel = rec.recommendationType === 'BUY' ? 'AL'
+                                    : rec.recommendationType === 'SELL' ? 'SAT' : 'POZİSYONU KORU';
+                                const riskColor = rec.riskLevel === 'HIGH' ? '#EF4444'
+                                    : rec.riskLevel === 'MEDIUM' ? '#F59E0B' : '#10B981';
+                                const riskLabel = rec.riskLevel === 'HIGH' ? 'Yüksek Risk'
+                                    : rec.riskLevel === 'MEDIUM' ? 'Orta Risk' : 'Düşük Risk';
+
+                                return (
+                                    <TouchableOpacity
+                                        key={rec.id || index}
+                                        style={styles.recCard}
+                                        activeOpacity={0.7}
+                                        onPress={() => onShowRecDetail(rec)}
+                                    >
+                                        <View style={styles.recCardHeader}>
+                                            <View style={[styles.recActionBadge, { backgroundColor: actionColor + '18' }]}>
+                                                <Ionicons name={actionIcon as any} size={14} color={actionColor} />
+                                                <Text style={[styles.recActionText, { color: actionColor }]}>{actionLabel}</Text>
+                                            </View>
+                                            <View style={[styles.recRiskBadge, { backgroundColor: riskColor + '18' }]}>
+                                                <Text style={[styles.recRiskText, { color: riskColor }]}>{riskLabel}</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={styles.recSymbol}>{rec.symbol}</Text>
+                                        <Text style={styles.recAssetType}>{rec.assetType}</Text>
+                                        <View style={styles.recConfidence}>
+                                            <View style={styles.recConfBar}>
+                                                <View style={[styles.recConfFill, { width: `${Math.min(rec.confidenceScore || 0, 100)}%`, backgroundColor: actionColor }]} />
+                                            </View>
+                                            <Text style={styles.recConfText}>%{Number(rec.confidenceScore || 0).toFixed(0)}</Text>
+                                        </View>
+                                        <Text style={styles.recReason} numberOfLines={2}>{rec.reason}</Text>
+                                        <View style={styles.recTapHint}>
+                                            <Ionicons name="chevron-forward" size={12} color="#C4B5FD" />
+                                            <Text style={styles.recTapHintText}>Detay için dokun</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
                     </View>
                 )}
 
@@ -538,4 +703,63 @@ const styles = StyleSheet.create({
         backgroundColor: PURPLE + '12', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, marginTop: 4,
     },
     emptyBtnText: { fontSize: 13, fontWeight: '600', color: PURPLE },
+
+    /* AI Recommendations */
+    aiBadge: {
+        backgroundColor: '#8B5CF6', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginRight: 24,
+    },
+    aiBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    recCard: {
+        width: 200, backgroundColor: '#fff', borderRadius: 18, padding: 16, marginRight: 12,
+        shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+        borderWidth: 1, borderColor: '#F3F0FF',
+    },
+    recCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    recActionBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    },
+    recActionText: { fontSize: 11, fontWeight: '800' },
+    recRiskBadge: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
+    recRiskText: { fontSize: 9, fontWeight: '700' },
+    recSymbol: { fontSize: 17, fontWeight: '800', color: '#1A1A2E', marginBottom: 2 },
+    recAssetType: { fontSize: 11, color: GRAY, fontWeight: '500', marginBottom: 10 },
+    recConfidence: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    recConfBar: { flex: 1, height: 4, backgroundColor: '#F0F0F0', borderRadius: 2, overflow: 'hidden' },
+    recConfFill: { height: '100%', borderRadius: 2 },
+    recConfText: { fontSize: 11, fontWeight: '700', color: '#1A1A2E' },
+    recReason: { fontSize: 11, color: '#666', lineHeight: 16 },
+    recTapHint: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 8, justifyContent: 'flex-end' },
+    recTapHintText: { fontSize: 9, color: '#C4B5FD', fontWeight: '600' },
+    disclaimerCard: {
+        flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+        marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10,
+        backgroundColor: '#F5F3FF', borderRadius: 12, borderWidth: 1, borderColor: '#EDE9FE',
+    },
+    disclaimerText: { flex: 1, fontSize: 10, color: '#7C3AED', lineHeight: 15, fontWeight: '500' },
+
+    /* Modal Styles */
+    modalOverlay: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24,
+    },
+    modalContent: {
+        width: '100%', backgroundColor: '#fff', borderRadius: 32, padding: 24,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
+    },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalCloseBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center' },
+    modalSymbol: { fontSize: 24, fontWeight: '800', color: '#1A1A2E', marginBottom: 4 },
+    modalAssetType: { fontSize: 13, color: GRAY, fontWeight: '600', marginBottom: 24 },
+    modalStatsRow: { flexDirection: 'row', gap: 24, marginBottom: 24 },
+    modalStatItem: { flex: 1 },
+    modalStatLabel: { fontSize: 10, color: GRAY, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
+    modalStatValue: { fontSize: 16, fontWeight: '800' },
+    modalDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 24 },
+    modalInfoBox: { flexDirection: 'row', gap: 12, backgroundColor: '#F8F9FA', padding: 16, borderRadius: 20, marginBottom: 20 },
+    modalInfoTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E', marginBottom: 4 },
+    modalInfoDetail: { fontSize: 13, color: '#475569', lineHeight: 20 },
+    modalDisclaimerBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 24 },
+    modalDisclaimerText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+    modalActionBtn: { height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+    modalActionBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

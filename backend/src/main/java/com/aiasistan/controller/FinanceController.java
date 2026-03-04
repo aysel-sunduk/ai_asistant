@@ -12,7 +12,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest; // Manuel Pageable iÃ§in ÅŸart
-import org.springframework.data.domain.Sort;    // Manuel Pageable iÃ§in ÅŸart
+import org.springframework.data.domain.Sort; // Manuel Pageable iÃ§in ÅŸart
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,10 +34,12 @@ import com.aiasistan.dto.response.CurrencyRateResponse;
 import com.aiasistan.dto.response.FinanceDashboardResponse;
 import com.aiasistan.dto.response.FinanceMetalSymbolResponse;
 import com.aiasistan.dto.response.InvestmentPerformanceResponse;
+import com.aiasistan.dto.response.InvestmentRecommendationResponse;
 import com.aiasistan.dto.response.InvestmentResponse;
 import com.aiasistan.service.CurrencyService;
 import com.aiasistan.service.FinanceMarketService;
 import com.aiasistan.service.FinanceMetalSymbolService;
+import com.aiasistan.service.InvestmentRecommendationService;
 import com.aiasistan.service.InvestmentService;
 import com.aiasistan.service.UserService;
 
@@ -49,29 +51,31 @@ import jakarta.validation.Valid;
 @RequestMapping("/v1/finance")
 @Tag(name = "Finance", description = "Finance management APIs")
 public class FinanceController {
-  
+
   private final CurrencyService currencyService;
   private final FinanceMarketService financeMarketService;
   private final FinanceMetalSymbolService financeMetalSymbolService;
   private final InvestmentService investmentService;
+  private final InvestmentRecommendationService recommendationService;
   private final UserService userService;
-  
+
   public FinanceController(
-    CurrencyService currencyService,
-    FinanceMarketService financeMarketService,
-    FinanceMetalSymbolService financeMetalSymbolService,
-    InvestmentService investmentService,
-    UserService userService
-  ) {
+      CurrencyService currencyService,
+      FinanceMarketService financeMarketService,
+      FinanceMetalSymbolService financeMetalSymbolService,
+      InvestmentService investmentService,
+      InvestmentRecommendationService recommendationService,
+      UserService userService) {
     this.currencyService = currencyService;
     this.financeMarketService = financeMarketService;
     this.financeMetalSymbolService = financeMetalSymbolService;
     this.investmentService = investmentService;
+    this.recommendationService = recommendationService;
     this.userService = userService;
   }
-  
+
   // ============ CURRENCY ENDPOINTS ============
-  
+
   @GetMapping("/currencies/latest/{code}")
   @Operation(summary = "Guncel anlik kur getir")
   public ResponseEntity<ApiResponse<CurrencyRateResponse>> getLatestLiveRate(
@@ -103,8 +107,7 @@ public class FinanceController {
     int fromIndex = Math.min(safePage * safeSize, rates.size());
     int toIndex = Math.min(fromIndex + safeSize, rates.size());
     PageResponse<CurrencyRateResponse> response = PageResponse.of(
-      new PageImpl<>(rates.subList(fromIndex, toIndex), PageRequest.of(safePage, safeSize), rates.size())
-    );
+        new PageImpl<>(rates.subList(fromIndex, toIndex), PageRequest.of(safePage, safeSize), rates.size()));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -162,8 +165,9 @@ public class FinanceController {
       @RequestParam(defaultValue = "TRY") String base,
       @RequestParam(required = false) List<String> symbols) {
     List<String> requestedSymbols = (symbols == null || symbols.isEmpty())
-      ? financeMetalSymbolService.getActiveSymbolResponses().stream().map(FinanceMetalSymbolResponse::getCode).toList()
-      : symbols;
+        ? financeMetalSymbolService.getActiveSymbolResponses().stream().map(FinanceMetalSymbolResponse::getCode)
+            .toList()
+        : symbols;
     List<CurrencyRateResponse> response = currencyService.getLiveRates(base, requestedSymbols);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -249,9 +253,9 @@ public class FinanceController {
     financeMarketService.removeFavoriteCurrency(userId, code);
     return ResponseEntity.ok(ApiResponse.ok(null, "Favorite currency removed"));
   }
-  
+
   // ============ INVESTMENT ENDPOINTS ============
-  
+
   @PostMapping("/investments")
   @Operation(summary = "Yatirim ekle")
   public ResponseEntity<ApiResponse<InvestmentResponse>> addInvestment(
@@ -260,9 +264,9 @@ public class FinanceController {
     UUID userId = resolveUserId(authentication);
     InvestmentResponse response = investmentService.addInvestment(userId, request);
     return ResponseEntity.status(HttpStatus.CREATED)
-      .body(ApiResponse.ok(response, "Investment added successfully"));
+        .body(ApiResponse.ok(response, "Investment added successfully"));
   }
-  
+
   @PutMapping("/investments/{id}/price")
   @Operation(summary = "Yatirim ortalama maliyetini guncelle")
   public ResponseEntity<ApiResponse<InvestmentResponse>> updateInvestmentPrice(
@@ -273,7 +277,7 @@ public class FinanceController {
     InvestmentResponse response = investmentService.updateInvestmentPrice(id, userId, avgCostMinor);
     return ResponseEntity.ok(ApiResponse.ok(response, "Investment price updated"));
   }
-  
+
   @GetMapping("/investments")
   @Operation(summary = "Yatirimlari sayfali getir")
   public ResponseEntity<ApiResponse<PageResponse<InvestmentResponse>>> getUserInvestments(
@@ -282,17 +286,17 @@ public class FinanceController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(defaultValue = "updatedAt") String sortBy,
       @RequestParam(defaultValue = "DESC") String sortDirection) {
-    
+
     UUID userId = resolveUserId(authentication);
-    Sort sort = sortDirection.equalsIgnoreCase("ASC") 
-          ? Sort.by(sortBy).ascending() 
-          : Sort.by(sortBy).descending();
-    
+    Sort sort = sortDirection.equalsIgnoreCase("ASC")
+        ? Sort.by(sortBy).ascending()
+        : Sort.by(sortBy).descending();
+
     PageRequest pageRequest = PageRequest.of(page, size, sort);
     PageResponse<InvestmentResponse> response = investmentService.getUserInvestments(userId, pageRequest);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
-  
+
   @GetMapping("/investments/{id}")
   @Operation(summary = "Yatirim detayini getir")
   public ResponseEntity<ApiResponse<InvestmentResponse>> getInvestment(
@@ -331,7 +335,7 @@ public class FinanceController {
     investmentService.removeFavoriteInvestment(userId, investmentId);
     return ResponseEntity.ok(ApiResponse.ok(null, "Favorite investment removed"));
   }
-  
+
   @DeleteMapping("/investments/{id}")
   @Operation(summary = "Yatirimi sil")
   public ResponseEntity<ApiResponse<Void>> deleteInvestment(
@@ -341,7 +345,7 @@ public class FinanceController {
     investmentService.deleteInvestment(id, userId);
     return ResponseEntity.ok(ApiResponse.ok(null, "Investment deleted successfully"));
   }
-  
+
   @GetMapping("/investments/total")
   @Operation(summary = "Toplam yatirim tutarini getir")
   public ResponseEntity<ApiResponse<BigDecimal>> getTotalInvestment(
@@ -370,7 +374,7 @@ public class FinanceController {
     UUID userId = resolveUserId(authentication);
     CurrencyHoldingResponse response = financeMarketService.addCurrencyHolding(userId, request, base, refresh);
     return ResponseEntity.status(HttpStatus.CREATED)
-      .body(ApiResponse.ok(response, "Currency holding added"));
+        .body(ApiResponse.ok(response, "Currency holding added"));
   }
 
   @PutMapping("/currency-holdings/{id}")
@@ -398,10 +402,11 @@ public class FinanceController {
       @RequestParam(defaultValue = "DESC") String sortDirection) {
     UUID userId = resolveUserId(authentication);
     Sort sort = sortDirection.equalsIgnoreCase("ASC")
-      ? Sort.by(sortBy).ascending()
-      : Sort.by(sortBy).descending();
+        ? Sort.by(sortBy).ascending()
+        : Sort.by(sortBy).descending();
     PageRequest pageRequest = PageRequest.of(page, size, sort);
-    PageResponse<CurrencyHoldingResponse> response = financeMarketService.getCurrencyHoldings(userId, pageRequest, base, refresh);
+    PageResponse<CurrencyHoldingResponse> response = financeMarketService.getCurrencyHoldings(userId, pageRequest, base,
+        refresh);
     List<CurrencyHoldingResponse> content = response.getContent() == null ? List.of() : response.getContent();
     return ResponseEntity.ok(ApiResponse.ok(content));
   }
@@ -418,10 +423,11 @@ public class FinanceController {
       @RequestParam(defaultValue = "DESC") String sortDirection) {
     UUID userId = resolveUserId(authentication);
     Sort sort = sortDirection.equalsIgnoreCase("ASC")
-      ? Sort.by(sortBy).ascending()
-      : Sort.by(sortBy).descending();
+        ? Sort.by(sortBy).ascending()
+        : Sort.by(sortBy).descending();
     PageRequest pageRequest = PageRequest.of(page, size, sort);
-    PageResponse<CurrencyHoldingResponse> response = financeMarketService.getCurrencyHoldings(userId, pageRequest, base, refresh);
+    PageResponse<CurrencyHoldingResponse> response = financeMarketService.getCurrencyHoldings(userId, pageRequest, base,
+        refresh);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
@@ -457,6 +463,22 @@ public class FinanceController {
     UUID userId = resolveUserId(authentication);
     PageRequest pageRequest = PageRequest.of(page, size, Sort.by("updatedAt").descending());
     FinanceDashboardResponse response = financeMarketService.getDashboard(userId, base, refresh, pageRequest);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+  // ============ AI RECOMMENDATION ENDPOINTS ============
+
+  @GetMapping("/investments/recommendations")
+  @Operation(summary = "AI yatirim onerilerini getir")
+  public ResponseEntity<ApiResponse<List<InvestmentRecommendationResponse>>> getRecommendations() {
+    List<InvestmentRecommendationResponse> response = recommendationService.getActiveRecommendations();
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @GetMapping("/investments/recommendations/high-confidence")
+  @Operation(summary = "Yuksek guvenli AI yatirim onerilerini getir")
+  public ResponseEntity<ApiResponse<List<InvestmentRecommendationResponse>>> getHighConfidenceRecommendations(
+      @RequestParam(defaultValue = "70") BigDecimal minScore) {
+    List<InvestmentRecommendationResponse> response = recommendationService.getHighConfidenceRecommendations(minScore);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 

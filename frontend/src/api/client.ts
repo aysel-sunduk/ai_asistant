@@ -32,10 +32,15 @@ type RetryableRequestConfig = {
 apiClient.interceptors.request.use(
     async (config) => {
         const token = await AsyncStorage.getItem('accessToken');
+        const isAuthPath = config.url?.includes('/v1/auth/');
+        const isChangePassword = config.url?.includes('/v1/auth/change-password');
+
         console.log('[ApiClient] Request:', config.url, 'Token exists:', !!token);
-        if (token) {
+
+        // Don't send token for auth endpoints, except for change-password
+        if (token && (!isAuthPath || isChangePassword)) {
             config.headers.Authorization = `Bearer ${token}`;
-        } else {
+        } else if (!token) {
             console.warn('[ApiClient] No token found in AsyncStorage');
         }
         return config;
@@ -52,7 +57,7 @@ apiClient.interceptors.response.use(
                 // eslint-disable-next-line no-console
                 console.log('[ApiClient] Response:', method, url, 'status:', response.status, 'data:', response.data);
             }
-        } catch {}
+        } catch { }
         return response;
     },
     async (error) => {

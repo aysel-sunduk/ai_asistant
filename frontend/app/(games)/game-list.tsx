@@ -168,17 +168,6 @@ export default function GameListScreen() {
                     </TouchableOpacity>
                 ))}
 
-                {/* Daily Challenge Banner */}
-                <View style={styles.dailyBanner}>
-                    <View style={styles.dailyLeft}>
-                        <Text style={styles.dailyEmoji}>🔥</Text>
-                        <View>
-                            <Text style={styles.dailyTitle}>Günlük Meydan Okuma</Text>
-                            <Text style={styles.dailySub}>Her gün yeni bulmaca, sürenle yarış!</Text>
-                        </View>
-                    </View>
-                    <Ionicons name="arrow-forward-circle" size={28} color={COLOR} />
-                </View>
             </ScrollView>
         </View>
     );
@@ -226,15 +215,6 @@ const styles = StyleSheet.create({
     bestVal: { fontSize: 16, fontWeight: '800', color: COLOR },
     playsText: { fontSize: 10, color: '#C4C4C4', marginTop: 2 },
 
-    dailyBanner: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: COLOR + '12', borderRadius: 18, padding: 18, marginTop: 8,
-        borderWidth: 1.5, borderColor: COLOR + '30',
-    },
-    dailyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-    dailyEmoji: { fontSize: 28 },
-    dailyTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A2E' },
-    dailySub: { fontSize: 12, color: '#9BA1A6', marginTop: 2 },
 
     // AI Banner Styles
     aiBannerLoading: { height: 120, justifyContent: 'center', alignItems: 'center' },
