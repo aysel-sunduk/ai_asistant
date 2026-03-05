@@ -19,14 +19,13 @@ const DEFAULT_MODULES: MenuModule[] = [
     { id: 'health', title: 'Sağlık', icon: 'heart', color: '#FF6B6B', route: '/(tabs)/health' },
     { id: 'shopping', title: 'Alışveriş', icon: 'cart', color: '#F472B6', route: '/(shopping)/lists' },
     { id: 'reminders', title: 'Hatırlatıcılar', icon: 'alarm', color: '#60A5FA', route: '/(reminders)/reminders' },
-    { id: 'social', title: 'Sosyal', icon: 'chatbubbles', color: '#34D399', route: '/(social)/feed' },
-    { id: 'blog', title: 'Blog', icon: 'book', color: '#6C63FF', route: '/(blog)/create-post' },
+    { id: 'social', title: 'Sosyal', icon: 'chatbubbles', color: '#6C63FF', route: '/(social)/feed' },
     { id: 'profile', title: 'Profil', icon: 'person-circle', color: '#9BA1A6', route: '/(tabs)/profile' },
 ];
 
 const STORAGE_KEY = 'menu_module_order';
 const SHORTCUTS_STORAGE_KEY = 'menu_shortcuts';
-const DEFAULT_SHORTCUTS = ['finance', 'health', 'blog'];
+const DEFAULT_SHORTCUTS = ['finance', 'health', 'social'];
 
 interface MenuState {
     modules: MenuModule[];

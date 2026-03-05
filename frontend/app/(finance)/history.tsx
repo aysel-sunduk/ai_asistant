@@ -1,16 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -28,69 +26,73 @@ export default function FinanceHistoryScreen() {
     const [history, setHistory] = useState<MonthlyFinanceSummaryResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [startDate, setStartDate] = useState(
-        new Date(new Date().setMonth(new Date().getMonth() - 11)).toISOString().slice(0, 10)
-    );
-    const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
-    const [isCustom, setIsCustom] = useState(false);
+    // 0 means current month, -1 means last month, etc.
+    const [monthOffset, setMonthOffset] = useState(0);
 
     const loadHistory = useCallback(async () => {
         setLoading(true);
         try {
-            const data = isCustom
-                ? await familyService.getFinanceHistory(12, startDate, endDate)
-                : await familyService.getFinanceHistory(12);
+            // Fetch past 12 months summary
+            const data = await familyService.getFinanceHistory(12);
             setHistory(data);
         } catch (error: any) {
             Alert.alert('Hata', 'Gecmis veriler alinamadi.');
         } finally {
             setLoading(false);
         }
-    }, [isCustom, startDate, endDate]);
+    }, []);
 
-    useEffect(() => {
-        void loadHistory();
-    }, [loadHistory]);
+    useFocusEffect(
+        useCallback(() => {
+            void loadHistory();
+        }, [loadHistory])
+    );
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val);
     };
 
-    const renderItem = ({ item }: { item: MonthlyFinanceSummaryResponse }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View>
-                    <Text style={styles.monthLabel}>{item.monthLabel}</Text>
-                    <TouchableOpacity
-                        style={styles.detailBtn}
-                        onPress={() => router.push({
-                            pathname: '/(finance)/transactions',
-                            params: { startDate: item.startDate.toString(), endDate: item.endDate.toString() }
-                        })}
-                    >
-                        <Text style={styles.detailBtnText}>Islemleri Gor</Text>
-                        <Ionicons name="chevron-forward" size={12} color={PURPLE} />
-                    </TouchableOpacity>
-                </View>
-                <View style={[styles.balanceBadge, { backgroundColor: item.balance >= 0 ? SUCCESS + '15' : DANGER + '15' }]}>
-                    <Text style={[styles.balanceText, { color: item.balance >= 0 ? SUCCESS : DANGER }]}>
-                        {item.balance >= 0 ? '+' : ''}{formatCurrency(item.balance)}
-                    </Text>
-                </View>
-            </View>
-            <View style={styles.cardBody}>
-                <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Gelir</Text>
-                    <Text style={[styles.statValue, { color: SUCCESS }]}>{formatCurrency(item.income)}</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Gider</Text>
-                    <Text style={[styles.statValue, { color: DANGER }]}>{formatCurrency(item.expense)}</Text>
-                </View>
-            </View>
-        </View>
-    );
+    const TURKISH_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+    const getMonthDates = (offset: number) => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() + offset);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const label = `${TURKISH_MONTHS[month]} ${year}`;
+        const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+        return { label, prefix };
+    };
+
+    const goMonth = (direction: -1 | 1) => {
+        const next = monthOffset + direction;
+        // Don't go to future months
+        if (next > 0) return;
+        setMonthOffset(next);
+    };
+
+    // Find the data for the currently selected month
+    const currentMonthData = useMemo(() => {
+        const { prefix } = getMonthDates(monthOffset);
+        // Financial history from backend typically starts on the 1st of the month
+        // We look for a record whose startDate starts with 'YYYY-MM'
+        return history.find(item => item.startDate.startsWith(prefix));
+    }, [history, monthOffset]);
+
+    const { label: currentMonthLabel } = getMonthDates(monthOffset);
+
+    // Fallback if no data is found for this month
+    const emptySummary: MonthlyFinanceSummaryResponse = {
+        monthLabel: currentMonthLabel,
+        startDate: '',
+        endDate: '',
+        income: 0,
+        expense: 0,
+        balance: 0,
+    };
+
+    const displayData = currentMonthData || emptySummary;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -106,46 +108,20 @@ export default function FinanceHistoryScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.filterTabs}>
-                    <TouchableOpacity
-                        style={[styles.tab, !isCustom && styles.tabActive]}
-                        onPress={() => setIsCustom(false)}
-                    >
-                        <Text style={[styles.tabText, !isCustom && styles.tabTextActive]}>Standart (12 Ay)</Text>
+                {/* Month Navigation Row */}
+                <View style={styles.monthNavRow}>
+                    <TouchableOpacity onPress={() => goMonth(-1)} style={styles.monthNavBtn}>
+                        <Ionicons name="chevron-back" size={20} color={PURPLE} />
                     </TouchableOpacity>
+                    <Text style={styles.monthNavLabel}>{currentMonthLabel}</Text>
                     <TouchableOpacity
-                        style={[styles.tab, isCustom && styles.tabActive]}
-                        onPress={() => setIsCustom(true)}
+                        onPress={() => goMonth(1)}
+                        style={[styles.monthNavBtn, monthOffset >= 0 && { opacity: 0.3 }]}
+                        disabled={monthOffset >= 0}
                     >
-                        <Text style={[styles.tabText, isCustom && styles.tabTextActive]}>Ozel Aralik</Text>
+                        <Ionicons name="chevron-forward" size={20} color={PURPLE} />
                     </TouchableOpacity>
                 </View>
-
-                {isCustom && (
-                    <View style={styles.customDateRow}>
-                        <View style={styles.inputBox}>
-                            <Text style={styles.inputLabel}>Baslangic</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={startDate}
-                                onChangeText={setStartDate}
-                                placeholder="YYYY-MM-DD"
-                            />
-                        </View>
-                        <View style={styles.inputBox}>
-                            <Text style={styles.inputLabel}>Bitis</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={endDate}
-                                onChangeText={setEndDate}
-                                placeholder="YYYY-MM-DD"
-                            />
-                        </View>
-                        <TouchableOpacity style={styles.goBtn} onPress={loadHistory}>
-                            <Ionicons name="search" size={20} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-                )}
             </View>
 
             {loading ? (
@@ -153,24 +129,56 @@ export default function FinanceHistoryScreen() {
                     <ActivityIndicator size="large" color={PURPLE} />
                 </View>
             ) : (
-                <FlatList
-                    data={history}
-                    keyExtractor={(item) => item.monthLabel}
-                    renderItem={renderItem}
-                    contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={
-                        <View style={styles.infoBox}>
-                            <Ionicons name="information-circle-outline" size={20} color={PURPLE} />
-                            <Text style={styles.infoText}>Finansal hareketlerinizin aylik ozetleri asagida listelenmistir.</Text>
+                <View style={styles.content}>
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <View>
+                                <Text style={styles.monthLabel}>{displayData.monthLabel}</Text>
+                                <TouchableOpacity
+                                    style={[styles.detailBtn, !currentMonthData && { opacity: 0.5 }]}
+                                    disabled={!currentMonthData}
+                                    onPress={() => {
+                                        if (currentMonthData) {
+                                            router.push({
+                                                pathname: '/(finance)/transactions',
+                                                params: {
+                                                    startDate: currentMonthData.startDate.toString(),
+                                                    endDate: currentMonthData.endDate.toString()
+                                                }
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.detailBtnText}>Islemleri Gor</Text>
+                                    <Ionicons name="chevron-forward" size={12} color={PURPLE} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.balanceBadge, { backgroundColor: displayData.balance >= 0 ? SUCCESS + '15' : DANGER + '15' }]}>
+                                <Text style={[styles.balanceText, { color: displayData.balance >= 0 ? SUCCESS : DANGER }]}>
+                                    {displayData.balance >= 0 ? '+' : ''}{formatCurrency(displayData.balance)}
+                                </Text>
+                            </View>
                         </View>
-                    }
-                    ListEmptyComponent={
+                        <View style={styles.cardBody}>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>Gelir</Text>
+                                <Text style={[styles.statValue, { color: SUCCESS }]}>{formatCurrency(displayData.income)}</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>Gider</Text>
+                                <Text style={[styles.statValue, { color: DANGER }]}>{formatCurrency(displayData.expense)}</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {!currentMonthData && (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="calendar-outline" size={48} color={GRAY} />
-                            <Text style={styles.emptyText}>Henuz gecmis veri bulunamadi.</Text>
+                            <Text style={styles.emptyText}>Bu ay icin gecmis veri bulunamadi.</Text>
                         </View>
-                    }
-                />
+                    )}
+                </View>
             )}
         </SafeAreaView>
     );
@@ -195,66 +203,39 @@ const styles = StyleSheet.create({
     },
     backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
     title: { fontSize: 20, fontWeight: '700', color: DARK },
-    filterTabs: {
-        flexDirection: 'row',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 12,
-        padding: 4,
-        marginBottom: 12,
+    
+    /* Month Nav Row */
+    monthNavRow: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        gap: 16,
+        backgroundColor: '#F8F9FA',
+        paddingVertical: 8,
+        borderRadius: 16,
     },
-    tab: {
-        flex: 1,
-        height: 36,
+    monthNavBtn: { 
+        width: 36, 
+        height: 36, 
+        borderRadius: 18, 
+        backgroundColor: '#fff', 
+        alignItems: 'center', 
         justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 10,
-    },
-    tabActive: {
-        backgroundColor: '#fff',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 1,
     },
-    tabText: { fontSize: 13, fontWeight: '600', color: GRAY },
-    tabTextActive: { color: PURPLE },
-    customDateRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
+    monthNavLabel: { 
+        fontSize: 16, 
+        fontWeight: '700', 
+        color: PURPLE, 
+        minWidth: 120, 
+        textAlign: 'center' 
     },
-    inputBox: { flex: 1 },
-    inputLabel: { fontSize: 10, color: GRAY, marginBottom: 4, fontWeight: '600' },
-    input: {
-        height: 36,
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        fontSize: 12,
-        color: DARK,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    goBtn: {
-        width: 36,
-        height: 36,
-        backgroundColor: PURPLE,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    listContent: { padding: 20 },
-    infoBox: {
-        flexDirection: 'row',
-        backgroundColor: PURPLE + '10',
-        padding: 12,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginBottom: 20,
-        gap: 10,
-    },
-    infoText: { fontSize: 13, color: PURPLE, flex: 1 },
+
+    content: { padding: 20 },
     card: {
         backgroundColor: '#fff',
         borderRadius: 16,
@@ -270,27 +251,32 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 20,
     },
-    monthLabel: { fontSize: 16, fontWeight: '700', color: DARK },
+    monthLabel: { fontSize: 18, fontWeight: '800', color: DARK },
     detailBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        marginTop: 4,
+        marginTop: 6,
+        backgroundColor: PURPLE + '10',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
     },
     detailBtnText: {
         fontSize: 12,
         color: PURPLE,
-        fontWeight: '600',
+        fontWeight: '700',
     },
-    balanceBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    balanceText: { fontSize: 14, fontWeight: '600' },
-    cardBody: { flexDirection: 'row', alignItems: 'center' },
+    balanceBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    balanceText: { fontSize: 16, fontWeight: '800' },
+    cardBody: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', borderRadius: 12, paddingVertical: 16 },
     statItem: { flex: 1, alignItems: 'center' },
-    statLabel: { fontSize: 12, color: GRAY, marginBottom: 4 },
-    statValue: { fontSize: 15, fontWeight: '700' },
-    statDivider: { width: 1, height: 30, backgroundColor: '#F1F5F9', marginHorizontal: 20 },
-    emptyContainer: { alignItems: 'center', marginTop: 100 },
+    statLabel: { fontSize: 12, color: GRAY, marginBottom: 8, fontWeight: '600' },
+    statValue: { fontSize: 18, fontWeight: '800' },
+    statDivider: { width: 1, height: 40, backgroundColor: '#E2E8F0' },
+    emptyContainer: { alignItems: 'center', marginTop: 40 },
     emptyText: { marginTop: 12, color: GRAY, fontSize: 14 },
 });

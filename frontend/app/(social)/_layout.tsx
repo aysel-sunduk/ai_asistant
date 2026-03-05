@@ -5,6 +5,7 @@ export default function SocialLayout() {
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="feed" />
             <Stack.Screen name="user-profile" />
+            <Stack.Screen name="post-detail" />
         </Stack>
     );
 }
