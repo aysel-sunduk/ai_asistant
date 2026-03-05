@@ -83,6 +83,9 @@ public class UserProfileService {
         if (profile.getGender() == null || profile.getGender().isBlank()) {
             missing.add("gender");
         }
+        if (profile.getActivityLevel() == null) {
+            missing.add("activity_level");
+        }
 
         return new ModuleCompletionStatus(missing.isEmpty(), missing);
     }
@@ -222,6 +225,8 @@ public class UserProfileService {
             profile.setHeightCm(request.getHeightCm());
         if (request.getWeightKg() != null)
             profile.setWeightKg(request.getWeightKg());
+        if (request.getActivityLevel() != null)
+            profile.setActivityLevel(request.getActivityLevel());
     }
 
     private void applyFinanceFields(UserProfile profile, UserProfileUpsertRequest request) {
@@ -277,6 +282,7 @@ public class UserProfileService {
         response.setPhone(profile.getPhone());
         response.setShowPhone(profile.isShowPhone());
         response.setShowEmail(profile.isShowEmail());
+        response.setActivityLevel(profile.getActivityLevel());
         return response;
     }
 

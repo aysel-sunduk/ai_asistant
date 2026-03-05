@@ -11,7 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.aiasistan.dto.HealthGoalDto;
 import com.aiasistan.model.HealthGoal;
+import com.aiasistan.model.UserProfile;
 import com.aiasistan.repository.HealthGoalRepository;
+import com.aiasistan.repository.UserProfileRepository;
+import com.aiasistan.exception.NotFoundException;
 
 @Service
 public class HealthGoalService {
@@ -21,10 +24,15 @@ public class HealthGoalService {
 
     private final HealthGoalRepository healthGoalRepository;
     private final UserService userService;
+    private final HealthService healthService;
+    private final UserProfileRepository userProfileRepository;
 
-    public HealthGoalService(HealthGoalRepository healthGoalRepository, UserService userService) {
+    public HealthGoalService(HealthGoalRepository healthGoalRepository, UserService userService,
+            HealthService healthService, UserProfileRepository userProfileRepository) {
         this.healthGoalRepository = healthGoalRepository;
         this.userService = userService;
+        this.healthService = healthService;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @Transactional
@@ -40,6 +48,22 @@ public class HealthGoalService {
         HealthGoal goals = healthGoalRepository.findById(userId).orElseGet(() -> createDefaultGoals(userId));
         goals.setWaterMlTarget(request.getWaterMlTarget());
         goals.setStepsTarget(request.getStepsTarget());
+
+        if (request.getDietGoal() != null) {
+            goals.setDietGoal(request.getDietGoal());
+        }
+
+        // Eğer kalori hedefi gönderilmemişse, profil verilerinden hesapla
+        if (request.getCalorieTarget() == null || request.getCalorieTarget() <= 0) {
+            UserProfile profile = userProfileRepository.findById(userId).orElse(null);
+            if (profile != null) {
+                int calculated = healthService.calculateDailyCalorieTarget(profile, goals.getDietGoal());
+                goals.setCalorieTarget(calculated);
+            }
+        } else {
+            goals.setCalorieTarget(request.getCalorieTarget());
+        }
+
         return HealthGoalDto.Response.from(healthGoalRepository.save(goals));
     }
 

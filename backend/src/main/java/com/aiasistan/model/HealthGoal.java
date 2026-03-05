@@ -28,6 +28,12 @@ public class HealthGoal {
     @Column(name = "steps_target", nullable = false)
     private Integer stepsTarget = 10000;
 
+    @Column(name = "calorie_target")
+    private Integer calorieTarget = 2000;
+
+    @Column(name = "diet_goal")
+    private String dietGoal = "MAINTAIN"; // LOSE_WEIGHT, MAINTAIN, GAIN_WEIGHT
+
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
 
@@ -72,6 +78,22 @@ public class HealthGoal {
 
     public void setStepsTarget(Integer stepsTarget) {
         this.stepsTarget = stepsTarget;
+    }
+
+    public Integer getCalorieTarget() {
+        return calorieTarget;
+    }
+
+    public void setCalorieTarget(Integer calorieTarget) {
+        this.calorieTarget = calorieTarget;
+    }
+
+    public String getDietGoal() {
+        return dietGoal;
+    }
+
+    public void setDietGoal(String dietGoal) {
+        this.dietGoal = dietGoal;
     }
 
     public OffsetDateTime getCreatedAt() {

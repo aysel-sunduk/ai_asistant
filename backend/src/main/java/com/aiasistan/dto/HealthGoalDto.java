@@ -26,6 +26,9 @@ public class HealthGoalDto {
         @Min(value = 1, message = "stepsTarget pozitif olmali")
         private Integer stepsTarget;
 
+        private Integer calorieTarget;
+        private String dietGoal;
+
         public Integer getWaterMlTarget() {
             return waterMlTarget;
         }
@@ -41,12 +44,30 @@ public class HealthGoalDto {
         public void setStepsTarget(Integer stepsTarget) {
             this.stepsTarget = stepsTarget;
         }
+
+        public Integer getCalorieTarget() {
+            return calorieTarget;
+        }
+
+        public void setCalorieTarget(Integer calorieTarget) {
+            this.calorieTarget = calorieTarget;
+        }
+
+        public String getDietGoal() {
+            return dietGoal;
+        }
+
+        public void setDietGoal(String dietGoal) {
+            this.dietGoal = dietGoal;
+        }
     }
 
     public static class Response {
         private UUID userId;
         private Integer waterMlTarget;
         private Integer stepsTarget;
+        private Integer calorieTarget;
+        private String dietGoal;
         private OffsetDateTime createdAt;
         private OffsetDateTime updatedAt;
 
@@ -55,6 +76,8 @@ public class HealthGoalDto {
             response.userId = goal.getUserId();
             response.waterMlTarget = goal.getWaterMlTarget();
             response.stepsTarget = goal.getStepsTarget();
+            response.calorieTarget = goal.getCalorieTarget();
+            response.dietGoal = goal.getDietGoal();
             response.createdAt = goal.getCreatedAt();
             response.updatedAt = goal.getUpdatedAt();
             return response;

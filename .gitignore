@@ -72,4 +72,12 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 frontend/src/api/client.ts
-frontend/src/api/client.ts
+
+# ── ML Veri Setleri ve Çıktılar (Çok büyük dosyalar) ──
+ml-service/food-calorie-estimator/datasets/
+ml-service/food-calorie-estimator/models/
+ml-service/food-calorie-estimator/logs/
+ml-service/food-calorie-estimator/plots/
+ml-service/food-calorie-estimator/food101/
+ml-service/app.ipynb
+ml-service/food-calorie-estimator/

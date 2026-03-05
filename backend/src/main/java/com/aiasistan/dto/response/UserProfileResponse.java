@@ -35,6 +35,7 @@ public class UserProfileResponse {
     private String phone;
     private boolean showPhone;
     private boolean showEmail;
+    private String activityLevel;
 
     public UUID getUserId() {
         return userId;
@@ -202,5 +203,13 @@ public class UserProfileResponse {
 
     public void setShowEmail(boolean showEmail) {
         this.showEmail = showEmail;
+    }
+
+    public String getActivityLevel() {
+        return activityLevel;
+    }
+
+    public void setActivityLevel(String activityLevel) {
+        this.activityLevel = activityLevel;
     }
 }

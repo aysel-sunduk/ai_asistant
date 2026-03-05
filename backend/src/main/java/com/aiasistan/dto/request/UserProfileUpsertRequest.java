@@ -28,6 +28,7 @@ public class UserProfileUpsertRequest {
     private String phone;
     private Boolean showPhone;
     private Boolean showEmail;
+    private String activityLevel;
 
     public String getFullName() {
         return fullName;
@@ -155,5 +156,13 @@ public class UserProfileUpsertRequest {
 
     public void setShowEmail(Boolean showEmail) {
         this.showEmail = showEmail;
+    }
+
+    public String getActivityLevel() {
+        return activityLevel;
+    }
+
+    public void setActivityLevel(String activityLevel) {
+        this.activityLevel = activityLevel;
     }
 }

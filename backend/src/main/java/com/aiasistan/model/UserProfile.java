@@ -52,6 +52,9 @@ public class UserProfile {
     @Column(name = "weight_kg")
     private BigDecimal weightKg;
 
+    @Column(name = "activity_level")
+    private String activityLevel = "SEDENTARY"; // SEDENTARY, LIGHT, MODERATE, INTENSE
+
     @Column(name = "preferred_currency", columnDefinition = "text")
     private String preferredCurrency = "TRY";
 
@@ -168,6 +171,14 @@ public class UserProfile {
 
     public void setWeightKg(BigDecimal weightKg) {
         this.weightKg = weightKg;
+    }
+
+    public String getActivityLevel() {
+        return activityLevel;
+    }
+
+    public void setActivityLevel(String activityLevel) {
+        this.activityLevel = activityLevel;
     }
 
     public String getPreferredCurrency() {
