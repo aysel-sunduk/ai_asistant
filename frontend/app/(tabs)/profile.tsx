@@ -93,6 +93,13 @@ export default function ProfileScreen() {
             color: '#4ECDC4',
             onPress: () => router.push('/change-password'),
         },
+        {
+            icon: 'heart-outline',
+            label: 'Sağlık Bilgileri',
+            subtitle: 'Boy, kilo, hareket durumu',
+            color: '#FF6B6B',
+            onPress: () => router.push('/health-info'),
+        },
     ];
 
     const appItems: MenuItem[] = [

@@ -14,7 +14,6 @@ import com.aiasistan.model.HealthGoal;
 import com.aiasistan.model.UserProfile;
 import com.aiasistan.repository.HealthGoalRepository;
 import com.aiasistan.repository.UserProfileRepository;
-import com.aiasistan.exception.NotFoundException;
 
 @Service
 public class HealthGoalService {

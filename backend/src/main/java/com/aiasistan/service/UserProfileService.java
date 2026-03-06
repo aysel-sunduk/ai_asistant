@@ -11,6 +11,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import com.aiasistan.repository.UserRepository;
 
 @Service
 public class UserProfileService {
+    private static final Logger logger = LoggerFactory.getLogger(UserProfileService.class);
     private static final Set<String> ALLOWED_PROFILE_VISIBILITY = Set.of("public", "private");
 
     private final UserProfileRepository userProfileRepository;
@@ -303,7 +306,10 @@ public class UserProfileService {
         }
         String normalized = visibility.trim().toLowerCase(Locale.ROOT);
         if (!ALLOWED_PROFILE_VISIBILITY.contains(normalized)) {
-            throw new BadRequestException("profileVisibility only accepts: public, private");
+            // Log warning but return default instead of throwing to prevent 500 errors on
+            // legacy data
+            logger.warn("Invalid visibility detected: {}. Defaulting to 'public'", visibility);
+            return "public";
         }
         return normalized;
     }
@@ -312,10 +318,15 @@ public class UserProfileService {
         if (profile == null || profile.getUserId() == null) {
             return;
         }
-        userRepository.findById(profile.getUserId()).ifPresent(user -> {
-            user.setVisibility(normalizeProfileVisibility(profile.getProfileVisibility()));
-            syncUserNameFromFullName(user, profile.getFullName());
-        });
+        try {
+            userRepository.findById(profile.getUserId()).ifPresent(user -> {
+                user.setVisibility(normalizeProfileVisibility(profile.getProfileVisibility()));
+                syncUserNameFromFullName(user, profile.getFullName());
+                userRepository.save(user);
+            });
+        } catch (Exception e) {
+            logger.error("Error syncing user table columns for userId: {}", profile.getUserId(), e);
+        }
     }
 
     private void syncUserNameFromFullName(User user, String fullName) {

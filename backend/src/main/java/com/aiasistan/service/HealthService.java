@@ -53,10 +53,12 @@ public class HealthService {
         if (level == null)
             return 1.2;
         return switch (level.toUpperCase()) {
-            case "LIGHT" -> 1.375;
-            case "MODERATE" -> 1.55;
-            case "INTENSE" -> 1.725;
-            default -> 1.2; // SEDENTARY
+            case "SEDENTARY" -> 1.2;
+            case "LIGHTLY_ACTIVE", "LIGHT" -> 1.375;
+            case "MODERATELY_ACTIVE", "MODERATE" -> 1.55;
+            case "VERY_ACTIVE", "INTENSE" -> 1.725;
+            case "EXTRA_ACTIVE" -> 1.9;
+            default -> 1.2;
         };
     }
 }

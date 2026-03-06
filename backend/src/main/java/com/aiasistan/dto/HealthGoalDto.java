@@ -107,6 +107,22 @@ public class HealthGoalDto {
             this.stepsTarget = stepsTarget;
         }
 
+        public Integer getCalorieTarget() {
+            return calorieTarget;
+        }
+
+        public void setCalorieTarget(Integer calorieTarget) {
+            this.calorieTarget = calorieTarget;
+        }
+
+        public String getDietGoal() {
+            return dietGoal;
+        }
+
+        public void setDietGoal(String dietGoal) {
+            this.dietGoal = dietGoal;
+        }
+
         public OffsetDateTime getCreatedAt() {
             return createdAt;
         }

@@ -35,6 +35,7 @@ export interface UserProfile {
 
     showEmail?: boolean;
     showPhone?: boolean;
+    activityLevel?: string;
 }
 
 // ─── PUT /api/v1/profile Request ───
@@ -55,13 +56,13 @@ export interface UpdateProfileRequest {
     showEmail?: boolean;
     showPhone?: boolean;
     bloodType?: string;
+    activityLevel?: string;
 }
 
 // ─── Helpers ───
 export const GENDER_LABELS: Record<string, string> = {
     MALE: 'Erkek',
     FEMALE: 'Kadın',
-    OTHER: 'Diğer',
     PREFER_NOT_TO_SAY: 'Belirtmek İstemiyorum',
 };
 
@@ -69,4 +70,12 @@ export const VISIBILITY_LABELS: Record<string, string> = {
     PUBLIC: 'Herkese Açık',
     PRIVATE: 'Gizli',
     FRIENDS_ONLY: 'Sadece Arkadaşlar',
+};
+
+export const ACTIVITY_LEVEL_LABELS: Record<string, string> = {
+    SEDENTARY: 'Hareketsiz',
+    LIGHTLY_ACTIVE: 'Hafif Hareketli',
+    MODERATELY_ACTIVE: 'Orta Hareketli',
+    VERY_ACTIVE: 'Çok Hareketli',
+    EXTRA_ACTIVE: 'Ekstra Hareketli',
 };

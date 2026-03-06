@@ -25,4 +25,19 @@ export const aiService = {
     cleanupBlogPost: async (content: string): Promise<AIInteraction> => {
         return aiService.sendPrompt('blog_cleanup', content);
     },
+
+    analyzeFood: async (imageUri: string): Promise<any> => {
+        const formData = new FormData();
+        const uriParts = imageUri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+
+        formData.append('file', {
+            uri: imageUri,
+            name: `photo.${fileType}`,
+            type: `image/${fileType}`,
+        } as any);
+
+        const response = await aiApi.analyzeFood(formData);
+        return response.data.data;
+    },
 };

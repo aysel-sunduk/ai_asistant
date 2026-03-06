@@ -76,16 +76,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-            errors.put(error.getField(), error.getDefaultMessage())
-        );
-        
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+
         // Error detaylarını string'e çevir
         StringBuilder errorMessage = new StringBuilder("Validation hatası: ");
-        errors.forEach((field, message) -> 
-            errorMessage.append(field).append(" - ").append(message).append("; ")
-        );
-        
+        errors.forEach((field, message) -> errorMessage.append(field).append(" - ").append(message).append("; "));
+
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(errorMessage.toString()));
@@ -116,7 +113,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataAccess(DataAccessException ex) {
         logger.error("Database access exception occurred", ex);
-        String rootMessage = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        String rootMessage = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
         String message = "Veritabani hatasi olustu";
         if (rootMessage != null && rootMessage.toLowerCase().contains("liked_user_ids")) {
             message = "Blog begeni alani eksik. Backend'i yeniden baslatip migrationlari calistirin.";
@@ -129,8 +127,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
         logger.error("Unexpected exception occurred", ex);
+        String detail = ex.getClass().getSimpleName() + ": " + ex.getMessage();
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Beklenmeyen bir hata oluştu"));
+                .body(ApiResponse.error("Beklenmeyen bir hata oluştu: " + detail));
     }
-} 
+}

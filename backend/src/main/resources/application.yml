@@ -72,6 +72,8 @@ app:
     gemini-key: ${GEMINI_API_KEY:}
     openrouter-key: ${OPENROUTER_API_KEY:}
     openrouter-model: ${OPENROUTER_MODEL:meta-llama/llama-3.3-70b-instruct:free}
+    ml-service-url: ${ML_SERVICE_URL:http://localhost:8000}
+
   push:
     enabled: ${PUSH_ENABLED:true}
     expo-url: ${PUSH_EXPO_URL:https://exp.host/--/api/v2/push/send}

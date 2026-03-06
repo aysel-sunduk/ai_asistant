@@ -52,9 +52,6 @@ public class UserProfile {
     @Column(name = "weight_kg")
     private BigDecimal weightKg;
 
-    @Column(name = "activity_level")
-    private String activityLevel = "SEDENTARY"; // SEDENTARY, LIGHT, MODERATE, INTENSE
-
     @Column(name = "preferred_currency", columnDefinition = "text")
     private String preferredCurrency = "TRY";
 
@@ -88,6 +85,9 @@ public class UserProfile {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Column(name = "activity_level")
+    private String activityLevel;
 
     public UserProfile() {
     }
@@ -173,14 +173,6 @@ public class UserProfile {
         this.weightKg = weightKg;
     }
 
-    public String getActivityLevel() {
-        return activityLevel;
-    }
-
-    public void setActivityLevel(String activityLevel) {
-        this.activityLevel = activityLevel;
-    }
-
     public String getPreferredCurrency() {
         return preferredCurrency;
     }
@@ -251,6 +243,14 @@ public class UserProfile {
 
     public void setShowEmail(boolean showEmail) {
         this.showEmail = showEmail;
+    }
+
+    public String getActivityLevel() {
+        return activityLevel;
+    }
+
+    public void setActivityLevel(String activityLevel) {
+        this.activityLevel = activityLevel;
     }
 
 }

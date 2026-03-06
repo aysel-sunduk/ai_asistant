@@ -75,9 +75,12 @@ frontend/src/api/client.ts
 
 # ── ML Veri Setleri ve Çıktılar (Çok büyük dosyalar) ──
 ml-service/food-calorie-estimator/datasets/
-ml-service/food-calorie-estimator/models/
+ml-service/food-calorie-estimator/checkpoints/
 ml-service/food-calorie-estimator/logs/
 ml-service/food-calorie-estimator/plots/
 ml-service/food-calorie-estimator/food101/
+ml-service/food-calorie-estimator/__pycache__/
+ml-service/food-calorie-estimator/.ipynb_checkpoints/
+ml-service/food-calorie-estimator/*.npy
+ml-service/food-calorie-estimator/*.onnx
 ml-service/app.ipynb
-ml-service/food-calorie-estimator/

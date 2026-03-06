@@ -8,5 +8,8 @@ export const aiApi = {
     getDietPlan: () => apiClient.get('/ai/diet-plan'),
     getMailDraft: (prompt: string) => apiClient.post('/ai/mail-draft', { prompt }),
     cleanBlogContent: (content: string) => apiClient.post('/ai/blog-cleaner', { content }),
+    analyzeFood: (formData: FormData) => apiClient.post('/ai/food/analyze', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     getInvestmentInsights: () => apiClient.get('/ai/investment-insights'),
 };

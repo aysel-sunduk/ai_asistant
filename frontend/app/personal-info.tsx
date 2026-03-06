@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { userApi } from '../src/api/user.api';
 import type { UpdateProfileRequest, UserProfile } from '../src/models/user.model';
-import { GENDER_LABELS, VISIBILITY_LABELS } from '../src/models/user.model';
+import { ACTIVITY_LEVEL_LABELS, GENDER_LABELS, VISIBILITY_LABELS } from '../src/models/user.model';
 import { useAuthStore } from '../src/store/auth.store';
 
 const PURPLE = '#6C63FF';
@@ -103,6 +103,7 @@ export default function PersonalInfoScreen() {
                 interests: form.interests || undefined,
                 onboarding: form.onboarding || undefined,
                 notifications: form.notifications || undefined,
+                activityLevel: form.activityLevel || undefined,
             };
             const res = await userApi.updateProfile(body);
             const updated = res.data.data;
@@ -209,7 +210,11 @@ export default function PersonalInfoScreen() {
                             keyboard="numeric" placeholder="175" />
                         <Field label="Kilo (kg)" value={form.weightKg?.toString()} icon="barbell-outline"
                             editing={isEditing} onChange={(v) => updateField('weightKg', Number(v) || undefined)}
-                            keyboard="numeric" placeholder="70" last />
+                            keyboard="numeric" placeholder="70" />
+                        <PickerField
+                            label="Hareket Durumu" icon="walk-outline" value={form.activityLevel}
+                            options={Object.entries(ACTIVITY_LEVEL_LABELS)}
+                            editing={isEditing} onChange={(v) => updateField('activityLevel', v)} last />
                     </View>
 
                     {/* ═══ 3. TERCİHLER ═══ */}
