@@ -14,6 +14,7 @@ from app.api.game_api import router as game_router
 from app.api.shopping_api import router as shopping_router
 from app.api.finance_api import router as finance_router
 from app.api.food_api import router as food_router
+from app.api.stt_api import router as stt_router
 
 
 logging.basicConfig(
@@ -29,47 +30,53 @@ async def lifespan(app: FastAPI):
     logger.info("AI Asistan ML Service başlatılıyor...")
     
     # ML modellerini ön yükle - Her biri bağımsız yüklensin ki biri hata verirse servis çökmesin
-    # try:
-    #     from app.models.profanity_filter import _load_ml_model
-    #     _load_ml_model()
-    # except Exception as e:
-    #     logger.error(f"Argo filtresi yuklenemedi: {e}")
+    try:
+        from app.models.profanity_filter import _load_ml_model
+        _load_ml_model()
+    except Exception as e:
+        logger.error(f"Argo filtresi yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.title_generator import _load_model as _load_title_model
-    #     _load_title_model()
-    # except Exception as e:
-    #     logger.error(f"Baslik onerici yuklenemedi: {e}")
+    try:
+        from app.models.title_generator import _load_model as _load_title_model
+        _load_title_model()
+    except Exception as e:
+        logger.error(f"Baslik onerici yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.game_analyzer import _load_models as _load_game_models
-    #     _load_game_models()
-    # except Exception as e:
-    #     logger.error(f"Oyun analizoru yuklenemedi: {e}")
+    try:
+        from app.models.game_analyzer import _load_models as _load_game_models
+        _load_game_models()
+    except Exception as e:
+        logger.error(f"Oyun analizoru yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.motivation_predictor import _load_models as _load_motivation_model
-    #     _load_motivation_model()
-    # except Exception as e:
-    #     logger.error(f"Motivasyon tahminci yuklenemedi: {e}")
+    try:
+        from app.models.motivation_predictor import _load_models as _load_motivation_model
+        _load_motivation_model()
+    except Exception as e:
+        logger.error(f"Motivasyon tahminci yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
-    #     _load_shopping_artifacts()
-    # except Exception as e:
-    #     logger.error(f"Alisveris onerici yuklenemedi: {e}")
+    try:
+        from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
+        _load_shopping_artifacts()
+    except Exception as e:
+        logger.error(f"Alisveris onerici yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.investment_recommender import _load_models as _load_investment_models
-    #     _load_investment_models()
-    # except Exception as e:
-    #     logger.error(f"Yatirim onerici yuklenemedi: {e}")
+    try:
+        from app.models.investment_recommender import _load_models as _load_investment_models
+        _load_investment_models()
+    except Exception as e:
+        logger.error(f"Yatirim onerici yuklenemedi: {e}")
 
     try:
         from app.models.food_analyzer import _load_model as _load_food_model
         _load_food_model()
     except Exception as e:
         logger.error(f"Yemek analiz modeli yuklenemedi: {e}")
+
+    try:
+        from app.models.stt_engine import _load_stt_model
+        _load_stt_model()
+    except Exception as e:
+        logger.error(f"STT (Whisper) modeli yuklenemedi: {e}")
 
     logger.info("ML Service yukleme süreci tamamlandı.")
     yield
@@ -98,6 +105,7 @@ app.include_router(game_router, prefix="/api")
 app.include_router(shopping_router, prefix="/api")
 app.include_router(finance_router, prefix="/api")
 app.include_router(food_router, prefix="/api")
+app.include_router(stt_router, prefix="/api")
 
 
 
@@ -111,6 +119,7 @@ async def health_check():
     from app.models.shopping_recommender import is_model_loaded as shopping_loaded
     from app.models.investment_recommender import is_model_loaded as investment_loaded
     from app.models.food_analyzer import analyzer
+    from app.models.stt_engine import stt_engine
     return {
         "status": "ok",
         "service": "ai-asistan-ml",
@@ -123,6 +132,7 @@ async def health_check():
             "shopping_recommender": shopping_loaded(),
             "investment_recommender": investment_loaded(),
             "food_analyzer": analyzer.initialized,
+            "stt_engine": stt_engine.initialized,
         },
     }
 

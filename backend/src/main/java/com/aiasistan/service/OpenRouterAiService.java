@@ -1,7 +1,3 @@
-/**
- * Kisa aciklama: OpenRouter AI API entegrasyonu — hedef motivasyonu ve blog başlık önerisi.
- */
-
 package com.aiasistan.service;
 
 import java.net.URI;
@@ -22,10 +18,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * OpenRouter API üzerinden yapay zeka destekli içerik üretimi.
- * Hedef motivasyonu ve blog başlık önerisi için kullanılır.
- *
- * API key yoksa veya hata oluşursa fallback mesajlar döner.
+ * OpenRouter AI API üzerinden yapay zeka destekli içerik üretimi.
+ * Hedef motivasyonu, blog başlık önerisi ve mülakat provası için kullanılır.
  */
 @Service
 public class OpenRouterAiService {
@@ -47,12 +41,6 @@ public class OpenRouterAiService {
 
     /**
      * Hedef bilgilerine göre Türkçe motivasyon ve öneri mesajı üretir.
-     *
-     * @param title       Hedef başlığı
-     * @param description Hedef açıklaması (nullable)
-     * @param category    Kategori (nullable)
-     * @param progressPct İlerleme yüzdesi (0-100)
-     * @return Motivasyon mesajı
      */
     public String generateGoalMotivation(String title, String description, String category, Integer progressPct) {
         if (!isConfigured()) {
@@ -87,11 +75,6 @@ public class OpenRouterAiService {
 
     /**
      * Blog içeriğine göre Türkçe başlık önerileri üretir.
-     *
-     * @param content  Blog içeriği
-     * @param category Kategori (nullable)
-     * @param count    Kaç öneri isteniyor (1-5)
-     * @return Başlık önerilerinin listesi
      */
     public List<String> generateBlogTitleSuggestions(String content, String category, int count) {
         if (!isConfigured()) {
@@ -103,7 +86,6 @@ public class OpenRouterAiService {
             int safeCount = Math.min(Math.max(count, 1), 5);
             String safeCategory = (category == null || category.isBlank()) ? "genel" : category;
 
-            // İçeriği kısalt (çok uzunsa token tasarrufu)
             String trimmedContent = content.length() > 1500
                     ? content.substring(0, 1500) + "..."
                     : content;
@@ -129,6 +111,80 @@ public class OpenRouterAiService {
         }
 
         return List.of();
+    }
+
+    /**
+     * Mülakat başlığı ve iş tanımına göre mülakat soruları üretir.
+     */
+    public List<String> generateInterviewQuestions(String title, String position, String jobDescription, int count) {
+        if (!isConfigured()) {
+            logger.warn("OpenRouter API key tanımlı değil, mülakat soruları üretilemiyor");
+            return List.of();
+        }
+
+        try {
+            int safeCount = Math.min(Math.max(count, 3), 10);
+
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("Sen profesyonel bir İnsan Kaynakları (İK) uzmanısın. ")
+                    .append("Aşağıdaki pozisyon için mülakatta sorulacak ").append(safeCount)
+                    .append(" adet soru üret.\n\n")
+                    .append("Mülakat Başlığı: ").append(title).append("\n")
+                    .append("Pozisyon: ").append(position).append("\n");
+
+            if (jobDescription != null && !jobDescription.isBlank()) {
+                promptBuilder.append("İş Tanımı: ").append(jobDescription).append("\n");
+            }
+
+            promptBuilder.append("\nKurallar:\n")
+                    .append("- Sorular Türkçe olsun.\n")
+                    .append("- Sorular hem teknik hem de davranışsal (soft skill) yetkinlikleri ölçsün.\n")
+                    .append("- Her soru yeni bir satırda olsun ve numaralandır (1. 2. 3. şeklinde).\n")
+                    .append("- Sadece soruları yaz, giriş veya açıklama ekleme.");
+
+            String response = callOpenRouter(promptBuilder.toString());
+            if (response != null) {
+                return parseTitleSuggestions(response, safeCount);
+            }
+
+        } catch (Exception e) {
+            logger.error("Mülakat soruları üretilirken hata: {}", e.getMessage());
+        }
+
+        return List.of();
+    }
+
+    /**
+     * Tüm mülakat oturumunu analiz eder, genel skor ve geri bildirim üretir.
+     */
+    public String analyzeInterviewPerformance(String position, List<Map<String, String>> questionAnswerPairs) {
+        if (!isConfigured()) {
+            return "AI servis yapılandırması eksik olduğu için analiz yapılamadı.";
+        }
+
+        try {
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("Sen bir mülakat koçusun. Kullanıcının ")
+                    .append(position).append(" pozisyonu için verdiği cevapları analiz et.\n\n")
+                    .append("Mülakat Akışı:\n");
+
+            for (Map<String, String> pair : questionAnswerPairs) {
+                promptBuilder.append("Soru: ").append(pair.get("question")).append("\n")
+                        .append("Cevap: ").append(pair.get("answer")).append("\n---\n");
+            }
+
+            promptBuilder.append("\nLütfen şu formatta bir değerlendirme yap:\n")
+                    .append("1. Genel Değerlendirme (Olumlu ve geliştirilmesi gereken yönler)\n")
+                    .append("2. Her soru için kısa teknik/davranışsal geri bildirim\n")
+                    .append("3. 100 üzerinden bir başarı skoru (Format: [SKOR: 85])\n\n")
+                    .append("Yanıtın nazik, yapıcı ve tamamen Türkçe olsun.");
+
+            return callOpenRouter(promptBuilder.toString());
+
+        } catch (Exception e) {
+            logger.error("Mülakat analizi sırasında hata: {}", e.getMessage());
+            return "Analiz sırasında bir teknik hata oluştu.";
+        }
     }
 
     /**
