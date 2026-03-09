@@ -55,11 +55,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="blog"
+        name="social"
         options={{
-          title: 'Blog',
+          title: 'Sosyal',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />

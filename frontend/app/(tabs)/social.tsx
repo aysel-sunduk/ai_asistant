@@ -102,7 +102,7 @@ export default function BlogTabScreen() {
                     <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
                         <Ionicons name="chevron-back" size={22} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Blog</Text>
+                    <Text style={styles.headerTitle}>Sosyal</Text>
                     <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/(blog)/create-post')}>
                         <Ionicons name="add" size={18} color="#fff" />
                         <Text style={styles.createBtnText}>Olustur</Text>
