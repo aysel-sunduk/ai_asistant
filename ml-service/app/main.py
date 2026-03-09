@@ -29,41 +29,41 @@ async def lifespan(app: FastAPI):
     logger.info("AI Asistan ML Service başlatılıyor...")
     
     # ML modellerini ön yükle - Her biri bağımsız yüklensin ki biri hata verirse servis çökmesin
-    try:
-        from app.models.profanity_filter import _load_ml_model
-        _load_ml_model()
-    except Exception as e:
-        logger.error(f"Argo filtresi yuklenemedi: {e}")
+    # try:
+    #     from app.models.profanity_filter import _load_ml_model
+    #     _load_ml_model()
+    # except Exception as e:
+    #     logger.error(f"Argo filtresi yuklenemedi: {e}")
 
-    try:
-        from app.models.title_generator import _load_model as _load_title_model
-        _load_title_model()
-    except Exception as e:
-        logger.error(f"Baslik onerici yuklenemedi: {e}")
+    # try:
+    #     from app.models.title_generator import _load_model as _load_title_model
+    #     _load_title_model()
+    # except Exception as e:
+    #     logger.error(f"Baslik onerici yuklenemedi: {e}")
 
-    try:
-        from app.models.game_analyzer import _load_models as _load_game_models
-        _load_game_models()
-    except Exception as e:
-        logger.error(f"Oyun analizoru yuklenemedi: {e}")
+    # try:
+    #     from app.models.game_analyzer import _load_models as _load_game_models
+    #     _load_game_models()
+    # except Exception as e:
+    #     logger.error(f"Oyun analizoru yuklenemedi: {e}")
 
-    try:
-        from app.models.motivation_predictor import _load_models as _load_motivation_model
-        _load_motivation_model()
-    except Exception as e:
-        logger.error(f"Motivasyon tahminci yuklenemedi: {e}")
+    # try:
+    #     from app.models.motivation_predictor import _load_models as _load_motivation_model
+    #     _load_motivation_model()
+    # except Exception as e:
+    #     logger.error(f"Motivasyon tahminci yuklenemedi: {e}")
 
-    try:
-        from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
-        _load_shopping_artifacts()
-    except Exception as e:
-        logger.error(f"Alisveris onerici yuklenemedi: {e}")
+    # try:
+    #     from app.models.shopping_recommender import _load_artifacts as _load_shopping_artifacts
+    #     _load_shopping_artifacts()
+    # except Exception as e:
+    #     logger.error(f"Alisveris onerici yuklenemedi: {e}")
 
-    try:
-        from app.models.investment_recommender import _load_models as _load_investment_models
-        _load_investment_models()
-    except Exception as e:
-        logger.error(f"Yatirim onerici yuklenemedi: {e}")
+    # try:
+    #     from app.models.investment_recommender import _load_models as _load_investment_models
+    #     _load_investment_models()
+    # except Exception as e:
+    #     logger.error(f"Yatirim onerici yuklenemedi: {e}")
 
     try:
         from app.models.food_analyzer import _load_model as _load_food_model

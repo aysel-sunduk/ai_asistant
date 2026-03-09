@@ -15,7 +15,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,11 +35,11 @@ public class FoodAnalyzerController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @PostMapping("/analyze")
+    @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Yemek resmini analiz et (ML Proxy)")
     public ResponseEntity<ApiResponse<FoodAnalysisResponse>> analyzeFood(
             Authentication authentication,
-            @RequestParam("file") MultipartFile file) {
+            @RequestPart("file") MultipartFile file) {
         log.info("AI Food Analysis request from user: {}", authentication.getName());
 
         try {

@@ -40,61 +40,62 @@ import jakarta.servlet.http.HttpServletResponseWrapper;
  */
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(LoggingFilter.class);
     private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                   @NonNull HttpServletResponse response,
-                                   @NonNull FilterChain filterChain) throws ServletException, IOException {
-        
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
+
         // Request body'yi cache'le (sadece bir kez oku)
         CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
         String requestBody = new String(wrappedRequest.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         requestBody = maskSensitiveData(requestBody);
-        
+
         // Response body'yi cache'le
         CachedBodyHttpServletResponse wrappedResponse = new CachedBodyHttpServletResponse(response);
-        
+
         long startTime = System.currentTimeMillis();
-        
+
         try {
             // Filter chain'i çalıştır
             filterChain.doFilter(wrappedRequest, wrappedResponse);
-            
+
         } finally {
             long duration = System.currentTimeMillis() - startTime;
-            
+
             // Writer'ı flush et ve close et
             if (wrappedResponse.writer != null) {
                 wrappedResponse.writer.flush();
                 wrappedResponse.writer.close();
             }
-            
+
             // OutputStream'i flush et
             if (wrappedResponse.outputStream != null) {
                 wrappedResponse.outputStream.flush();
             }
-            
+
             // Response body'yi al
             String responseBody = new String(wrappedResponse.getContentAsByteArray(), StandardCharsets.UTF_8);
             responseBody = maskSensitiveData(responseBody);
-            
+
             // Authenticated user al
             String userEmail = "ANONYMOUS";
             try {
                 Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-                if (principal != null && principal.toString() != null && !principal.toString().equals("anonymousUser")) {
+                if (principal != null && principal.toString() != null
+                        && !principal.toString().equals("anonymousUser")) {
                     userEmail = principal.toString();
                 }
             } catch (Exception e) {
                 // Auth olmayan işlemler için ANONYMOUS kalacak
             }
-            
+
             // Log message oluştur
             logRequest(request, response, wrappedResponse, requestBody, responseBody, duration, userEmail);
-            
+
             // Response'u client'e gönder
             try {
                 byte[] content = wrappedResponse.getContentAsByteArray();
@@ -114,31 +115,27 @@ public class LoggingFilter extends OncePerRequestFilter {
         if (data == null || data.isEmpty()) {
             return data;
         }
-        
+
         // Password maskele: "password":"..." -> "password":"*****"
         data = data.replaceAll(
-            "(\"password\"\\s*:\\s*\")[^\"]*\"",
-            "$1*****\""
-        );
-        
+                "(\"password\"\\s*:\\s*\")[^\"]*\"",
+                "$1*****\"");
+
         // refreshToken maskele
         data = data.replaceAll(
-            "(\"refreshToken\"\\s*:\\s*\")[^\"]*\"",
-            "$1*****\""
-        );
-        
+                "(\"refreshToken\"\\s*:\\s*\")[^\"]*\"",
+                "$1*****\"");
+
         // accessToken maskele
         data = data.replaceAll(
-            "(\"accessToken\"\\s*:\\s*\")[^\"]*\"",
-            "$1*****\""
-        );
-        
+                "(\"accessToken\"\\s*:\\s*\")[^\"]*\"",
+                "$1*****\"");
+
         // token maskele (genel)
         data = data.replaceAll(
-            "(\"token\"\\s*:\\s*\")[^\"]*\"",
-            "$1*****\""
-        );
-        
+                "(\"token\"\\s*:\\s*\")[^\"]*\"",
+                "$1*****\"");
+
         return data;
     }
 
@@ -146,23 +143,22 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Log message'ı oluştur ve yaz.
      */
     private void logRequest(HttpServletRequest request, HttpServletResponse response,
-                           CachedBodyHttpServletResponse wrappedResponse, String requestBody,
-                           String responseBody, long duration, String userEmail) {
-        
+            CachedBodyHttpServletResponse wrappedResponse, String requestBody,
+            String responseBody, long duration, String userEmail) {
+
         String uri = request.getRequestURI();
         String method = request.getMethod();
         int status = wrappedResponse.getStatus();
-        
+
         String logMessage = String.format(
-            "[%s] %s %s | Status: %d | User: %s | Duration: %dms",
-            dateFormatter.format(LocalDateTime.now()),
-            method,
-            uri,
-            status,
-            userEmail,
-            duration
-        );
-        
+                "[%s] %s %s | Status: %d | User: %s | Duration: %dms",
+                dateFormatter.format(LocalDateTime.now()),
+                method,
+                uri,
+                status,
+                userEmail,
+                duration);
+
         // HTTP status koduna göre log level seç
         if (status >= 500) {
             logger.error(logMessage);
@@ -191,10 +187,17 @@ public class LoggingFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
-        // Swagger ve diğer public endpointler için logging devre dışı bırak (isteğe bağlı)
-        return path.startsWith("/swagger-ui") || 
-               path.startsWith("/v3/api-docs") ||
-               path.startsWith("/favicon.ico");
+        String contentType = request.getContentType();
+
+        // Swagger ve diğer public endpointler için logging devre dışı bırak
+        boolean isPublicPath = path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/favicon.ico");
+
+        // Multipart isteklerde body caching yapılmamalı (dosya yüklemeyi bozar)
+        boolean isMultipart = contentType != null && contentType.startsWith("multipart/");
+
+        return isPublicPath || isMultipart;
     }
 
     /**
@@ -278,8 +281,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         public PrintWriter getWriter() throws IOException {
             if (this.writer == null) {
                 this.writer = new PrintWriter(
-                    new OutputStreamWriter(baos, getCharacterEncoding()), true
-                );
+                        new OutputStreamWriter(baos, getCharacterEncoding()), true);
             }
             return this.writer;
         }
