@@ -34,10 +34,13 @@ public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final UserRepository userRepository;
+    private final HealthService healthService;
 
-    public UserProfileService(UserProfileRepository userProfileRepository, UserRepository userRepository) {
+    public UserProfileService(UserProfileRepository userProfileRepository, UserRepository userRepository,
+            HealthService healthService) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
+        this.healthService = healthService;
     }
 
     /**
@@ -230,6 +233,25 @@ public class UserProfileService {
             profile.setWeightKg(request.getWeightKg());
         if (request.getActivityLevel() != null)
             profile.setActivityLevel(request.getActivityLevel());
+        if (request.getBodyType() != null)
+            profile.setBodyType(request.getBodyType());
+
+        // Değerler güncellendiğinde, metrikleri de hesapla ve kaydet
+        if (profile.getHeightCm() != null && profile.getWeightKg() != null) {
+            double bmi = healthService.calculateBMI(profile.getHeightCm(), profile.getWeightKg());
+            profile.setBmi(bmi > 0 ? bmi : null);
+
+            if (profile.getBirthDate() != null) {
+                int bmr = healthService.calculateBMR(profile);
+                profile.setBmr(bmr > 2000 || profile.getBirthDate() != null ? bmr : null); // 2000 varsayılan hatasını
+                                                                                           // önlüyoruz
+
+                if (profile.getGender() != null) {
+                    double bodyFat = healthService.calculateBodyFatPercentage(profile);
+                    profile.setBodyFatPercentage(bodyFat > 0 ? bodyFat : null);
+                }
+            }
+        }
     }
 
     private void applyFinanceFields(UserProfile profile, UserProfileUpsertRequest request) {
@@ -286,6 +308,17 @@ public class UserProfileService {
         response.setShowPhone(profile.isShowPhone());
         response.setShowEmail(profile.isShowEmail());
         response.setActivityLevel(profile.getActivityLevel());
+        response.setBodyType(profile.getBodyType());
+
+        // Sağlık metriklerini dinamik olarak hesapla
+        double bmi = healthService.calculateBMI(profile.getHeightCm(), profile.getWeightKg());
+        int bmr = healthService.calculateBMR(profile);
+        double bodyFat = healthService.calculateBodyFatPercentage(profile);
+
+        response.setBmi(bmi > 0 ? bmi : null);
+        response.setBmr(bmr > 2000 || profile.getBirthDate() != null ? bmr : null);
+        response.setBodyFatPercentage(bodyFat > 0 ? bodyFat : null);
+
         return response;
     }
 

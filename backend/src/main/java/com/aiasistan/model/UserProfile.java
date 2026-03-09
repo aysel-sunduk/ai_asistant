@@ -89,6 +89,18 @@ public class UserProfile {
     @Column(name = "activity_level")
     private String activityLevel;
 
+    @Column(name = "body_type", length = 20)
+    private String bodyType;
+
+    @Column(name = "bmi")
+    private Double bmi;
+
+    @Column(name = "bmr")
+    private Integer bmr;
+
+    @Column(name = "body_fat_percentage")
+    private Double bodyFatPercentage;
+
     public UserProfile() {
     }
 
@@ -253,4 +265,35 @@ public class UserProfile {
         this.activityLevel = activityLevel;
     }
 
+    public String getBodyType() {
+        return bodyType;
+    }
+
+    public void setBodyType(String bodyType) {
+        this.bodyType = bodyType;
+    }
+
+    public Double getBmi() {
+        return bmi;
+    }
+
+    public void setBmi(Double bmi) {
+        this.bmi = bmi;
+    }
+
+    public Integer getBmr() {
+        return bmr;
+    }
+
+    public void setBmr(Integer bmr) {
+        this.bmr = bmr;
+    }
+
+    public Double getBodyFatPercentage() {
+        return bodyFatPercentage;
+    }
+
+    public void setBodyFatPercentage(Double bodyFatPercentage) {
+        this.bodyFatPercentage = bodyFatPercentage;
+    }
 }

@@ -36,6 +36,10 @@ public class UserProfileResponse {
     private boolean showPhone;
     private boolean showEmail;
     private String activityLevel;
+    private String bodyType;
+    private Double bmi;
+    private Integer bmr;
+    private Double bodyFatPercentage;
 
     public UUID getUserId() {
         return userId;
@@ -211,5 +215,37 @@ public class UserProfileResponse {
 
     public void setActivityLevel(String activityLevel) {
         this.activityLevel = activityLevel;
+    }
+
+    public String getBodyType() {
+        return bodyType;
+    }
+
+    public void setBodyType(String bodyType) {
+        this.bodyType = bodyType;
+    }
+
+    public Double getBmi() {
+        return bmi;
+    }
+
+    public void setBmi(Double bmi) {
+        this.bmi = bmi;
+    }
+
+    public Integer getBmr() {
+        return bmr;
+    }
+
+    public void setBmr(Integer bmr) {
+        this.bmr = bmr;
+    }
+
+    public Double getBodyFatPercentage() {
+        return bodyFatPercentage;
+    }
+
+    public void setBodyFatPercentage(Double bodyFatPercentage) {
+        this.bodyFatPercentage = bodyFatPercentage;
     }
 }

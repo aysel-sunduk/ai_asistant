@@ -68,6 +68,7 @@ export default function HealthInfoScreen() {
                 heightCm: form.heightCm ?? undefined,
                 weightKg: form.weightKg ?? undefined,
                 activityLevel: form.activityLevel || undefined,
+                bodyType: form.bodyType || undefined,
             };
 
             console.log('[HealthInfo] Saving profile with body:', body);
@@ -225,7 +226,15 @@ export default function HealthInfoScreen() {
                         <PickerField
                             label="Hareket Durumu" icon="walk-outline" value={form.activityLevel}
                             options={Object.entries(ACTIVITY_LEVEL_LABELS)}
-                            editing={isEditing} onChange={(v: string) => updateField('activityLevel', v)} last color="#FF6B6B" />
+                            editing={isEditing} onChange={(v: string) => updateField('activityLevel', v)} color="#FF6B6B" />
+
+                        <VisualBodyTypePicker
+                            value={form.bodyType}
+                            editing={isEditing}
+                            onChange={(v: string) => updateField('bodyType', v)}
+                            color="#FF6B6B"
+                            last
+                        />
                     </View>
 
                     {isEditing && (
@@ -301,6 +310,64 @@ function PickerField({ label, icon, value, options, editing, onChange, last, col
     );
 }
 
+function VisualBodyTypePicker({ value, editing, onChange, color, last }: any) {
+    const types = [
+        { id: 'ECTOMORPH', label: 'Ektomorf', desc: 'İnce, Zor Kilo Alan', icon: 'accessibility-outline' },
+        { id: 'MESOMORPH', label: 'Mezomorf', desc: 'Atletik, Kaslı', icon: 'fitness-outline' },
+        { id: 'ENDOMORPH', label: 'Endomorf', desc: 'İri Kemikli, Kolay Kilo Alan', icon: 'body-outline' }
+    ];
+
+    const displaySelected = types.find(t => t.id === value);
+
+    return (
+        <View style={[styles.fieldRow, !last && { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }]}>
+            <View style={styles.fieldLabelRow}>
+                <View style={[styles.fieldIcon, { backgroundColor: color + '15' }]}>
+                    <Ionicons name="people-outline" size={16} color={color} />
+                </View>
+                <Text style={styles.fieldLabel}>Vücut Tipi</Text>
+            </View>
+
+            {editing ? (
+                <View style={styles.bodyTypeGrid}>
+                    {types.map((t) => {
+                        const isSelected = value === t.id;
+                        return (
+                            <TouchableOpacity
+                                key={t.id}
+                                style={[
+                                    styles.bodyTypeCard,
+                                    isSelected && { borderColor: color, backgroundColor: color + '08' }
+                                ]}
+                                onPress={() => onChange?.(t.id)}
+                            >
+                                <View style={[styles.bodyTypeIconBase, isSelected && { backgroundColor: color }]}>
+                                    <Ionicons name={t.icon as any} size={28} color={isSelected ? '#fff' : '#888'} />
+                                </View>
+                                <Text style={[styles.bodyTypeTitle, isSelected && { color: color }]}>{t.label}</Text>
+                                <Text style={styles.bodyTypeDesc}>{t.desc}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            ) : (
+                <View style={styles.selectedBodyTypeRow}>
+                    {displaySelected ? (
+                        <>
+                            <Ionicons name={displaySelected.icon as any} size={20} color={color} style={{ marginRight: 6 }} />
+                            <Text style={styles.fieldValueNoIndent}>
+                                {displaySelected.label} <Text style={{ fontSize: 13, color: GRAY, fontWeight: '500' }}>({displaySelected.desc})</Text>
+                            </Text>
+                        </>
+                    ) : (
+                        <Text style={styles.fieldValueNoIndent}>—</Text>
+                    )}
+                </View>
+            )}
+        </View>
+    );
+}
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -336,4 +403,16 @@ const styles = StyleSheet.create({
     saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
     cancelBtn: { alignItems: 'center', paddingVertical: 12 },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: GRAY },
+
+    /* Visual Body Type Picker */
+    bodyTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10, marginLeft: 36 },
+    bodyTypeCard: {
+        flexBasis: '47%', flexGrow: 1, backgroundColor: '#F8F9FA', borderRadius: 16, padding: 12,
+        alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent',
+    },
+    bodyTypeIconBase: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E9ECEF', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+    bodyTypeTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A2E', marginBottom: 2, textAlign: 'center' },
+    bodyTypeDesc: { fontSize: 10, color: GRAY, textAlign: 'center', lineHeight: 14 },
+    selectedBodyTypeRow: { flexDirection: 'row', alignItems: 'center', marginLeft: 36, marginTop: 4 },
+    fieldValueNoIndent: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
 });

@@ -36,6 +36,10 @@ export interface UserProfile {
     showEmail?: boolean;
     showPhone?: boolean;
     activityLevel?: string;
+    bodyType?: string;
+    bmi?: number;
+    bmr?: number;
+    bodyFatPercentage?: number;
 }
 
 // ─── PUT /api/v1/profile Request ───
@@ -57,6 +61,7 @@ export interface UpdateProfileRequest {
     showPhone?: boolean;
     bloodType?: string;
     activityLevel?: string;
+    bodyType?: string;
 }
 
 // ─── Helpers ───
@@ -78,4 +83,10 @@ export const ACTIVITY_LEVEL_LABELS: Record<string, string> = {
     MODERATELY_ACTIVE: 'Orta Hareketli',
     VERY_ACTIVE: 'Çok Hareketli',
     EXTRA_ACTIVE: 'Ekstra Hareketli',
+};
+
+export const BODY_TYPE_LABELS: Record<string, string> = {
+    ECTOMORPH: 'Ektomorf (İnce, Zor Kilo Alan)',
+    MESOMORPH: 'Mezomorf (Atletik, Kaslı)',
+    ENDOMORPH: 'Endomorf (İri Kemikli, Kolay Kilo Alan)',
 };

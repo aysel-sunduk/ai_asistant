@@ -61,4 +61,40 @@ public class HealthService {
             default -> 1.2;
         };
     }
+
+    public double calculateBodyFatPercentage(UserProfile profile) {
+        if (profile.getHeightCm() == null || profile.getWeightKg() == null ||
+                profile.getBirthDate() == null || profile.getGender() == null) {
+            return 0.0;
+        }
+
+        double bmi = calculateBMI(profile.getHeightCm(), profile.getWeightKg());
+        if (bmi <= 0)
+            return 0.0;
+
+        int age = Period.between(profile.getBirthDate(), LocalDate.now()).getYears();
+        int genderFactor = "MALE".equalsIgnoreCase(profile.getGender()) ? 1 : 0;
+
+        // Dewuren formülü (BMI tabanlı)
+        // Yağ Oranı = (1.20 × BMI) + (0.23 × Yaş) - (10.8 × Cinsiyet Değeri) - 5.4
+        double bodyFat = (1.20 * bmi) + (0.23 * age) - (10.8 * genderFactor) - 5.4;
+
+        // Vücut tipine göre kalibrasyon
+        String bodyType = profile.getBodyType();
+        if (bodyType != null) {
+            switch (bodyType.toUpperCase()) {
+                case "ECTOMORPH": // İnce, zor kilo alan
+                    bodyFat *= 0.85;
+                    break;
+                case "MESOMORPH": // Atletik, kaslı
+                    bodyFat *= 0.95; // Biraz daha düşük yağ oranı
+                    break;
+                case "ENDOMORPH": // İri kemikli, kolay kilo alan
+                    bodyFat *= 1.15;
+                    break;
+            }
+        }
+
+        return Math.max(2.0, Math.min(bodyFat, 60.0)); // Makul sınırlar içine al (en az %2, en fazla %60)
+    }
 }
