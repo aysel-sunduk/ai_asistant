@@ -12,7 +12,7 @@ public class HealthService {
     public double calculateBMI(Integer heightCm, BigDecimal weightKg) {
         if (heightCm == null || weightKg == null || heightCm <= 0)
             return 0;
-        double heightM = heightCm / 100.0;
+        double heightM = heightCm.doubleValue() / 100.0;
         return weightKg.doubleValue() / (heightM * heightM);
     }
 

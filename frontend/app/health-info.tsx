@@ -68,7 +68,6 @@ export default function HealthInfoScreen() {
                 heightCm: form.heightCm ?? undefined,
                 weightKg: form.weightKg ?? undefined,
                 activityLevel: form.activityLevel || undefined,
-                bodyType: form.bodyType || undefined,
             };
 
             console.log('[HealthInfo] Saving profile with body:', body);
@@ -101,22 +100,29 @@ export default function HealthInfoScreen() {
         }
     };
 
-    // --- Calculations ---
-    const bmi = (form.heightCm && form.weightKg)
-        ? Number((form.weightKg / Math.pow(form.heightCm / 100, 2)).toFixed(1))
+    // --- Anlık Hesaplamalar ---
+    // VKI: boy ve kilo girildiğinde anlık hesapla
+    const bmi = (form.heightCm && form.weightKg && form.heightCm > 0)
+        ? Number((form.weightKg / Math.pow(form.heightCm / 100.0, 2)).toFixed(1))
         : 0;
 
-    const age = form.birthDate ? (() => {
+    // Yaş: doğum tarihi girili ve mantıklıysa hesapla (10-120 arası kabul et)
+    const age = (() => {
+        if (!form.birthDate) return 0;
         const today = new Date();
-        const birthDate = new Date(form.birthDate);
-        let a = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) a--;
-        return a;
-    })() : 0;
+        const birth = new Date(form.birthDate);
+        if (isNaN(birth.getTime())) return 0;
+        let a = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) a--;
+        return (a >= 10 && a <= 120) ? a : 0; // absürt yaşları filtrele
+    })();
 
-    const bodyFat = (bmi > 0 && age > 15 && form.gender)
-        ? Number(((1.20 * bmi) + (0.23 * age) - (10.8 * (form.gender === 'MALE' ? 1 : 0)) - 5.4).toFixed(1))
+    // Yağ Oranı: Deurenberg formülü — VKI, yaş ve cinsiyet gerekli
+    const bodyFat = (bmi > 0 && age > 0 && form.gender)
+        ? Math.min(60, Math.max(2, Number(
+            ((1.20 * bmi) + (0.23 * age) - (10.8 * (form.gender === 'MALE' ? 1 : 0)) - 5.4).toFixed(1)
+        )))
         : 0;
 
     const getBmiStatus = (val: number) => {
@@ -226,15 +232,7 @@ export default function HealthInfoScreen() {
                         <PickerField
                             label="Hareket Durumu" icon="walk-outline" value={form.activityLevel}
                             options={Object.entries(ACTIVITY_LEVEL_LABELS)}
-                            editing={isEditing} onChange={(v: string) => updateField('activityLevel', v)} color="#FF6B6B" />
-
-                        <VisualBodyTypePicker
-                            value={form.bodyType}
-                            editing={isEditing}
-                            onChange={(v: string) => updateField('bodyType', v)}
-                            color="#FF6B6B"
-                            last
-                        />
+                            editing={isEditing} onChange={(v: string) => updateField('activityLevel', v)} last color="#FF6B6B" />
                     </View>
 
                     {isEditing && (
@@ -310,64 +308,6 @@ function PickerField({ label, icon, value, options, editing, onChange, last, col
     );
 }
 
-function VisualBodyTypePicker({ value, editing, onChange, color, last }: any) {
-    const types = [
-        { id: 'ECTOMORPH', label: 'Ektomorf', desc: 'İnce, Zor Kilo Alan', icon: 'accessibility-outline' },
-        { id: 'MESOMORPH', label: 'Mezomorf', desc: 'Atletik, Kaslı', icon: 'fitness-outline' },
-        { id: 'ENDOMORPH', label: 'Endomorf', desc: 'İri Kemikli, Kolay Kilo Alan', icon: 'body-outline' }
-    ];
-
-    const displaySelected = types.find(t => t.id === value);
-
-    return (
-        <View style={[styles.fieldRow, !last && { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }]}>
-            <View style={styles.fieldLabelRow}>
-                <View style={[styles.fieldIcon, { backgroundColor: color + '15' }]}>
-                    <Ionicons name="people-outline" size={16} color={color} />
-                </View>
-                <Text style={styles.fieldLabel}>Vücut Tipi</Text>
-            </View>
-
-            {editing ? (
-                <View style={styles.bodyTypeGrid}>
-                    {types.map((t) => {
-                        const isSelected = value === t.id;
-                        return (
-                            <TouchableOpacity
-                                key={t.id}
-                                style={[
-                                    styles.bodyTypeCard,
-                                    isSelected && { borderColor: color, backgroundColor: color + '08' }
-                                ]}
-                                onPress={() => onChange?.(t.id)}
-                            >
-                                <View style={[styles.bodyTypeIconBase, isSelected && { backgroundColor: color }]}>
-                                    <Ionicons name={t.icon as any} size={28} color={isSelected ? '#fff' : '#888'} />
-                                </View>
-                                <Text style={[styles.bodyTypeTitle, isSelected && { color: color }]}>{t.label}</Text>
-                                <Text style={styles.bodyTypeDesc}>{t.desc}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-            ) : (
-                <View style={styles.selectedBodyTypeRow}>
-                    {displaySelected ? (
-                        <>
-                            <Ionicons name={displaySelected.icon as any} size={20} color={color} style={{ marginRight: 6 }} />
-                            <Text style={styles.fieldValueNoIndent}>
-                                {displaySelected.label} <Text style={{ fontSize: 13, color: GRAY, fontWeight: '500' }}>({displaySelected.desc})</Text>
-                            </Text>
-                        </>
-                    ) : (
-                        <Text style={styles.fieldValueNoIndent}>—</Text>
-                    )}
-                </View>
-            )}
-        </View>
-    );
-}
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -403,16 +343,4 @@ const styles = StyleSheet.create({
     saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
     cancelBtn: { alignItems: 'center', paddingVertical: 12 },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: GRAY },
-
-    /* Visual Body Type Picker */
-    bodyTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10, marginLeft: 36 },
-    bodyTypeCard: {
-        flexBasis: '47%', flexGrow: 1, backgroundColor: '#F8F9FA', borderRadius: 16, padding: 12,
-        alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent',
-    },
-    bodyTypeIconBase: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E9ECEF', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-    bodyTypeTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A2E', marginBottom: 2, textAlign: 'center' },
-    bodyTypeDesc: { fontSize: 10, color: GRAY, textAlign: 'center', lineHeight: 14 },
-    selectedBodyTypeRow: { flexDirection: 'row', alignItems: 'center', marginLeft: 36, marginTop: 4 },
-    fieldValueNoIndent: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
 });
