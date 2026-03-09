@@ -12,6 +12,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { blogApi } from '../../src/api/blog.api';
+import { socialApi } from '../../src/api/social.api';
 import { userApi } from '../../src/api/user.api';
 import { useAuthStore } from '../../src/store/auth.store';
 
@@ -38,6 +40,8 @@ export default function ProfileScreen() {
     const logout = useAuthStore((s) => s.logout);
     const setUser = useAuthStore((s) => s.setUser);
 
+    const [stats, setStats] = React.useState({ followers: 0, following: 0, posts: 0 });
+
     useEffect(() => {
         const fetchMe = async () => {
             try {
@@ -49,6 +53,26 @@ export default function ProfileScreen() {
         };
         fetchMe();
     }, []);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (!user?.id) return;
+            try {
+                const [socialRes, blogRes] = await Promise.all([
+                    socialApi.getStats(),
+                    blogApi.getUserVisiblePosts(user.id, 0, 1)
+                ]);
+                setStats({
+                    followers: socialRes.data?.data?.followersCount || 0,
+                    following: socialRes.data?.data?.followingCount || 0,
+                    posts: blogRes.data?.data?.totalElements || 0,
+                });
+            } catch (err) {
+                console.log('[Profile] Failed to fetch stats:', err);
+            }
+        };
+        fetchStats();
+    }, [user?.id]);
 
     const displayName = profile?.fullName
         ? profile.fullName
@@ -174,17 +198,17 @@ export default function ProfileScreen() {
                         {/* İstatistikler */}
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>0</Text>
+                                <Text style={styles.statNumber}>{stats.followers}</Text>
                                 <Text style={styles.statLabel}>Takipçi</Text>
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>0</Text>
+                                <Text style={styles.statNumber}>{stats.following}</Text>
                                 <Text style={styles.statLabel}>Takip Edilen</Text>
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statItem}>
-                                <Text style={styles.statNumber}>0</Text>
+                                <Text style={styles.statNumber}>{stats.posts}</Text>
                                 <Text style={styles.statLabel}>Blog Yazısı</Text>
                             </View>
                         </View>
