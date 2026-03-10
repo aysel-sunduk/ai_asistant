@@ -96,6 +96,8 @@ public class FoodAnalyzerController {
                 } catch (Exception e) {
                     // Kaydetme hatasi analiz sonucunu etkilememeli
                     log.warn("Failed to save food scan result: {}", e.getMessage());
+                    e.printStackTrace(); // Log stack trace
+                    analysisResult.setFoodName(analysisResult.getFoodName() + " (DB ERROR: " + e.getMessage() + ")");
                 }
             }
 

@@ -282,4 +282,51 @@ public class HealthLogService {
         }
         throw new BadRequestException("daily_summary icin en az bir alan zorunludur");
     }
+
+    @Transactional(readOnly = true)
+    public com.aiasistan.dto.response.DailyNutritionResponse getDailyNutrition(String userEmail, LocalDate date) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        List<HealthLog> logs = healthLogRepository.findByUserIdAndDateRange(userId, date, date);
+
+        double calories = 0;
+        double protein = 0;
+        double carbs = 0;
+        double fat = 0;
+        int mealCount = 0;
+
+        for (HealthLog healthLog : logs) {
+            if ("food_scan".equals(healthLog.getLogType()) || "meal".equals(healthLog.getLogType())) {
+                Map<String, Object> data = healthLog.getData();
+                if (data != null) {
+                    calories += parseDouble(data.get("calories"), data.get("kcal"));
+                    protein += parseDouble(data.get("protein"));
+                    carbs += parseDouble(data.get("carbs"));
+                    fat += parseDouble(data.get("fat"));
+                    mealCount++;
+                }
+            }
+        }
+
+        return com.aiasistan.dto.response.DailyNutritionResponse.builder()
+                .totalCalories(Math.round(calories * 10.0) / 10.0)
+                .totalProtein(Math.round(protein * 10.0) / 10.0)
+                .totalCarbs(Math.round(carbs * 10.0) / 10.0)
+                .totalFat(Math.round(fat * 10.0) / 10.0)
+                .mealCount(mealCount)
+                .build();
+    }
+
+    private double parseDouble(Object... values) {
+        for (Object v : values) {
+            if (v instanceof Number number)
+                return number.doubleValue();
+            if (v instanceof String s) {
+                try {
+                    return Double.parseDouble(s);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return 0.0;
+    }
 }

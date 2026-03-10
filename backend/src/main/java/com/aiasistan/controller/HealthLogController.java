@@ -52,80 +52,81 @@ public class HealthLogController {
   }
 
   @PostMapping
-    @Operation(summary = "Saglik kaydi olustur")
+  @Operation(summary = "Saglik kaydi olustur")
   public ResponseEntity<ApiResponse<HealthLogDto.Response>> createLog(
-    Authentication authentication,
-    @Valid @RequestBody HealthLogDto.Request request
-  ) {
+      Authentication authentication,
+      @Valid @RequestBody HealthLogDto.Request request) {
     // Log minimal incoming payload to help diagnose empty syncs
     log.info("createLog request: user={}, externalRecordId={}, logType={}, source={}, logDate={}",
-      authentication.getName(), request.getExternalRecordId(), request.getLogType(), request.getSource(), request.getLogDate());
+        authentication.getName(), request.getExternalRecordId(), request.getLogType(), request.getSource(),
+        request.getLogDate());
     HealthLogDto.Response response = healthLogService.createLog(authentication.getName(), request);
     return ResponseEntity.status(HttpStatus.CREATED)
-      .body(ApiResponse.ok(response, "Saglik kaydi olusturuldu"));
+        .body(ApiResponse.ok(response, "Saglik kaydi olusturuldu"));
   }
 
   @GetMapping("/{id}")
-    @Operation(summary = "Saglik kaydi detayini getir")
+  @Operation(summary = "Saglik kaydi detayini getir")
   public ResponseEntity<ApiResponse<HealthLogDto.Response>> getLogById(
-    Authentication authentication,
-    @PathVariable UUID id
-  ) {
+      Authentication authentication,
+      @PathVariable UUID id) {
     HealthLogDto.Response response = healthLogService.getLogById(authentication.getName(), id);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
   @GetMapping
-    @Operation(summary = "Saglik kayitlarini listele")
+  @Operation(summary = "Saglik kayitlarini listele")
   public ResponseEntity<ApiResponse<PageResponse<HealthLogDto.Response>>> getLogs(
-    Authentication authentication,
-    @RequestParam(defaultValue = "0") @Min(0) int page,
-    @RequestParam(defaultValue = "20") @Min(1) @Max(value = 200, message = "Sayfa boyutu en fazla 200 olabilir") int size,
-    @RequestParam(defaultValue = "loggedAt") String sortBy,
-    @RequestParam(defaultValue = "DESC") String sortDirection
-  ) {
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") @Min(0) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(value = 200, message = "Sayfa boyutu en fazla 200 olabilir") int size,
+      @RequestParam(defaultValue = "loggedAt") String sortBy,
+      @RequestParam(defaultValue = "DESC") String sortDirection) {
     var sort = ApiQueryUtils.resolveSort(sortBy, sortDirection, ALLOWED_SORT_FIELDS, "loggedAt");
     PageResponse<HealthLogDto.Response> response = healthLogService.getLogs(
-      authentication.getName(),
-      PageRequest.of(page, size, sort)
-    );
+        authentication.getName(),
+        PageRequest.of(page, size, sort));
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
   @GetMapping("/date-range")
-    @Operation(summary = "Tarih araligina gore saglik kayitlarini getir")
+  @Operation(summary = "Tarih araligina gore saglik kayitlarini getir")
   public ResponseEntity<ApiResponse<List<HealthLogDto.Response>>> getLogsByDateRange(
-    Authentication authentication,
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-    @RequestParam(required = false) String logType
-  ) {
+      Authentication authentication,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+      @RequestParam(required = false) String logType) {
     List<HealthLogDto.Response> response = healthLogService.getLogsByDateRange(
-      authentication.getName(),
-      startDate,
-      endDate,
-      logType
-    );
+        authentication.getName(),
+        startDate,
+        endDate,
+        logType);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
+  @GetMapping("/daily-nutrition")
+  @Operation(summary = "Gunluk toplam besin (kalori, makro) degerlerini getir")
+  public ResponseEntity<ApiResponse<com.aiasistan.dto.response.DailyNutritionResponse>> getDailyNutrition(
+      Authentication authentication,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return ResponseEntity.ok(ApiResponse.ok(healthLogService.getDailyNutrition(authentication.getName(), date)));
+  }
+
   @PutMapping("/{id}")
-    @Operation(summary = "Saglik kaydini guncelle")
+  @Operation(summary = "Saglik kaydini guncelle")
   public ResponseEntity<ApiResponse<HealthLogDto.Response>> updateLog(
-    Authentication authentication,
-    @PathVariable UUID id,
-    @Valid @RequestBody HealthLogDto.Request request
-  ) {
+      Authentication authentication,
+      @PathVariable UUID id,
+      @Valid @RequestBody HealthLogDto.Request request) {
     HealthLogDto.Response response = healthLogService.updateLog(authentication.getName(), id, request);
     return ResponseEntity.ok(ApiResponse.ok(response, "Saglik kaydi guncellendi"));
   }
 
   @DeleteMapping("/{id}")
-    @Operation(summary = "Saglik kaydini sil")
+  @Operation(summary = "Saglik kaydini sil")
   public ResponseEntity<ApiResponse<Void>> deleteLog(
-    Authentication authentication,
-    @PathVariable UUID id
-  ) {
+      Authentication authentication,
+      @PathVariable UUID id) {
     healthLogService.deleteLog(authentication.getName(), id);
     return ResponseEntity.ok(ApiResponse.ok(null, "Saglik kaydi silindi"));
   }
