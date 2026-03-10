@@ -29,6 +29,15 @@ export function useHealth() {
         }
     }, [setLoading, setLogs]);
 
+    const fetchNutrition = useCallback(async (date: string) => {
+        try {
+            return await healthService.getDailyNutrition(date);
+        } catch (error) {
+            console.warn('[useHealth] Failed to fetch nutrition:', error);
+            return { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 };
+        }
+    }, []);
+
     const createLog = useCallback(async (data: Partial<HealthLog>) => {
         const log = await healthService.createLog(data);
         addLog(log);
@@ -48,6 +57,7 @@ export function useHealth() {
         getLogsByType,
         getTodayLogs,
         fetchLogs,
+        fetchNutrition,
         createLog,
         deleteLog,
     };

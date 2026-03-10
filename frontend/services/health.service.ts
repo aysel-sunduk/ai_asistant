@@ -42,4 +42,9 @@ export const healthService = {
         const logs = await healthService.getLogs();
         return logs.filter((log: HealthLog) => log.logDate === date);
     },
+
+    getDailyNutrition: async (date: string) => {
+        const response = await healthApi.getDailyNutrition(date);
+        return response.data.data;
+    },
 };

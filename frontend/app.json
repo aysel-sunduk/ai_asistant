@@ -13,6 +13,8 @@
       "infoPlist": {
         "NSHealthShareUsageDescription": "Saglik verilerini okuyup gunluk ozet olusturmak icin izin gerekli.",
         "NSHealthUpdateUsageDescription": "Saglik hedeflerini uygulama icinde guncellemek icin izin gerekli.",
+        "NSCameraUsageDescription": "Yemek fotografi cekip analiz edebilmek icin kameraniza erisim izni gereklidir.",
+        "NSPhotoLibraryUsageDescription": "Yemek fotograflarinizi analize gondermek icin fotograf kutuphanesine erisim izni gereklidir.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
@@ -41,6 +43,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Yemek fotograflarinizi analize gondermek icin fotograf kutuphanesine erisim izni gereklidir.",
+          "cameraPermission": "Yemek fotografi cekip analiz edebilmek icin kameraniza erisim izni gereklidir."
+        }
+      ],
       "expo-router",
       "expo-notifications",
       "react-native-health",

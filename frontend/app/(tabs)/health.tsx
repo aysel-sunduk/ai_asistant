@@ -1,8 +1,12 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
+// @ts-ignore
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    Image,
     Modal,
     Platform,
     ScrollView,
@@ -13,6 +17,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { aiApi } from '../../src/api/ai.api';
+import apiClient from '../../src/api/client';
 import { healthDeviceService } from '../../services/health-device.service';
 import { healthService } from '../../services/health.service';
 import { useHealth } from '../../src/hooks/useHealth';
@@ -89,13 +96,20 @@ function inRange(date: Date, start: Date, end: Date): boolean {
 }
 
 export default function HealthTabScreen() {
-    const { logs, isLoading, fetchLogs, createLog, deleteLog } = useHealth();
+    const { logs, isLoading, fetchLogs, fetchNutrition, createLog, deleteLog } = useHealth();
     const didInitRef = useRef(false);
 
+    const [dailyNutrition, setDailyNutrition] = useState({ totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 });
+
     const [period, setPeriod] = useState<Period>('daily');
+    const [activeTab, setActiveTab] = useState<'goals' | 'diet'>('goals'); // Ana sekmeler
     const [activeModal, setActiveModal] = useState<HealthLogType | null>(null);
     const [goalEditType, setGoalEditType] = useState<'water' | 'steps' | null>(null);
     const [isDeviceSyncing, setIsDeviceSyncing] = useState(false);
+
+    // AI Yemek Analizi state
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analyzedImageUri, setAnalyzedImageUri] = useState<string | null>(null);
 
     const [goals, setGoals] = useState<LocalGoals>(DEFAULT_GOALS);
     const [goalWaterInput, setGoalWaterInput] = useState(String(DEFAULT_GOALS.waterMlTarget));
@@ -123,6 +137,7 @@ export default function HealthTabScreen() {
 
             try {
                 await fetchLogs();
+                await loadDailyNutrition();
             } catch {
                 // Avoid noisy startup popup on transient auth/network issues.
             }
@@ -130,6 +145,15 @@ export default function HealthTabScreen() {
         void run();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const loadDailyNutrition = async () => {
+        try {
+            const result = await fetchNutrition(todayStr);
+            setDailyNutrition(result);
+        } catch {
+            // Error handled in hook
+        }
+    };
 
     const range = useMemo(() => {
         const now = new Date();
@@ -172,6 +196,9 @@ export default function HealthTabScreen() {
     const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
     const [mealDesc, setMealDesc] = useState('');
     const [mealCal, setMealCal] = useState('');
+    const [mealProtein, setMealProtein] = useState('');
+    const [mealCarbs, setMealCarbs] = useState('');
+    const [mealFat, setMealFat] = useState('');
 
     const saveGoals = async () => {
         const nextWater = parseInt(goalWaterInput, 10);
@@ -304,11 +331,14 @@ export default function HealthTabScreen() {
                     meal_type: mealType,
                     description: mealDesc.trim(),
                     calories: mealCal ? parseInt(mealCal, 10) : undefined,
+                    protein_g: mealProtein ? parseFloat(mealProtein) : undefined,
+                    carbs_g: mealCarbs ? parseFloat(mealCarbs) : undefined,
+                    fat_g: mealFat ? parseFloat(mealFat) : undefined,
                 } as MealData,
             });
             setActiveModal(null);
-            setMealDesc('');
-            setMealCal('');
+            resetMealForm();
+            void loadDailyNutrition();
         } catch {
             Alert.alert('Hata', 'Ogun kaydi eklenemedi.');
         }
@@ -317,9 +347,121 @@ export default function HealthTabScreen() {
     const handleDeleteLog = async (id: string) => {
         try {
             await deleteLog(id);
+            void loadDailyNutrition();
         } catch {
             Alert.alert('Hata', 'Kayit silinemedi.');
         }
+    };
+
+    const handlePickImage = async (useCamera: boolean) => {
+        try {
+            let result;
+            if (useCamera) {
+                const permission = await ImagePicker.requestCameraPermissionsAsync();
+                if (!permission.granted) {
+                    Alert.alert('Izın Reddedildi', 'Kamerayı kullanmak için izin vermeniz gerekiyor.');
+                    return;
+                }
+                result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images'],
+                    quality: 0.5,
+                });
+            } else {
+                const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!permission.granted) {
+                    Alert.alert('İzin Reddedildi', 'Galeriye erişmek için izin vermeniz gerekiyor.');
+                    return;
+                }
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    quality: 0.5,
+                });
+            }
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                analyzeSelectedFood(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.log('Image picker error:', error);
+            Alert.alert('Hata', 'Görsel seçilemedi.');
+        }
+    };
+
+    const analyzeSelectedFood = async (uri: string) => {
+        setAnalyzedImageUri(uri);
+        setIsAnalyzing(true);
+        setActiveModal('meal'); // Modalı açıp loading gösterelim
+
+        try {
+            // FormData oluştur
+            const formData = new FormData();
+            const filename = uri.split('/').pop() || 'food.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+            formData.append('file', {
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                name: filename,
+                type,
+            } as any);
+
+            // Native fetch kullan — Axios, React Native'de multipart boundary'yi dogru ayarlamiyor
+            const token = await AsyncStorage.getItem('accessToken');
+            const baseURL = apiClient.defaults.baseURL || 'http://localhost:8080/api';
+            const requestUrl = `${baseURL}/v1/ai/food/analyze`;
+            console.log('[FoodAnalysis] Sending to:', requestUrl);
+
+            const response = await fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.log('[FoodAnalysis] Error response:', response.status, errorText);
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const res = await response.json();
+            console.log('[FoodAnalysis] Success:', JSON.stringify(res));
+
+            if (res.data) {
+                const analysis = res.data;
+                setMealDesc(analysis.foodName || '');
+                if (analysis.calories) {
+                    setMealCal(Math.round(analysis.calories).toString());
+                }
+                if (analysis.protein) {
+                    setMealProtein(Math.round(analysis.protein).toString());
+                }
+                if (analysis.carbs) {
+                    setMealCarbs(Math.round(analysis.carbs).toString());
+                }
+                if (analysis.fat) {
+                    setMealFat(Math.round(analysis.fat).toString());
+                }
+            } else {
+                Alert.alert('Uyarı', 'Görsel analiz edilemedi, manuel girebilirsiniz.');
+            }
+        } catch (error: any) {
+            console.log('Food analysis error:', error);
+            Alert.alert('Analiz Hatası', 'Model veya sunucu şu an yanıt vermiyor, yemeği manuel kaydedebilirsiniz.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const resetMealForm = () => {
+        setMealDesc('');
+        setMealCal('');
+        setMealProtein('');
+        setMealCarbs('');
+        setMealFat('');
+        setAnalyzedImageUri(null);
     };
 
     return (
@@ -348,122 +490,173 @@ export default function HealthTabScreen() {
                     ))}
                 </View>
 
-                <View style={styles.summaryCard}>
-                    <View style={styles.summaryGradient}>
-                        <View style={styles.summaryRow}>
-                            <View style={styles.summaryItem}>
-                                <Ionicons name="water" size={24} color="#fff" />
-                                <Text style={styles.summaryValue}>{totalWater}</Text>
-                                <Text style={styles.summaryLabel}>Su (ml)</Text>
-                                <View style={{ width: 64, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginTop: 4 }}>
-                                    <View style={{ width: `${waterPct}%`, height: '100%', backgroundColor: '#fff', borderRadius: 2 }} />
-                                </View>
-                            </View>
-                            <View style={styles.summaryDivider} />
-                            <View style={styles.summaryItem}>
-                                <Ionicons name="walk" size={24} color="#fff" />
-                                <Text style={styles.summaryValue}>{totalSteps}</Text>
-                                <Text style={styles.summaryLabel}>Adim</Text>
-                                <View style={{ width: 64, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginTop: 4 }}>
-                                    <View style={{ width: `${stepsPct}%`, height: '100%', backgroundColor: '#fff', borderRadius: 2 }} />
-                                </View>
-                            </View>
-                            <View style={styles.summaryDivider} />
-                            <View style={styles.summaryItem}>
-                                <Ionicons name="flame" size={24} color="#fff" />
-                                <Text style={styles.summaryValue}>{totalCalories}</Text>
-                                <Text style={styles.summaryLabel}>Kalori</Text>
-                            </View>
-                        </View>
-                    </View>
+                <View style={[styles.mainTabRow, { marginBottom: 16 }]}>
+                    <TouchableOpacity
+                        style={[styles.mainTabBtn, activeTab === 'goals' && styles.mainTabBtnActive]}
+                        onPress={() => setActiveTab('goals')}
+                    >
+                        <Text style={[styles.mainTabBtnText, activeTab === 'goals' && styles.mainTabBtnTextActive]}>Günlük Hedef</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.mainTabBtn, activeTab === 'diet' && styles.mainTabBtnActive]}
+                        onPress={() => setActiveTab('diet')}
+                    >
+                        <Text style={[styles.mainTabBtnText, activeTab === 'diet' && styles.mainTabBtnTextActive]}>Diyet</Text>
+                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View style={[styles.cardIconCircle, { backgroundColor: BLUE + '15' }]}>
-                            <Ionicons name="water" size={20} color={BLUE} />
-                        </View>
-                        <View style={styles.cardHeaderText}>
-                            <Text style={styles.cardTitle}>Su Hedefi</Text>
-                            <Text style={styles.cardSubtitle}>{totalWater} / {waterGoalForPeriod} ml</Text>
-                        </View>
-                        <View style={styles.cardHeaderActions}>
-                            <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: BLUE + '15' }]} onPress={() => setGoalEditType('water')}>
-                                <Ionicons name="create-outline" size={18} color={BLUE} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: BLUE + '15' }]} onPress={() => setActiveModal('water')}>
-                                <Ionicons name="add" size={20} color={BLUE} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${waterPct}%`, backgroundColor: BLUE }]} /></View>
-                    <Text style={styles.progressText}>{waterPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(waterGoalForPeriod - totalWater, 0)} ml`}</Text>
-                </View>
-
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View style={[styles.cardIconCircle, { backgroundColor: GREEN + '15' }]}>
-                            <Ionicons name="walk" size={20} color={GREEN} />
-                        </View>
-                        <View style={styles.cardHeaderText}>
-                            <Text style={styles.cardTitle}>Adim Hedefi</Text>
-                            <Text style={styles.cardSubtitle}>{totalSteps} / {stepsGoalForPeriod}</Text>
-                        </View>
-                        <View style={styles.cardHeaderActions}>
-                            <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: GREEN + '15' }]} onPress={() => setGoalEditType('steps')}>
-                                <Ionicons name="create-outline" size={18} color={GREEN} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${stepsPct}%`, backgroundColor: GREEN }]} /></View>
-                    <Text style={styles.progressText}>{stepsPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(stepsGoalForPeriod - totalSteps, 0)} adim`}</Text>
-                </View>
-
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View style={[styles.cardIconCircle, { backgroundColor: ORANGE + '15' }]}>
-                            <Ionicons name="restaurant" size={20} color={ORANGE} />
-                        </View>
-                        <View style={styles.cardHeaderText}>
-                            <Text style={styles.cardTitle}>Ogun Ekle</Text>
-                            <Text style={styles.cardSubtitle}>Bugunku ogunlerini kaydet</Text>
-                        </View>
-                        <View style={styles.cardHeaderActions}>
-                            <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: ORANGE + '15' }]} onPress={() => setActiveModal('meal')}>
-                                <Ionicons name="add" size={20} color={ORANGE} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-
-                {mealLogs.length > 0 && (
+                {activeTab === 'goals' ? (
                     <>
-                        <Text style={styles.sectionTitle}>Ogunler</Text>
-                        {mealLogs.map((log) => {
-                            const d = log.data as MealData;
-                            return (
-                                <View key={log.id} style={styles.listItem}>
-                                    <View style={[styles.listDot, { backgroundColor: ORANGE }]} />
-                                    <View style={styles.listContent}>
-                                        <Text style={styles.listTitle}>{MEAL_LABELS[d.meal_type]} - {d.description}</Text>
-                                        {d.calories ? <Text style={styles.listSub}>{d.calories} kcal</Text> : null}
+                        <View style={styles.summaryCard}>
+                            <View style={styles.summaryGradient}>
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryItem}>
+                                        <Ionicons name="water" size={24} color="#fff" />
+                                        <Text style={styles.summaryValue}>{totalWater}</Text>
+                                        <Text style={styles.summaryLabel}>Su (ml)</Text>
+                                        <View style={{ width: 64, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginTop: 4 }}>
+                                            <View style={{ width: `${waterPct}%`, height: '100%', backgroundColor: '#fff', borderRadius: 2 }} />
+                                        </View>
                                     </View>
-                                    <TouchableOpacity onPress={() => void handleDeleteLog(log.id)}>
-                                        <Ionicons name="trash-outline" size={18} color="#D0D0D0" />
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryItem}>
+                                        <Ionicons name="walk" size={24} color="#fff" />
+                                        <Text style={styles.summaryValue}>{totalSteps}</Text>
+                                        <Text style={styles.summaryLabel}>Adim</Text>
+                                        <View style={{ width: 64, height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginTop: 4 }}>
+                                            <View style={{ width: `${stepsPct}%`, height: '100%', backgroundColor: '#fff', borderRadius: 2 }} />
+                                        </View>
+                                    </View>
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryItem}>
+                                        <Ionicons name="flame" size={24} color="#fff" />
+                                        <Text style={styles.summaryValue}>{totalCalories}</Text>
+                                        <Text style={styles.summaryLabel}>Kalori</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <View style={[styles.cardIconCircle, { backgroundColor: BLUE + '15' }]}>
+                                    <Ionicons name="water" size={20} color={BLUE} />
+                                </View>
+                                <View style={styles.cardHeaderText}>
+                                    <Text style={styles.cardTitle}>Su Hedefi</Text>
+                                    <Text style={styles.cardSubtitle}>{totalWater} / {waterGoalForPeriod} ml</Text>
+                                </View>
+                                <View style={styles.cardHeaderActions}>
+                                    <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: BLUE + '15' }]} onPress={() => setGoalEditType('water')}>
+                                        <Ionicons name="create-outline" size={18} color={BLUE} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: BLUE + '15' }]} onPress={() => setActiveModal('water')}>
+                                        <Ionicons name="add" size={20} color={BLUE} />
                                     </TouchableOpacity>
                                 </View>
-                            );
-                        })}
+                            </View>
+                            <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${waterPct}%`, backgroundColor: BLUE }]} /></View>
+                            <Text style={styles.progressText}>{waterPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(waterGoalForPeriod - totalWater, 0)} ml`}</Text>
+                        </View>
+
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <View style={[styles.cardIconCircle, { backgroundColor: GREEN + '15' }]}>
+                                    <Ionicons name="walk" size={20} color={GREEN} />
+                                </View>
+                                <View style={styles.cardHeaderText}>
+                                    <Text style={styles.cardTitle}>Adim Hedefi</Text>
+                                    <Text style={styles.cardSubtitle}>{totalSteps} / {stepsGoalForPeriod}</Text>
+                                </View>
+                                <View style={styles.cardHeaderActions}>
+                                    <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: GREEN + '15' }]} onPress={() => setGoalEditType('steps')}>
+                                        <Ionicons name="create-outline" size={18} color={GREEN} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${stepsPct}%`, backgroundColor: GREEN }]} /></View>
+                            <Text style={styles.progressText}>{stepsPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(stepsGoalForPeriod - totalSteps, 0)} adim`}</Text>
+                        </View>
+
+                        {!isLoading && periodLogs.length === 0 && (
+                            <View style={styles.emptyCard}>
+                                <Ionicons name="heart-outline" size={44} color="#E0E0E0" />
+                                <Text style={styles.emptyText}>Kayit yok</Text>
+                                <Text style={styles.emptySubtext}>Cihazdan senkronize edebilir veya su ekleyebilirsiniz.</Text>
+                            </View>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        <View style={styles.summaryCard}>
+                            <View style={[styles.summaryGradient, { backgroundColor: ORANGE }]}>
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryItem}>
+                                        <Ionicons name="flame" size={24} color="#fff" />
+                                        <Text style={styles.summaryValue}>{dailyNutrition.totalCalories}</Text>
+                                        <Text style={styles.summaryLabel}>Kalori</Text>
+                                    </View>
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryItem}>
+                                        <Text style={styles.summaryValue}>{dailyNutrition.totalProtein}g</Text>
+                                        <Text style={styles.summaryLabel}>Protein</Text>
+                                    </View>
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryItem}>
+                                        <Text style={styles.summaryValue}>{dailyNutrition.totalCarbs}g</Text>
+                                        <Text style={styles.summaryLabel}>Karb</Text>
+                                    </View>
+                                    <View style={styles.summaryDivider} />
+                                    <View style={styles.summaryItem}>
+                                        <Text style={styles.summaryValue}>{dailyNutrition.totalFat}g</Text>
+                                        <Text style={styles.summaryLabel}>Yag</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        <Text style={styles.sectionTitle}>Yeni Öğün Ekle</Text>
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                            <TouchableOpacity style={[styles.aiPhotoBtn, { flex: 1 }]} onPress={() => handlePickImage(true)}>
+                                <Ionicons name="camera" size={20} color="#fff" />
+                                <Text style={styles.aiPhotoBtnText}>Fotoğraf Çek</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.aiPhotoBtn, { flex: 1, backgroundColor: ORANGE }]} onPress={() => handlePickImage(false)}>
+                                <Ionicons name="images" size={20} color="#fff" />
+                                <Text style={styles.aiPhotoBtnText}>Galeriden Seç</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity style={styles.addManualBtn} onPress={() => { resetMealForm(); setActiveModal('meal'); }}>
+                            <Text style={styles.addManualBtnText}>+ Manuel Öğün Ekle</Text>
+                        </TouchableOpacity>
+
+                        {mealLogs.length > 0 && (
+                            <View style={{ marginTop: 20 }}>
+                                <Text style={styles.sectionTitle}>Öğünler</Text>
+                                {mealLogs.map((log) => {
+                                    const d = log.data as MealData;
+                                    return (
+                                        <View key={log.id} style={styles.listItem}>
+                                            <View style={[styles.listDot, { backgroundColor: ORANGE }]} />
+                                            <View style={styles.listContent}>
+                                                <Text style={styles.listTitle}>{MEAL_LABELS[d.meal_type]} - {d.description}</Text>
+                                                <Text style={styles.listSub}>
+                                                    {d.calories ? `${d.calories} kcal` : 'Kalori yok'}
+                                                    {d.protein_g || d.carbs_g || d.fat_g ? ` • ${d.protein_g || 0}g p, ${d.carbs_g || 0}g k, ${d.fat_g || 0}g y` : ''}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => void handleDeleteLog(log.id)}>
+                                                <Ionicons name="trash-outline" size={18} color="#D0D0D0" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
                     </>
                 )}
 
-                {!isLoading && periodLogs.length === 0 && (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="heart-outline" size={44} color="#E0E0E0" />
-                        <Text style={styles.emptyText}>Kayit yok</Text>
-                        <Text style={styles.emptySubtext}>Veri eklemek icin yukaridaki butonlari kullanabilirsiniz.</Text>
-                    </View>
-                )}
+                {/* Remove duplicated meal maps/empty state from global layout */}
             </ScrollView>
 
             <Modal visible={goalEditType !== null} transparent animationType="slide">
@@ -514,27 +707,59 @@ export default function HealthTabScreen() {
             <Modal visible={activeModal === 'meal'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
                     <Text style={styles.modalTitle}><Ionicons name="restaurant" size={20} color={ORANGE} /> Ogun Ekle</Text>
-                    <Text style={styles.modalFieldLabel}>Ogun Tipi</Text>
-                    <View style={styles.mealTypeRow}>
-                        {([
-                            { key: 'breakfast', label: 'Kahvalti' },
-                            { key: 'lunch', label: 'Ogle' },
-                            { key: 'dinner', label: 'Aksam' },
-                            { key: 'snack', label: 'Atistirma' },
-                        ] as const).map((m) => (
-                            <TouchableOpacity key={m.key} style={[styles.mealTypeBtn, mealType === m.key && { backgroundColor: ORANGE, borderColor: ORANGE }]} onPress={() => setMealType(m.key)}>
-                                <Text style={[styles.mealTypeText, mealType === m.key && { color: '#fff' }]}>{m.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <Text style={styles.modalFieldLabel}>Ne Yedin?</Text>
-                    <TextInput style={styles.modalInput} placeholder="Ornek: Tavuk salata, pilav" value={mealDesc} onChangeText={setMealDesc} />
-                    <Text style={styles.modalFieldLabel}>Kalori (opsiyonel)</Text>
-                    <TextInput style={styles.modalInput} placeholder="Ornek: 450 kcal" keyboardType="numeric" value={mealCal} onChangeText={setMealCal} />
-                    <View style={styles.modalBtnRow}>
-                        <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setActiveModal(null)}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
-                        <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: ORANGE }]} onPress={handleAddMeal}><Text style={styles.modalSaveText}>Ekle</Text></TouchableOpacity>
-                    </View>
+                    {isAnalyzing ? (
+                        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                            <ActivityIndicator size="large" color={ORANGE} />
+                            <Text style={{ marginTop: 10, color: '#333' }}>Yemek fotoğrafı yapay zeka tarafından analiz ediliyor...</Text>
+                        </View>
+                    ) : (
+                        <>
+                            {analyzedImageUri && (
+                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                    <Image source={{ uri: analyzedImageUri }} style={{ width: 100, height: 100, borderRadius: 12 }} />
+                                    <Text style={{ fontSize: 12, color: GRAY, marginTop: 4 }}>Analiz edildi</Text>
+                                </View>
+                            )}
+                            <Text style={styles.modalFieldLabel}>Ogun Tipi</Text>
+                            <View style={styles.mealTypeRow}>
+                                {([
+                                    { key: 'breakfast', label: 'Kahvalti' },
+                                    { key: 'lunch', label: 'Ogle' },
+                                    { key: 'dinner', label: 'Aksam' },
+                                    { key: 'snack', label: 'Atistirma' },
+                                ] as const).map((m) => (
+                                    <TouchableOpacity key={m.key} style={[styles.mealTypeBtn, mealType === m.key && { backgroundColor: ORANGE, borderColor: ORANGE }]} onPress={() => setMealType(m.key)}>
+                                        <Text style={[styles.mealTypeText, mealType === m.key && { color: '#fff' }]}>{m.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <Text style={styles.modalFieldLabel}>Ne Yedin?</Text>
+                            <TextInput style={styles.modalInput} placeholder="Ornek: Tavuk salata, pilav" value={mealDesc} onChangeText={setMealDesc} />
+
+                            <Text style={styles.modalFieldLabel}>Makrolar (opsiyonel)</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                <View style={{ flex: 1 }}>
+                                    <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Kalori" keyboardType="numeric" value={mealCal} onChangeText={setMealCal} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Protein" keyboardType="numeric" value={mealProtein} onChangeText={setMealProtein} />
+                                </View>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <View style={{ flex: 1 }}>
+                                    <TextInput style={styles.modalInput} placeholder="Karb" keyboardType="numeric" value={mealCarbs} onChangeText={setMealCarbs} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <TextInput style={styles.modalInput} placeholder="Yag" keyboardType="numeric" value={mealFat} onChangeText={setMealFat} />
+                                </View>
+                            </View>
+
+                            <View style={styles.modalBtnRow}>
+                                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => { setActiveModal(null); setAnalyzedImageUri(null); }}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
+                                <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: ORANGE }]} onPress={handleAddMeal}><Text style={styles.modalSaveText}>Ekle</Text></TouchableOpacity>
+                            </View>
+                        </>
+                    )}
                 </View></View>
             </Modal>
 
@@ -606,4 +831,13 @@ const styles = StyleSheet.create({
     mealTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
     mealTypeBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center' },
     mealTypeText: { fontSize: 11, fontWeight: '600', color: '#1A1A2E' },
+    mainTabRow: { flexDirection: 'row', gap: 8, backgroundColor: '#F1F2F6', borderRadius: 12, padding: 4 },
+    mainTabBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+    mainTabBtnActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
+    mainTabBtnText: { fontSize: 13, fontWeight: '700', color: '#667085' },
+    mainTabBtnTextActive: { color: PURPLE },
+    aiPhotoBtn: { backgroundColor: '#4ECDC4', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, gap: 8 },
+    aiPhotoBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    addManualBtn: { backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
+    addManualBtnText: { color: '#64748B', fontSize: 14, fontWeight: '700' },
 });

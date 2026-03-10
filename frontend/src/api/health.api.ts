@@ -14,4 +14,8 @@ export const healthApi = {
     getGoals: () => apiClient.get<ApiResponse<HealthGoals>>('/v1/health/goals'),
     updateGoals: (data: Pick<HealthGoals, 'waterMlTarget' | 'stepsTarget'>) =>
         apiClient.put<ApiResponse<HealthGoals>>('/v1/health/goals', data),
+    getDailyNutrition: (date: string) =>
+        apiClient.get<ApiResponse<{ totalCalories: number; totalProtein: number; totalCarbs: number; totalFat: number }>>('/v1/health/logs/daily-nutrition', {
+            params: { date }
+        }),
 };
