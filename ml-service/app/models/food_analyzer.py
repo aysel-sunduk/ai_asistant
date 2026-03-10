@@ -49,30 +49,45 @@ class FoodAnalyzer:
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
+        # Load Labels for Formatting
+        self.pretty_labels = {}
+        try:
+            # model_path: food-calorie-estimator/checkpoints/best_model.pth
+            # labels.json: food-calorie-estimator/datasets/turkish_foods/labels.json
+            labels_json_path = os.path.join(os.path.dirname(model_path), "../datasets/turkish_foods/labels.json")
+            
+            if os.path.exists(labels_json_path):
+                with open(labels_json_path, "r", encoding="utf-8") as f:
+                    labels_data = json.load(f)
+                    for key, val in labels_data.items():
+                        if "query" in val:
+                            # "taze fasulye" -> "Taze Fasulye"
+                            self.pretty_labels[key] = " ".join([w.capitalize() for w in val["query"].split()])
+                print(f"DEBUG: {len(self.pretty_labels)} yemek ismi labels.json dosyasından yüklendi.")
+            else:
+                print(f"WARNING: labels.json bulunamadı: {labels_json_path}")
+        except Exception as e:
+            print(f"WARNING: labels.json yüklenirken hata oluştu: {e}")
+
         # Load Checkpoint
         ckpt = torch.load(model_path, map_location=self.device)
-        print(f"DEBUG: Checkpoint keys: {list(ckpt.keys())}")
+        print(f"DEBUG: Checkpoint yüklendi, etiket sayısı: {len(ckpt.get('i2l', {}))}")
         
         # Try different naming conventions for label mappings
         self.idx_to_label = ckpt.get("i2l") or ckpt.get("idx_to_label") or {}
-        print(f"DEBUG: idx_to_label type: {type(self.idx_to_label)}, length: {len(self.idx_to_label)}")
         
         num_classes = len(self.idx_to_label)
         
         if num_classes == 0:
-            print("WARNING: num_classes is 0! Trying label_to_idx...")
             self.label_to_idx = ckpt.get("l2i") or ckpt.get("label_to_idx") or {}
             num_classes = len(self.label_to_idx)
-            print(f"DEBUG: Found {num_classes} classes in label_to_idx")
             
             if num_classes == 0:
-                raise ValueError("Model checkpoint does not contain label mappings (i2l/l2i missing)!")
+                raise ValueError("Model checkpoint does not contain label mappings!")
             
-            # If we found l2i, create i2l
             self.idx_to_label = {str(v): k for k, v in self.label_to_idx.items()}
         
         # Load Model
-        print(f"DEBUG: Initializing CalorieModel with {num_classes} classes")
         self.model = CalorieModel(num_classes=num_classes)
         self.model.load_state_dict(ckpt["state"])
         self.model.to(self.device)
@@ -90,7 +105,7 @@ class FoodAnalyzer:
         ])
         
         self.initialized = True
-        print(f"✅ FoodAnalyzer initialized with {num_classes} classes on {self.device}")
+        print(f"✅ FoodAnalyzer başlatıldı. {num_classes} sınıf hazır.")
 
     def analyze(self, image_bytes):
         img = Image.open(image_bytes).convert("RGB")
@@ -106,8 +121,20 @@ class FoodAnalyzer:
             # Nutrients (Denormalize)
             nutrients = reg[0] * self.norm_s + self.norm_m
             
+        # Format Food Name
+        raw_label = self.idx_to_label.get(str(idx.item()), self.idx_to_label.get(idx.item(), "bilinmiyor"))
+        
+        # 1. Önce labels.json eşleşmesine bak
+        food_name = self.pretty_labels.get(raw_label)
+        
+        # 2. Eğer eşleşme yoksa veya labels.json yüklenemediyse fallback kullan
+        if not food_name:
+            # "taze_fasulye" -> "Taze Fasulye"
+            clean_name = str(raw_label).replace("_", " ").strip()
+            food_name = " ".join([w.capitalize() for w in clean_name.split()])
+            
         return {
-            "foodName": self.idx_to_label.get(str(idx.item()), self.idx_to_label.get(idx.item(), "Bilinmiyor")),
+            "foodName": food_name,
             "confidence": round(float(prob.item()) * 100, 1),
             "calories": round(max(0, float(nutrients[0])), 1),
             "protein": round(max(0, float(nutrients[1])), 1),
