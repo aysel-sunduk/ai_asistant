@@ -29,16 +29,16 @@ public interface HealthLogRepository extends JpaRepository<HealthLog, UUID> {
 
     @Query("SELECT h FROM HealthLog h WHERE h.userId = :userId AND h.logDate BETWEEN :startDate AND :endDate ORDER BY h.logDate DESC, h.loggedAt DESC")
     List<HealthLog> findByUserIdAndDateRange(
-        @Param("userId") UUID userId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
-    );
+            @Param("userId") UUID userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     @Query("SELECT h FROM HealthLog h WHERE h.userId = :userId AND h.logType = :logType AND h.logDate BETWEEN :startDate AND :endDate ORDER BY h.logDate DESC, h.loggedAt DESC")
     List<HealthLog> findByUserIdAndTypeAndDateRange(
-        @Param("userId") UUID userId,
-        @Param("logType") String logType,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
-    );
+            @Param("userId") UUID userId,
+            @Param("logType") String logType,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    Page<HealthLog> findByUserIdAndLogTypeOrderByLoggedAtDesc(UUID userId, String logType, Pageable pageable);
 }

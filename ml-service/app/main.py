@@ -4,6 +4,8 @@ Tüm AI modülleri için giriş noktası.
 """
 
 import logging
+import time
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,6 +16,7 @@ from app.api.game_api import router as game_router
 from app.api.shopping_api import router as shopping_router
 from app.api.finance_api import router as finance_router
 from app.api.food_api import router as food_router
+from app.api.diet_api import router as diet_router
 from app.api.stt_api import router as stt_router
 
 
@@ -37,10 +40,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"Argo filtresi yuklenemedi: {e}")
 
     try:
-        from app.models.title_generator import _load_model as _load_title_model
-        _load_title_model()
+        from app.models.food_analyzer import _load_model as _load_food_model
+        _load_food_model()
     except Exception as e:
-        logger.error(f"Baslik onerici yuklenemedi: {e}")
+        logger.error(f"Yemek analiz modeli yuklenemedi: {e}")
+
+
 
     try:
         from app.models.game_analyzer import _load_models as _load_game_models
@@ -67,18 +72,28 @@ async def lifespan(app: FastAPI):
         logger.error(f"Yatirim onerici yuklenemedi: {e}")
 
     try:
-        from app.models.food_analyzer import _load_model as _load_food_model
-        _load_food_model()
+        from app.models.diet_recommender import _load_models as _load_diet_models
+        _load_diet_models()
     except Exception as e:
-        logger.error(f"Yemek analiz modeli yuklenemedi: {e}")
+        logger.error(f"Diyet onerici yuklenemedi: {e}")
 
-    try:
-        from app.models.stt_engine import _load_stt_model
-        _load_stt_model()
-    except Exception as e:
-        logger.error(f"STT (Whisper) modeli yuklenemedi: {e}")
+    # try:
+    #     from app.models.stt_engine import _load_stt_model
+    #     _load_stt_model()
+    # except Exception as e:
+    #     logger.error(f"STT (Whisper) modeli yuklenemedi: {e}")
 
-    logger.info("ML Service yukleme süreci tamamlandı.")
+    # Arka planda baslik onericiyi yukle (bloklamasin)
+    # def load_title_bg():
+    #     try:
+    #         from app.models.title_generator import _load_model as _load_title_model
+    #         _load_title_model()
+    #     except Exception as e:
+    #         logger.error(f"Baslik onerici arka planda yuklenemedi: {e}")
+
+    # threading.Thread(target=load_title_bg, daemon=True).start()
+
+    logger.info("ML Service ana modelleri yuklendi, servis baslatiliyor...")
     yield
     logger.info("ML Service kapatılıyor...")
 
@@ -105,6 +120,7 @@ app.include_router(game_router, prefix="/api")
 app.include_router(shopping_router, prefix="/api")
 app.include_router(finance_router, prefix="/api")
 app.include_router(food_router, prefix="/api")
+app.include_router(diet_router, prefix="/api")
 app.include_router(stt_router, prefix="/api")
 
 
@@ -119,11 +135,12 @@ async def health_check():
     from app.models.shopping_recommender import is_model_loaded as shopping_loaded
     from app.models.investment_recommender import is_model_loaded as investment_loaded
     from app.models.food_analyzer import analyzer
+    from app.models.diet_recommender import is_model_loaded as diet_loaded
     from app.models.stt_engine import stt_engine
     return {
         "status": "ok",
         "service": "ai-asistan-ml",
-        "version": "1.4.0",
+        "version": "1.5.0",
         "models": {
             "profanity_filter": _ml_loaded and _ml_model is not None,
             "title_generator": title_loaded(),
@@ -132,6 +149,7 @@ async def health_check():
             "shopping_recommender": shopping_loaded(),
             "investment_recommender": investment_loaded(),
             "food_analyzer": analyzer.initialized,
+            "diet_recommender": diet_loaded(),
             "stt_engine": stt_engine.initialized,
         },
     }

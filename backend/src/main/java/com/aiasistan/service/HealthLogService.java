@@ -28,26 +28,26 @@ import com.aiasistan.repository.HealthLogRepository;
 public class HealthLogService {
 
     private static final Set<String> ALLOWED_LOG_TYPES = Set.of(
-        "daily_summary",
-        "water",
-        "exercise",
-        "meal",
-        "steps",
-        "distance",
-        "active_calories",
-        "resting_calories",
-        "heart_rate",
-        "sleep"
-    );
+            "daily_summary",
+            "water",
+            "exercise",
+            "meal",
+            "food_scan",
+            "steps",
+            "distance",
+            "active_calories",
+            "resting_calories",
+            "heart_rate",
+            "sleep");
     private static final Set<String> ALLOWED_SOURCES = Set.of(
-        "manual",
-        "mobile_device",
-        "apple_health",
-        "apple_healthkit",
-        "google_fit",
-        "health_connect",
-        "other"
-    );
+            "manual",
+            "mobile_device",
+            "apple_health",
+            "apple_healthkit",
+            "google_fit",
+            "health_connect",
+            "ai_food_scan",
+            "other");
 
     private final HealthLogRepository healthLogRepository;
     private final UserService userService;
@@ -65,40 +65,40 @@ public class HealthLogService {
         String externalRecordId = normalizeExternalRecordId(request.getExternalRecordId());
         // Kısa debug: hangi alanların geldiğini logla (sunucu tarafı izleme için)
         org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
-            .debug("createLog: user={}, externalRecordId={}, type={}, source={}, dataKeys={}",
-                userEmail, externalRecordId, normalizedType, normalizedSource,
-                request.getData() != null ? request.getData().keySet() : null);
+                .debug("createLog: user={}, externalRecordId={}, type={}, source={}, dataKeys={}",
+                        userEmail, externalRecordId, normalizedType, normalizedSource,
+                        request.getData() != null ? request.getData().keySet() : null);
         validateDataByType(normalizedType, request.getData());
         if (externalRecordId != null) {
             return healthLogRepository.findByUserIdAndExternalRecordId(userId, externalRecordId)
-                .map(existing -> {
-                    // Log ve geri dönüş: dış kayıt id'si zaten varsa yeni kayıt oluşturulmaz
-                    // Bu sayede istemcinin senkronize ederken neden "yeni veri yok" gördüğünü
-                    // sunucu loglarından takip edebiliriz.
-                    // Not: performans için sadece bilgi amaçlı log basılır.
-                    // (Kısa ve tek satırlık log)
-                    org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
-                        .info("Existing health log for externalRecordId={}", externalRecordId);
-                    return HealthLogDto.Response.from(existing);
-                })
-                .orElseGet(() -> {
-                    org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
-                        .info("Saving new health log for externalRecordId={}", externalRecordId);
-                    return saveNewHealthLog(userId, normalizedType, request, normalizedSource, externalRecordId);
-                });
+                    .map(existing -> {
+                        // Log ve geri dönüş: dış kayıt id'si zaten varsa yeni kayıt oluşturulmaz
+                        // Bu sayede istemcinin senkronize ederken neden "yeni veri yok" gördüğünü
+                        // sunucu loglarından takip edebiliriz.
+                        // Not: performans için sadece bilgi amaçlı log basılır.
+                        // (Kısa ve tek satırlık log)
+                        org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+                                .info("Existing health log for externalRecordId={}", externalRecordId);
+                        return HealthLogDto.Response.from(existing);
+                    })
+                    .orElseGet(() -> {
+                        org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+                                .info("Saving new health log for externalRecordId={}", externalRecordId);
+                        return saveNewHealthLog(userId, normalizedType, request, normalizedSource, externalRecordId);
+                    });
         }
 
-        org.slf4j.LoggerFactory.getLogger(HealthLogService.class).info("Saving new health log without externalRecordId");
+        org.slf4j.LoggerFactory.getLogger(HealthLogService.class)
+                .info("Saving new health log without externalRecordId");
         return saveNewHealthLog(userId, normalizedType, request, normalizedSource, null);
     }
 
     private HealthLogDto.Response saveNewHealthLog(
-        UUID userId,
-        String normalizedType,
-        HealthLogDto.Request request,
-        String normalizedSource,
-        String externalRecordId
-    ) {
+            UUID userId,
+            String normalizedType,
+            HealthLogDto.Request request,
+            String normalizedSource,
+            String externalRecordId) {
         HealthLog healthLog = new HealthLog();
         healthLog.setUserId(userId);
         healthLog.setLogType(normalizedType);
@@ -121,12 +121,13 @@ public class HealthLogService {
     public PageResponse<HealthLogDto.Response> getLogs(String userEmail, Pageable pageable) {
         UUID userId = userService.getUserIdByEmail(userEmail);
         Page<HealthLogDto.Response> page = healthLogRepository.findByUserId(userId, pageable)
-            .map(HealthLogDto.Response::from);
+                .map(HealthLogDto.Response::from);
         return PageResponse.of(page);
     }
 
     @Transactional(readOnly = true)
-    public List<HealthLogDto.Response> getLogsByDateRange(String userEmail, LocalDate startDate, LocalDate endDate, String logType) {
+    public List<HealthLogDto.Response> getLogsByDateRange(String userEmail, LocalDate startDate, LocalDate endDate,
+            String logType) {
         validateDateRange(startDate, endDate);
         UUID userId = userService.getUserIdByEmail(userEmail);
 
@@ -139,6 +140,15 @@ public class HealthLogService {
         }
 
         return logs.stream().map(HealthLogDto.Response::from).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<HealthLogDto.Response> getFoodScanHistory(String userEmail, Pageable pageable) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        Page<HealthLogDto.Response> page = healthLogRepository
+                .findByUserIdAndLogTypeOrderByLoggedAtDesc(userId, "food_scan", pageable)
+                .map(HealthLogDto.Response::from);
+        return PageResponse.of(page);
     }
 
     @Transactional
@@ -167,15 +177,14 @@ public class HealthLogService {
 
     private HealthLog findOwnedLog(UUID id, UUID userId) {
         return healthLogRepository.findByIdAndUserId(id, userId)
-            .orElseThrow(() -> new NotFoundException("Saglik kaydi bulunamadi"));
+                .orElseThrow(() -> new NotFoundException("Saglik kaydi bulunamadi"));
     }
 
     private String normalizeLogType(String logType) {
         String normalized = logType == null ? "" : logType.trim().toLowerCase(Locale.ROOT);
         if (!ALLOWED_LOG_TYPES.contains(normalized)) {
             throw new BadRequestException(
-                "Gecersiz logType. Desteklenen: daily_summary, water, exercise, meal, steps, distance, active_calories, resting_calories, heart_rate, sleep"
-            );
+                    "Gecersiz logType. Desteklenen: daily_summary, water, exercise, meal, steps, distance, active_calories, resting_calories, heart_rate, sleep");
         }
         return normalized;
     }
@@ -193,8 +202,7 @@ public class HealthLogService {
         String normalized = source == null ? "manual" : source.trim().toLowerCase(Locale.ROOT);
         if (!ALLOWED_SOURCES.contains(normalized)) {
             throw new BadRequestException(
-                "Gecersiz source. Desteklenen: manual, mobile_device, apple_health, apple_healthkit, google_fit, health_connect, other"
-            );
+                    "Gecersiz source. Desteklenen: manual, mobile_device, apple_health, apple_healthkit, google_fit, health_connect, other");
         }
         return normalized;
     }
@@ -216,7 +224,9 @@ public class HealthLogService {
             case "water" -> requirePositiveNumberAny(data, "amount_ml", "amountMl");
             case "exercise" -> requirePositiveNumberAny(data, "duration_min", "durationMin");
             case "meal" -> requireNonBlankStringAny(data, "meal_type", "mealType");
-            case "daily_summary" -> requireAnyPresent(data, "mood", "sleep_hours", "sleepHours", "weight_kg", "weightKg", "steps");
+            case "food_scan" -> requireNonBlankStringAny(data, "food_name", "foodName");
+            case "daily_summary" ->
+                requireAnyPresent(data, "mood", "sleep_hours", "sleepHours", "weight_kg", "weightKg", "steps");
             case "steps" -> requirePositiveNumber(data, "count");
             case "distance" -> requirePositiveNumber(data, "kilometers");
             case "active_calories", "resting_calories" -> requirePositiveNumber(data, "kcal");
