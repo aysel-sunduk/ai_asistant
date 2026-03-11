@@ -95,7 +95,7 @@ function inRange(date: Date, start: Date, end: Date): boolean {
     return date >= start && date <= end;
 }
 
-export default function HealthTabScreen() {
+function HealthTabScreen() {
     const { logs, isLoading, fetchLogs, fetchNutrition, createLog, deleteLog } = useHealth();
     const didInitRef = useRef(false);
 
@@ -841,3 +841,5 @@ const styles = StyleSheet.create({
     addManualBtn: { backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
     addManualBtnText: { color: '#64748B', fontSize: 14, fontWeight: '700' },
 });
+
+export default HealthTabScreen;

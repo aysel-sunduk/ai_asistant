@@ -30,8 +30,15 @@ public class OpenRouterAiService {
     @Value("${app.ai.openrouter-key:}")
     private String apiKey;
 
-    @Value("${app.ai.openrouter-model:openai/gpt-oss-120b}")
-    private String model;
+    @Value("${app.ai.openrouter-model:google/gemini-2.0-flash-exp:free,meta-llama/llama-3.3-70b-instruct:free,mistralai/mistral-7b-instruct:free}")
+    private String modelConfig;
+
+    private List<String> getModels() {
+        if (modelConfig == null || modelConfig.isBlank()) {
+            return List.of("google/gemini-2.0-flash-exp:free");
+        }
+        return List.of(modelConfig.split(","));
+    }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -118,7 +125,7 @@ public class OpenRouterAiService {
      */
     public List<String> generateInterviewQuestions(String title, String position, String jobDescription, int count) {
         if (!isConfigured()) {
-            logger.warn("OpenRouter API key tanımlı değil, mülakat soruları üretilemiyor");
+            logger.error("OpenRouter API anahtarı (apiKey) tanımlı değil veya boş! Lütfen çevresel değişkenleri (OPENROUTER_API_KEY) kontrol edin.");
             return List.of();
         }
 
@@ -140,7 +147,7 @@ public class OpenRouterAiService {
                     .append("- Sorular Türkçe olsun.\n")
                     .append("- Sorular hem teknik hem de davranışsal (soft skill) yetkinlikleri ölçsün.\n")
                     .append("- Her soru yeni bir satırda olsun ve numaralandır (1. 2. 3. şeklinde).\n")
-                    .append("- Sadece soruları yaz, giriş veya açıklama ekleme.");
+                    .append("- Sadece soruları yaz, giriş cümlesi, açıklama veya sonuç ekleme. Sadece liste.");
 
             String response = callOpenRouter(promptBuilder.toString());
             if (response != null) {
@@ -151,7 +158,18 @@ public class OpenRouterAiService {
             logger.error("Mülakat soruları üretilirken hata: {}", e.getMessage());
         }
 
-        return List.of();
+        return getFallbackQuestions(position);
+    }
+
+    private List<String> getFallbackQuestions(String position) {
+        logger.warn("AI soruları üretilemedi, varsayılan (fallback) sorular kullanılıyor. Pozisyon: {}", position);
+        return List.of(
+            "Bize kendinizden ve deneyimlerinizden bahseder misiniz?",
+            "Bu pozisyon için sizi en güçlü aday yapan özellikleriniz nelerdir?",
+            "Projelerinizde karşılaştığınız en büyük teknik zorluk neydi ve nasıl çözdünüz?",
+            "Takım çalışmasında yaşadığınız bir çatışmayı nasıl yönettiniz?",
+            "Önümüzdeki 5 yıl içinde kendinizi kariyer olarak nerede görüyorsunuz?"
+        );
     }
 
     /**
@@ -191,51 +209,70 @@ public class OpenRouterAiService {
      * OpenRouter API'ye istek gönderir ve yanıtı döner.
      */
     private String callOpenRouter(String userMessage) {
-        try {
-            // OpenAI-compatible chat completions format
-            Map<String, Object> requestBody = Map.of(
-                    "model", model,
-                    "messages", List.of(
-                            Map.of("role", "user", "content", userMessage)),
-                    "max_tokens", 250,
-                    "temperature", 0.7);
+        if (!isConfigured()) {
+            logger.error("callOpenRouter: API anahtarı eksik.");
+            return null;
+        }
+        
+        List<String> modelsToTry = getModels();
+        logger.info("OpenRouter isteği başlatılıyor. Denenecek model sayısı: {}. Anahtar uzunluğu: {}", 
+                modelsToTry.size(), apiKey.length());
+        
+        for (String currentModel : modelsToTry) {
+            String sanitizedModel = currentModel.trim();
+            try {
+                logger.info("OpenRouter isteği gönderiliyor (model: {})", sanitizedModel);
+                
+                // OpenAI-compatible chat completions format
+                Map<String, Object> requestBody = Map.of(
+                        "model", sanitizedModel,
+                        "messages", List.of(
+                                Map.of("role", "user", "content", userMessage)),
+                        "max_tokens", 1000,
+                        "temperature", 0.7);
 
-            String jsonBody = objectMapper.writeValueAsString(requestBody);
+                String jsonBody = objectMapper.writeValueAsString(requestBody);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(OPENROUTER_API_URL))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("HTTP-Referer", "https://ai-asistan.app")
-                    .header("X-Title", "AI Asistan")
-                    .timeout(Duration.ofSeconds(30))
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .build();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(OPENROUTER_API_URL))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("HTTP-Referer", "https://ai-asistan.app")
+                        .header("X-Title", "AI Asistan")
+                        .timeout(Duration.ofSeconds(20))
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
 
-            HttpResponse<String> response = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = httpClient.send(request,
+                        HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() == 200) {
-                JsonNode json = objectMapper.readTree(response.body());
-                JsonNode choices = json.get("choices");
-                if (choices != null && choices.isArray() && !choices.isEmpty()) {
-                    JsonNode message = choices.get(0).get("message");
-                    if (message != null && message.has("content")) {
-                        String content = message.get("content").asText();
-                        logger.debug("OpenRouter yanıtı alındı (model: {})", model);
-                        return content;
+                if (response.statusCode() == 200) {
+                    JsonNode json = objectMapper.readTree(response.body());
+                    JsonNode choices = json.get("choices");
+                    if (choices != null && choices.isArray() && !choices.isEmpty()) {
+                        JsonNode message = choices.get(0).get("message");
+                        if (message != null && message.has("content")) {
+                            String content = message.get("content").asText();
+                            logger.info("OpenRouter yanıtı başarıyla alındı (model: {})", sanitizedModel);
+                            return content;
+                        }
                     }
+                } else {
+                    String errorBody = response.body();
+                    logger.warn("OpenRouter API {} hatası (model: {}). Yanıt: {}", 
+                            response.statusCode(), sanitizedModel, errorBody);
+                    // 429 (Too Many Requests) durumunda hızlıca bir sonrakine geç
                 }
-            } else {
-                logger.warn("OpenRouter API HTTP {} — body: {}", response.statusCode(),
-                        response.body().length() > 200 ? response.body().substring(0, 200) : response.body());
-            }
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.error("OpenRouter isteği kesintiye uğradı");
-        } catch (Exception e) {
-            logger.error("OpenRouter API hatası: {}", e.getMessage());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.error("OpenRouter isteği kesintiye uğradı");
+                break;
+            } catch (Exception e) {
+                logger.error("OpenRouter API hatası (model: {}): {}", sanitizedModel, e.getMessage());
+            }
+            
+            logger.warn("Model {} başarısız oldu, bir sonraki deneniyor...", sanitizedModel);
         }
 
         return null;
@@ -269,7 +306,7 @@ public class OpenRouterAiService {
             }
         }
 
-        return titles;
+        return titles.isEmpty() ? getFallbackQuestions("genel") : titles;
     }
 
     /**

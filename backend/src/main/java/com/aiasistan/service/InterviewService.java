@@ -13,6 +13,7 @@ import com.aiasistan.model.InterviewSession;
 import com.aiasistan.model.User;
 import com.aiasistan.repository.InterviewQuestionRepository;
 import com.aiasistan.repository.InterviewSessionRepository;
+import com.aiasistan.repository.UserRepository;
 import com.aiasistan.service.SttService;
 import com.aiasistan.service.OpenRouterAiService;
 
@@ -22,15 +23,18 @@ public class InterviewService {
 
     private final InterviewSessionRepository sessionRepository;
     private final InterviewQuestionRepository questionRepository;
+    private final UserRepository userRepository;
     private final OpenRouterAiService aiService;
     private final SttService sttService;
 
     public InterviewService(InterviewSessionRepository sessionRepository,
             InterviewQuestionRepository questionRepository,
+            UserRepository userRepository,
             OpenRouterAiService aiService,
             SttService sttService) {
         this.sessionRepository = sessionRepository;
         this.questionRepository = questionRepository;
+        this.userRepository = userRepository;
         this.aiService = aiService;
         this.sttService = sttService;
     }
@@ -38,7 +42,9 @@ public class InterviewService {
     /**
      * Adım 1: Oturumu oluşturur ve AI ile taslak soruları üretir.
      */
-    public InterviewSessionResponse createSession(User user, CreateInterviewSessionRequest request) {
+    public InterviewSessionResponse createSession(String userEmail, CreateInterviewSessionRequest request) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
         InterviewSession session = new InterviewSession();
         session.setUser(user);
         session.setTitle(request.getTitle());
@@ -56,6 +62,10 @@ public class InterviewService {
                 5 // Varsayılan 5 soru
         );
 
+        if (questionsText == null || questionsText.isEmpty()) {
+            throw new RuntimeException("Mülakat soruları üretilemedi. Lütfen daha sonra tekrar deneyin.");
+        }
+
         List<InterviewQuestion> questions = new ArrayList<>();
         for (int i = 0; i < questionsText.size(); i++) {
             InterviewQuestion q = new InterviewQuestion();
@@ -67,6 +77,15 @@ public class InterviewService {
 
         savedSession.setQuestions(questions);
         return mapToResponse(savedSession);
+    }
+
+    /**
+     * Oturum detaylarını döner.
+     */
+    public InterviewSessionResponse getSession(UUID sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+        return mapToResponse(session);
     }
 
     /**

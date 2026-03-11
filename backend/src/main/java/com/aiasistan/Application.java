@@ -41,9 +41,11 @@ public class Application {
                 if ("MAIL_PASS".equals(key) || "SMTP_PASS".equals(key)) {
                     val = val.replace(" ", "");
                 }
-                // Respect existing environment variables or system properties
-                if (System.getenv(key) != null) return; // env var present -> do not override
-                if (System.getProperty(key) != null) return; // system property present -> do not override
+                // Respect existing environment variables or system properties if they have a value
+                String existingEnv = System.getenv(key);
+                if (existingEnv != null && !existingEnv.isBlank()) return;
+                String existingProp = System.getProperty(key);
+                if (existingProp != null && !existingProp.isBlank()) return;
                 try {
                     System.setProperty(key, val);
                 } catch (Exception ignored) {

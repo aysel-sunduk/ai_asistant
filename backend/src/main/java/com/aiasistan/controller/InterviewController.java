@@ -28,9 +28,17 @@ public class InterviewController {
      */
     @PostMapping("/create")
     public ResponseEntity<InterviewSessionResponse> createSession(
-            @AuthenticationPrincipal User user,
+            org.springframework.security.core.Authentication authentication,
             @Valid @RequestBody CreateInterviewSessionRequest request) {
-        return ResponseEntity.ok(interviewService.createSession(user, request));
+        return ResponseEntity.ok(interviewService.createSession(authentication.getName(), request));
+    }
+
+    /**
+     * Adım 1.5: Oturum detaylarını (sorularıyla birlikte) çeker.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<InterviewSessionResponse> getSession(@PathVariable UUID id) {
+        return ResponseEntity.ok(interviewService.getSession(id));
     }
 
     /**
