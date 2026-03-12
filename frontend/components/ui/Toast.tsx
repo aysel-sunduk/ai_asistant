@@ -19,18 +19,23 @@ const COLORS = {
 
 export default function Toast({ message, type = 'info', visible, onHide, duration = 3000, style }: ToastProps) {
     const opacity = useRef(new Animated.Value(0)).current;
+    const [renderVisible, setRenderVisible] = React.useState(visible);
 
     useEffect(() => {
         if (visible) {
+            setRenderVisible(true);
             Animated.sequence([
                 Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-                Animated.delay(duration),
+                Animated.timing(opacity, { toValue: 1, duration: duration, useNativeDriver: true }),
                 Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-            ]).start(() => onHide());
+            ]).start(() => {
+                setRenderVisible(false);
+                onHide();
+            });
         }
-    }, [visible]);
+    }, [visible, duration, onHide, opacity]);
 
-    if (!visible) return null;
+    if (!renderVisible) return null;
 
     return (
         <Animated.View style={[styles.container, { backgroundColor: COLORS[type], opacity }, style]}>

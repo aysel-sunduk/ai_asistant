@@ -9,7 +9,6 @@ import {
     Image,
     Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,7 +30,6 @@ export const MascotButton: React.FC<MascotButtonProps> = ({ onPress }) => {
     const [message, setMessage] = useState(MESSAGES[0]);
     const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 100, y: SCREEN_HEIGHT - 200 })).current;
     const scale = useRef(new Animated.Value(1)).current;
-    const glowAnim = useRef(new Animated.Value(0)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
     const tooltipOpacity = useRef(new Animated.Value(0)).current;
 
@@ -54,15 +52,8 @@ export const MascotButton: React.FC<MascotButtonProps> = ({ onPress }) => {
     ).current;
 
     useEffect(() => {
-        // Glowing animation
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(glowAnim, { toValue: 1, duration: 1500, useNativeDriver: false }), // shadow does not support native driver
-                Animated.timing(glowAnim, { toValue: 0, duration: 1500, useNativeDriver: false }),
-            ])
-        ).start();
-
-        // Floating animation
+        // Floating animation – must use useNativeDriver: false because it shares
+        // the Animated.add node with pan.y which is driven by JS (PanResponder).
         Animated.loop(
             Animated.sequence([
                 Animated.timing(floatAnim, { toValue: -10, duration: 2000, useNativeDriver: false }),
@@ -74,28 +65,16 @@ export const MascotButton: React.FC<MascotButtonProps> = ({ onPress }) => {
         const interval = setInterval(() => {
             const nextMsg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
             setMessage(nextMsg);
-            
+
             Animated.sequence([
                 Animated.timing(tooltipOpacity, { toValue: 1, duration: 500, useNativeDriver: false }),
-                Animated.delay(3000),
+                Animated.timing(tooltipOpacity, { toValue: 1, duration: 3000, useNativeDriver: false }),
                 Animated.timing(tooltipOpacity, { toValue: 0, duration: 500, useNativeDriver: false }),
             ]).start();
         }, 8000);
 
         return () => clearInterval(interval);
     }, []);
-
-    const glowStyle = {
-        shadowOpacity: glowAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.3, 0.8],
-        }) as any,
-        shadowRadius: glowAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [5, 15],
-        }) as any,
-        shadowColor: ROBOT_COLOR,
-    };
 
     return (
         <Animated.View
@@ -119,9 +98,9 @@ export const MascotButton: React.FC<MascotButtonProps> = ({ onPress }) => {
             <TouchableOpacity
                 onPress={onPress}
                 activeOpacity={0.8}
-                style={[styles.button, glowStyle]}
+                style={styles.button}
             >
-                <Image 
+                <Image
                     source={require('../../assets/images/ai-mascot.png')}
                     style={styles.mascotImage}
                     resizeMode="contain"
@@ -141,17 +120,17 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#fff', 
+        backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 10,
         shadowColor: PRIMARY,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.5,
         shadowRadius: 10,
         borderWidth: 2,
         borderColor: '#EEF2FF',
-        overflow: 'hidden', // Clips the image to be a perfect circle
+        overflow: 'hidden',
     },
     mascotImage: {
         width: '100%',
