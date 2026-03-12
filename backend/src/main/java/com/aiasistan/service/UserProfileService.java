@@ -178,6 +178,14 @@ public class UserProfileService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public UserProfileResponse updateProfilePicture(UUID userId, String pictureUrl) {
+        UserProfile profile = getOrCreateProfile(userId);
+        profile.setProfilePictureUrl(pictureUrl);
+        UserProfile saved = userProfileRepository.save(profile);
+        return toResponse(saved);
+    }
+
     private UserProfile createDefaultProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Kullanici bulunamadi: " + userId));
@@ -309,6 +317,7 @@ public class UserProfileService {
         response.setShowEmail(profile.isShowEmail());
         response.setActivityLevel(profile.getActivityLevel());
         response.setBodyType(profile.getBodyType());
+        response.setProfilePictureUrl(profile.getProfilePictureUrl());
 
         // Sağlık metriklerini dinamik olarak hesapla
         double bmi = healthService.calculateBMI(profile.getHeightCm(), profile.getWeightKg());

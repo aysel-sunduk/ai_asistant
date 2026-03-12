@@ -188,6 +188,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
         String contentType = request.getContentType();
+        String method = request.getMethod();
 
         // Swagger ve diğer public endpointler için logging devre dışı bırak
         boolean isPublicPath = path.startsWith("/swagger-ui") ||
@@ -197,7 +198,13 @@ public class LoggingFilter extends OncePerRequestFilter {
         // Multipart isteklerde body caching yapılmamalı (dosya yüklemeyi bozar)
         boolean isMultipart = contentType != null && contentType.startsWith("multipart/");
 
-        return isPublicPath || isMultipart;
+        boolean isUploadPath = path.startsWith("/v1/profile/picture")
+                || path.startsWith("/v1/ai/food/analyze")
+                || path.startsWith("/v1/ai/interview/answer-video");
+
+        boolean isPotentialMultipart = "POST".equalsIgnoreCase(method) && isUploadPath;
+
+        return isPublicPath || isMultipart || isPotentialMultipart;
     }
 
     /**

@@ -26,6 +26,7 @@ import com.aiasistan.model.User;
 import com.aiasistan.service.UserProfileService;
 import com.aiasistan.service.UserProfileService.ModuleCompletionStatus;
 import com.aiasistan.service.UserService;
+import com.aiasistan.service.ImageService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -36,10 +37,12 @@ public class ProfileController {
 
   private final UserProfileService userProfileService;
   private final UserService userService;
+  private final ImageService imageService;
 
-  public ProfileController(UserProfileService userProfileService, UserService userService) {
+  public ProfileController(UserProfileService userProfileService, UserService userService, ImageService imageService) {
     this.userProfileService = userProfileService;
     this.userService = userService;
+    this.imageService = imageService;
   }
 
   /**
@@ -116,5 +119,36 @@ public ResponseEntity<ApiResponse<UserProfileResponse>> updateContactPrivacy(
       "visibility", updated.getVisibility()
     );
     return ResponseEntity.ok(ApiResponse.ok(data, "Visibility updated"));
+  }
+
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProfileController.class);
+
+  @Operation(summary = "Profil fotoğrafı yükle")
+  @org.springframework.web.bind.annotation.PostMapping(value = "/picture", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<ApiResponse<UserProfileResponse>> uploadProfilePicture(
+      Authentication authentication,
+      @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    
+    try {
+      String email = authentication.getName();
+      UUID userId = userService.getUserIdByEmail(email);
+      
+      String pictureUrl = imageService.saveProfilePicture(file, userId);
+      UserProfileResponse response = userProfileService.updateProfilePicture(userId, pictureUrl);
+      
+      return ResponseEntity.ok(ApiResponse.ok(response, "Profil fotoğrafı güncellendi"));
+      
+    } catch (org.springframework.web.multipart.MultipartException e) {
+      logger.warn("Multipart isteği işlenemedi: {}", e.getMessage());
+      return ResponseEntity.badRequest()
+          .body(ApiResponse.error("Dosya yükleme başarısız: bağlantı kesildi veya dosya bozuk."));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest()
+          .body(ApiResponse.error(e.getMessage()));
+    } catch (Exception e) {
+      logger.error("Profil fotoğrafı yüklenirken beklenmedik hata", e);
+      return ResponseEntity.internalServerError()
+          .body(ApiResponse.error("Sunucu hatası: " + e.getMessage()));
+    }
   }
 }

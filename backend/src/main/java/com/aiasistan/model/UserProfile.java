@@ -101,6 +101,9 @@ public class UserProfile {
     @Column(name = "body_fat_percentage")
     private Double bodyFatPercentage;
 
+    @Column(name = "profile_picture_url")
+    private String profilePictureUrl;
+
     public UserProfile() {
     }
 
@@ -199,6 +202,14 @@ public class UserProfile {
 
     public void setMonthlyIncomeEstimateMinor(Long monthlyIncomeEstimateMinor) {
         this.monthlyIncomeEstimateMinor = monthlyIncomeEstimateMinor;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     public Map<String, Object> getInterests() {

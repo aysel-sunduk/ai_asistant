@@ -13,6 +13,7 @@ target/
 .project
 .classpath
 .settings/
+uploads/
 
 # ─── OS ───────────────────────────────────────
 .DS_Store

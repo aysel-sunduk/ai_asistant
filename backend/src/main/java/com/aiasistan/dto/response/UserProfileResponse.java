@@ -40,6 +40,7 @@ public class UserProfileResponse {
     private Double bmi;
     private Integer bmr;
     private Double bodyFatPercentage;
+    private String profilePictureUrl;
 
     public UUID getUserId() {
         return userId;
@@ -151,6 +152,14 @@ public class UserProfileResponse {
 
     public void setMonthlyIncomeEstimateMinor(Long monthlyIncomeEstimateMinor) {
         this.monthlyIncomeEstimateMinor = monthlyIncomeEstimateMinor;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     public Map<String, Object> getInterests() {
