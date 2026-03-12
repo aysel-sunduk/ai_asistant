@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,6 +13,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -22,28 +23,37 @@ import type { InterviewSession } from '../../src/models/interview.model';
 import Toast from '../../components/ui/Toast';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const PRIMARY = '#4F46E5';
-const ACCENT = '#6366F1';
-const BG = '#F8FAFC';
-const CARD_BG = '#FFFFFF';
-const SUCCESS = '#10B981';
+// Constants to match events.tsx
+const COLOR = '#5B8DEF';
+const BG = '#F8FAFC'; // slate-50
 
 const STATUS_LABELS: Record<string, string> = {
     SETUP: 'Hazırlık',
     IN_PROGRESS: 'Devam Ediyor',
     COMPLETED: 'Tamamlandı',
 };
-const STATUS_COLORS: Record<string, string> = {
-    SETUP: '#F59E0B',
-    IN_PROGRESS: PRIMARY,
-    COMPLETED: SUCCESS,
+
+// Types for Toast
+type ToastType = 'success' | 'error' | 'info';
+
+const formatDateVerbose = (iso?: string) => {
+    if (!iso) return 'Tarih Belirsiz';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'Tarih Belirsiz';
+    return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 };
 
-const formatDate = (iso?: string) => {
-    if (!iso) return '-';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '-';
-    return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+// Same card tone logic as events.tsx
+const cardTone = (session: InterviewSession) => {
+    switch (session.status) {
+        case 'COMPLETED':
+            return { bg: '#ECFDF5', border: '#34D399', dot: '#10B981' };
+        case 'IN_PROGRESS':
+            return { bg: '#EFF6FF', border: '#93C5FD', dot: '#3B82F6' };
+        case 'SETUP':
+        default:
+            return { bg: '#FFFBEB', border: '#FCD34D', dot: '#F59E0B' };
+    }
 };
 
 export default function MyInterviewsScreen() {
@@ -53,10 +63,20 @@ export default function MyInterviewsScreen() {
     const [sessions, setSessions] = useState<InterviewSession[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [creating, setCreating] = useState(false);
 
-    // Add modal
+    // Search
+    const [query, setQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+
+    // Modal
     const [addVisible, setAddVisible] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [creatingMode, setCreatingMode] = useState<'save' | 'prepare' | null>(null);
+
+    // Operations
+    const [generatingId, setGeneratingId] = useState<string | null>(null);
+
+    // Form
     const [title, setTitle] = useState('');
     const [position, setPosition] = useState('');
     const [jobDescription, setJobDescription] = useState('');
@@ -66,23 +86,40 @@ export default function MyInterviewsScreen() {
     // Toast
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
-    const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+    const [toastType, setToastType] = useState<ToastType>('info');
 
-    const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+    const showToast = (type: ToastType, message: string) => {
         setToastType(type);
         setToastMessage(message);
         setToastVisible(true);
     };
 
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedQuery(query), 400);
+        return () => clearTimeout(timer);
+    }, [query]);
+
     const loadSessions = useCallback(async () => {
         try {
             const data = await interviewService.listMySessions();
-            setSessions(data);
-        } catch (error) {
+            let filtered = data;
+
+            // Apply search filter locally since we fetch all sessions
+            const q = debouncedQuery.trim().toLowerCase();
+            if (q.length >= 2) {
+                filtered = filtered.filter(s =>
+                    s.title.toLowerCase().includes(q) ||
+                    s.position.toLowerCase().includes(q)
+                );
+            }
+
+            setSessions(filtered);
+        } catch (error: any) {
             console.error('Mülakatlar yüklenemedi:', error);
-            showToast('error', 'Mülakatlar yüklenemedi.');
+            showToast('error', error?.response?.data?.message || 'Mülakatlar alınamadı.');
         }
-    }, []);
+    }, [debouncedQuery]);
 
     const reload = useCallback(async (pull = false) => {
         if (pull) setRefreshing(true);
@@ -101,6 +138,12 @@ export default function MyInterviewsScreen() {
         }, [reload]),
     );
 
+    useEffect(() => {
+        if (!loading) {
+            void loadSessions();
+        }
+    }, [loadSessions, loading]);
+
     const resetForm = () => {
         setTitle('');
         setPosition('');
@@ -108,28 +151,43 @@ export default function MyInterviewsScreen() {
         setInterviewDate(null);
     };
 
-    const handleCreate = async () => {
+    const handleCreate = async (mode: 'save' | 'prepare' = 'save') => {
         if (!title.trim() || !position.trim()) {
             Alert.alert('Eksik Bilgi', 'Başlık ve pozisyon gereklidir.');
             return;
         }
         try {
+            setCreatingMode(mode);
             setCreating(true);
-            await interviewService.createSession({
+            const session = await interviewService.createSession({
                 title: title.trim(),
                 position: position.trim(),
                 jobDescription: jobDescription.trim() || undefined,
                 interviewDate: interviewDate ? interviewDate.toISOString() : undefined,
             });
+
+            if (mode === 'prepare') {
+                await interviewService.generateQuestions(session.id);
+                resetForm();
+                setAddVisible(false);
+                showToast('success', 'Mülakat hazırlandı!');
+                await reload();
+                router.push({
+                    pathname: '/(work)/interview-session',
+                    params: { sessionId: session.id },
+                });
+                return;
+            }
+
             resetForm();
             setAddVisible(false);
-            showToast('success', 'Mülakat oluşturuldu!');
-            await loadSessions();
-        } catch (error) {
-            console.error(error);
-            showToast('error', 'Mülakat oluşturulamadı.');
+            showToast('success', 'Mülakat kaydedildi!');
+            await reload();
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || (mode === 'prepare' ? 'Mülakat hazırlanamadı.' : 'Mülakat oluşturulamadı.'));
         } finally {
             setCreating(false);
+            setCreatingMode(null);
         }
     };
 
@@ -143,109 +201,165 @@ export default function MyInterviewsScreen() {
                     try {
                         await interviewService.deleteSession(id);
                         showToast('success', 'Mülakat silindi.');
-                        await loadSessions();
-                    } catch (error) {
-                        showToast('error', 'Mülakat silinemedi.');
+                        await reload();
+                    } catch (error: any) {
+                        showToast('error', error?.response?.data?.message || 'Mülakat silinemedi.');
                     }
                 },
             },
         ]);
     };
 
-    const handleGenerateQuestions = (session: InterviewSession) => {
-        router.push({
-            pathname: '/(work)/interview-session',
-            params: { sessionId: session.id },
-        });
+    const handlePrepareInterview = async (session: InterviewSession) => {
+        // Sorular hazirsa direkt pratik ekranina git
+        if (session.questions && session.questions.length > 0) {
+            router.push({
+                pathname: '/(work)/interview-session',
+                params: { sessionId: session.id },
+            });
+            return;
+        }
+
+        // Soru yoksa AI ile hazirla
+        try {
+            setGeneratingId(session.id);
+            await interviewService.generateQuestions(session.id);
+            showToast('success', 'Mülakat pratiği hazırlandı!');
+            router.push({
+                pathname: '/(work)/interview-session',
+                params: { sessionId: session.id },
+            });
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Mülakat hazırlığı tamamlanamadı. Lütfen tekrar deneyin.');
+        } finally {
+            setGeneratingId(null);
+        }
     };
 
+    const counts = useMemo(() => {
+        return {
+            total: sessions.length,
+            setup: sessions.filter(s => s.status === 'SETUP').length,
+            completed: sessions.filter(s => s.status === 'COMPLETED').length,
+        };
+    }, [sessions]);
+
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* HEADER */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={22} color="#fff" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Mülakatlarım</Text>
-                <TouchableOpacity onPress={() => setAddVisible(true)} style={styles.addBtn}>
-                    <Ionicons name="add" size={22} color="#fff" />
-                </TouchableOpacity>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+
+                <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+                <View style={styles.headerTop}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+                        <Ionicons name="chevron-back" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>İş</Text>
+                    <TouchableOpacity onPress={() => setAddVisible(true)} style={styles.iconBtn}>
+                        <Ionicons name="add" size={22} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* TABS */}
+                <View style={styles.tabRow}>
+                    <TouchableOpacity style={styles.tab} onPress={() => router.replace('/(work)/events')}>
+                        <Text style={styles.tabTxt}>Toplantılarım</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                        <Text style={[styles.tabTxt, styles.activeTabTxt]}>Mülakatlarım</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.statsRow}>
+                    <StatItem value={counts.total} label="Toplam" />
+                    <StatItem value={counts.setup} label="Hazırlanılan" />
+                    <StatItem value={counts.completed} label="Tamamlanan" />
+                </View>
             </View>
 
-            {/* STATS */}
-            <View style={styles.statsRow}>
-                <StatBadge value={sessions.length} label="Toplam" color={PRIMARY} />
-                <StatBadge value={sessions.filter(s => s.status === 'SETUP').length} label="Hazırlık" color="#F59E0B" />
-                <StatBadge value={sessions.filter(s => s.status === 'COMPLETED').length} label="Tamamlanan" color={SUCCESS} />
-            </View>
-
-            {/* LIST */}
             <ScrollView
-                contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
+                contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} />}
-                showsVerticalScrollIndicator={false}
             >
+                <View style={styles.searchRow}>
+                    <TextInput
+                        value={query}
+                        onChangeText={setQuery}
+                        placeholder="Mülakat ara (min. 2 karakter)"
+                        style={styles.searchInput}
+                    />
+                </View>
+
+                <Text style={styles.sectionTitle}>Mülakatlar</Text>
+
                 {loading ? (
                     <View style={styles.centered}>
-                        <ActivityIndicator size="large" color={PRIMARY} />
+                        <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : sessions.length === 0 ? (
                     <View style={styles.emptyBox}>
-                        <Ionicons name="briefcase-outline" size={48} color="#CBD5E1" />
-                        <Text style={styles.emptyTitle}>Henüz mülakat eklenmedi</Text>
-                        <Text style={styles.emptySub}>Sağ üstteki + butonuyla yeni mülakat ekle.</Text>
+                        <Text style={styles.emptyTitle}>Mülakat bulunamadı</Text>
+                        <Text style={styles.emptySub}>Yeni mülakat ekleyebilirsiniz.</Text>
                     </View>
                 ) : (
-                    sessions.map((s) => (
-                        <View key={s.id} style={styles.card}>
-                            <View style={styles.cardHeader}>
-                                <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[s.status] || '#94A3B8' }]} />
-                                <View style={styles.cardInfo}>
-                                    <Text style={styles.cardTitle} numberOfLines={1}>{s.title}</Text>
-                                    <Text style={styles.cardPosition}>{s.position}</Text>
-                                </View>
-                                <TouchableOpacity onPress={() => handleDelete(s.id)} hitSlop={12}>
-                                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    <View style={styles.list}>
+                        {sessions.map((s) => {
+                            const tone = cardTone(s);
+                            const hasQuestions = s.questions && s.questions.length > 0;
+                            const isGenerating = generatingId === s.id;
+
+                            return (
+                                <TouchableOpacity
+                                    key={s.id}
+                                    style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}
+                                    activeOpacity={0.88}
+                                    onPress={() =>
+                                        router.push({
+                                            pathname: '/(work)/interview-detail',
+                                            params: { sessionId: s.id },
+                                        })
+                                    }
+                                >
+                                    <View style={[styles.cardDot, { backgroundColor: tone.dot }]} />
+                                    <View style={styles.cardBody}>
+                                        <Text style={styles.cardTitle}>{s.title}</Text>
+                                        <Text style={styles.cardTime}>{formatDateVerbose(s.interviewDate)}</Text>
+                                        <View style={styles.metaRow}>
+                                            <MiniTag text={s.position} />
+                                            <MiniTag text={STATUS_LABELS[s.status] || s.status} />
+                                            {s.overallScore != null && s.overallScore > 0 && (
+                                                <MiniTag text={`Skor: ${s.overallScore}`} color="#F59E0B" />
+                                            )}
+                                        </View>
+                                        {hasQuestions ? (
+                                            <Text style={styles.cardLocation}>{s.questions.length} Soru Hazır</Text>
+                                        ) : (
+                                            <Text style={[styles.cardLocation, { color: '#F59E0B' }]}>Soru Yok</Text>
+                                        )}
+
+                                        <TouchableOpacity
+                                            style={[styles.primaryBtn, isGenerating && { opacity: 0.7 }]}
+                                            onPress={() => handlePrepareInterview(s)}
+                                            disabled={isGenerating}
+                                        >
+                                            {isGenerating ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <>
+                                                    <Ionicons name="logo-electron" size={16} color="#fff" />
+                                                    <Text style={styles.primaryBtnText}>Mülakata Hazırlan</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={styles.cardActions}>
+                                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(s.id)}>
+                                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
                                 </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.cardMeta}>
-                                <View style={styles.metaItem}>
-                                    <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                                    <Text style={styles.metaText}>{formatDate(s.interviewDate)}</Text>
-                                </View>
-                                <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[s.status] || '#94A3B8') + '18' }]}>
-                                    <Text style={[styles.statusText, { color: STATUS_COLORS[s.status] || '#94A3B8' }]}>
-                                        {STATUS_LABELS[s.status] || s.status}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {s.questions.length > 0 && (
-                                <Text style={styles.questionCount}>
-                                    {s.questions.length} soru hazır
-                                </Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={styles.generateBtn}
-                                onPress={() => handleGenerateQuestions(s)}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="sparkles" size={18} color="#fff" />
-                                <Text style={styles.generateBtnText}>
-                                    {s.questions.length > 0 ? 'Mülakata Git' : 'Soru Oluştur'}
-                                </Text>
-                            </TouchableOpacity>
-
-                            {s.overallScore != null && s.overallScore > 0 && (
-                                <View style={styles.scoreRow}>
-                                    <Ionicons name="trophy" size={16} color="#F59E0B" />
-                                    <Text style={styles.scoreText}>Skor: {s.overallScore}/100</Text>
-                                </View>
-                            )}
-                        </View>
-                    ))
+                            );
+                        })}
+                    </View>
                 )}
             </ScrollView>
 
@@ -255,7 +369,7 @@ export default function MyInterviewsScreen() {
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                         <Pressable style={styles.modalSheet} onPress={() => undefined}>
                             <View style={styles.modalHandle} />
-                            <Text style={styles.modalTitle}>Yeni Mülakat Ekle</Text>
+                            <Text style={styles.modalTitleText}>Yeni Mülakat Ekle</Text>
 
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                                 <Text style={styles.label}>Başlık *</Text>
@@ -308,24 +422,36 @@ export default function MyInterviewsScreen() {
                                     numberOfLines={4}
                                     textAlignVertical="top"
                                 />
+
+                                <TouchableOpacity
+                                    style={[styles.aiPrepareBtn, creating && { opacity: 0.7 }]}
+                                    onPress={() => handleCreate('prepare')}
+                                    disabled={creating}
+                                >
+                                    {creating && creatingMode === 'prepare' ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="sparkles" size={16} color="#fff" />
+                                            <Text style={styles.aiPrepareBtnText}>Mülakat Hazırla</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
                             </ScrollView>
 
-                            <View style={styles.modalActions}>
+                            <View style={styles.modalButtons}>
                                 <TouchableOpacity style={styles.cancelBtn} onPress={() => { resetForm(); setAddVisible(false); }}>
                                     <Text style={styles.cancelBtnText}>Vazgeç</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.createBtn, creating && styles.disabledBtn]}
+                                    style={[styles.createBtn, creating && { opacity: 0.6 }]}
                                     onPress={handleCreate}
                                     disabled={creating}
                                 >
-                                    {creating ? (
+                                    {creating && creatingMode === 'save' ? (
                                         <ActivityIndicator color="#fff" size="small" />
                                     ) : (
-                                        <>
-                                            <Ionicons name="add-circle" size={18} color="#fff" />
-                                            <Text style={styles.createBtnText}>Oluştur</Text>
-                                        </>
+                                        <Text style={styles.createBtnText}>Kaydet</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -339,11 +465,19 @@ export default function MyInterviewsScreen() {
     );
 }
 
-function StatBadge({ value, label, color }: { value: number; label: string; color: string }) {
+function StatItem({ value, label }: { value: number; label: string }) {
     return (
-        <View style={[styles.statBadge, { backgroundColor: color + '14' }]}>
-            <Text style={[styles.statValue, { color }]}>{value}</Text>
-            <Text style={[styles.statLabel, { color: color + 'CC' }]}>{label}</Text>
+        <View style={styles.statItem}>
+            <Text style={styles.statVal}>{value}</Text>
+            <Text style={styles.statLbl}>{label}</Text>
+        </View>
+    );
+}
+
+function MiniTag({ text, color = '#64748B' }: { text: string; color?: string }) {
+    return (
+        <View style={styles.miniTag}>
+            <Text style={[styles.miniTagTxt, { color }]}>{text}</Text>
         </View>
     );
 }
@@ -351,87 +485,131 @@ function StatBadge({ value, label, color }: { value: number; label: string; colo
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG },
     header: {
+        backgroundColor: COLOR,
+        borderBottomLeftRadius: 26,
+        borderBottomRightRadius: 26,
+        paddingBottom: 14,
+    },
+    headerTop: {
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: PRIMARY,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
     },
-    backBtn: {
-        width: 40, height: 40, borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        alignItems: 'center', justifyContent: 'center',
-    },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
-    addBtn: {
-        width: 40, height: 40, borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        alignItems: 'center', justifyContent: 'center',
-    },
-
-    statsRow: {
+    headerTitle: { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+    tabRow: {
         flexDirection: 'row',
-        gap: 10,
-        paddingHorizontal: 20,
-        marginTop: -14,
+        marginTop: 18,
+        marginBottom: 8,
+        gap: 12,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderBottomWidth: 3,
+        borderBottomColor: 'transparent',
+    },
+    activeTab: {
+        borderBottomColor: '#fff',
+    },
+    tabTxt: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.6)',
+    },
+    activeTabTxt: {
+        color: '#fff',
+        fontWeight: '800',
+    },
+    iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statsRow: {
+        marginTop: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+    },
+    statItem: { flex: 1, alignItems: 'center' },
+    statVal: { fontSize: 30, fontWeight: '800', color: '#fff' },
+    statLbl: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+
+    content: { padding: 14, paddingBottom: 28 },
+    searchRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 },
+    searchInput: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        fontSize: 14,
+        color: '#0F172A',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    sectionTitle: { fontSize: 28, fontWeight: '800', color: '#0F172A', marginTop: 6, marginBottom: 10 },
+
+    list: { gap: 10 },
+    card: {
+        flexDirection: 'row',
+        borderRadius: 18,
+        padding: 14,
+        borderWidth: 1,
+    },
+    cardDot: { width: 12, height: 12, borderRadius: 6, marginTop: 4, marginRight: 12 },
+    cardBody: { flex: 1 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    cardTime: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 12 },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    miniTag: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    miniTagTxt: { fontSize: 11, fontWeight: '700' },
+    cardLocation: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 16 },
+    cardActions: { justifyContent: 'space-between', alignItems: 'flex-end' },
+    actionBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
         marginBottom: 8,
     },
-    statBadge: {
-        flex: 1,
-        borderRadius: 16,
-        paddingVertical: 12,
+    primaryBtn: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLOR,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 6
     },
-    statValue: { fontSize: 24, fontWeight: '900' },
-    statLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+    primaryBtnText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 13,
+    },
 
-    listContent: { paddingHorizontal: 20, paddingTop: 16 },
-    centered: { paddingVertical: 60, alignItems: 'center' },
-    emptyBox: {
-        backgroundColor: CARD_BG,
-        borderRadius: 24,
-        padding: 40,
-        alignItems: 'center',
-        gap: 8,
-        shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
-    },
-    emptyTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-    emptySub: { fontSize: 13, color: '#64748B', textAlign: 'center' },
-
-    card: {
-        backgroundColor: CARD_BG,
-        borderRadius: 24,
-        padding: 20,
-        marginBottom: 16,
-        shadowColor: PRIMARY,
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 3,
-    },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    statusDot: { width: 10, height: 10, borderRadius: 5 },
-    cardInfo: { flex: 1 },
-    cardTitle: { fontSize: 17, fontWeight: '800', color: '#1E293B' },
-    cardPosition: { fontSize: 13, fontWeight: '600', color: '#64748B', marginTop: 2 },
-    cardMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    metaText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 },
-    statusText: { fontSize: 11, fontWeight: '800' },
-    questionCount: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginTop: 10 },
-    generateBtn: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 14, gap: 8,
-        marginTop: 14,
-        shadowColor: ACCENT, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
-    },
-    generateBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-    scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
-    scoreText: { fontSize: 13, fontWeight: '700', color: '#F59E0B' },
+    centered: { paddingVertical: 40, alignItems: 'center' },
+    emptyBox: { alignItems: 'center', backgroundColor: '#fff', padding: 30, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
+    emptyTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 8 },
+    emptySub: { fontSize: 14, color: '#64748B', textAlign: 'center' },
 
     // Modal
     modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.4)', justifyContent: 'flex-end' },
@@ -442,10 +620,9 @@ const styles = StyleSheet.create({
         padding: 24,
         paddingBottom: Platform.OS === 'ios' ? 32 : 24,
         maxHeight: '88%',
-        shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 14,
     },
     modalHandle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 99, backgroundColor: '#CBD5E1', marginBottom: 16 },
-    modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+    modalTitleText: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
     label: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 6, marginTop: 14, marginLeft: 4 },
     input: {
         backgroundColor: '#F8FAFC',
@@ -469,7 +646,18 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
     },
     dateBtnText: { fontSize: 15, fontWeight: '600', color: '#64748B' },
-    modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+    modalButtons: { flexDirection: 'row', gap: 12, marginTop: 24 },
+    aiPrepareBtn: {
+        marginTop: 16,
+        backgroundColor: COLOR,
+        borderRadius: 14,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+    },
+    aiPrepareBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
     cancelBtn: {
         flex: 1, paddingVertical: 16, borderRadius: 16,
         backgroundColor: '#F1F5F9', alignItems: 'center',
@@ -477,10 +665,7 @@ const styles = StyleSheet.create({
     cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
     createBtn: {
         flex: 2, paddingVertical: 16, borderRadius: 16,
-        backgroundColor: PRIMARY, flexDirection: 'row',
-        alignItems: 'center', justifyContent: 'center', gap: 8,
-        shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+        backgroundColor: COLOR, alignItems: 'center', justifyContent: 'center',
     },
     createBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
-    disabledBtn: { opacity: 0.6 },
 });

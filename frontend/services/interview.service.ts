@@ -46,6 +46,11 @@ export const interviewService = {
         return response.data;
     },
 
+    generateQuestions: async (id: string) => {
+        const response = await interviewApi.generateQuestions(id);
+        return response.data;
+    },
+
     startInterview: async (id: string) => {
         await interviewApi.startInterview(id);
     },

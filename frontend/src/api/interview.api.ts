@@ -33,6 +33,9 @@ export const interviewApi = {
     reorderQuestions: (id: string, data: ReorderQuestionsRequest) =>
         apiClient.put<InterviewSession>(`/v1/ai/interview/${id}/questions/reorder`, data),
 
+    generateQuestions: (id: string) =>
+        apiClient.post<InterviewSession>(`/v1/ai/interview/${id}/generate-questions`),
+
     startInterview: (id: string) =>
         apiClient.post<void>(`/v1/ai/interview/${id}/start`),
 

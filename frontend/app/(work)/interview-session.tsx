@@ -73,6 +73,24 @@ export default function InterviewSessionScreen() {
         }
     };
 
+    const handlePrepareWithAI = async () => {
+        if (!sessionId) return;
+        try {
+            setSubmitting(true);
+            const updated = await interviewService.generateQuestions(sessionId);
+            const prepared = updated ?? await interviewService.getSession(sessionId);
+            setSession(prepared);
+            await interviewService.startInterview(sessionId);
+            setCurrentIndex(0);
+            setAnswerText('');
+            setMode('ANSWERING');
+        } catch {
+            Alert.alert('Hata', 'AI mülakat hazırlığı sırasında bir sorun oluştu.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const handleSubmitAnswer = async () => {
         if (!session || !answerText.trim()) return;
         const currentQuestion = session.questions[currentIndex];
@@ -116,12 +134,25 @@ export default function InterviewSessionScreen() {
 
     const handleDeleteQuestion = async (questionId: string) => {
         if (!session) return;
-        try {
-            await interviewService.deleteQuestion(questionId);
-            await loadSession();
-        } catch (error) {
-            Alert.alert('Hata', 'Soru silinemedi.');
-        }
+        Alert.alert(
+            'Soruyu Sil',
+            'Bu soruyu silmek istediğine emin misin?',
+            [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                    text: 'Sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await interviewService.deleteQuestion(questionId);
+                            await loadSession();
+                        } catch (error) {
+                            Alert.alert('Hata', 'Soru silinemedi.');
+                        }
+                    },
+                },
+            ],
+        );
     };
 
     const handleMoveQuestion = async (index: number, direction: 'up' | 'down') => {
@@ -175,52 +206,65 @@ export default function InterviewSessionScreen() {
             {mode === 'SETUP' && (
                 <View style={styles.viewContainer}>
                     <Text style={styles.title}>İşte Hazırladığım Sorular</Text>
-                    <Text style={styles.subtitle}>Seni terletecek ama geliştirecek 5 profesyonel soru seni bekliyor.</Text>
+                    <Text style={styles.subtitle}>
+                        {questions.length > 0
+                            ? 'Seni terletecek ama geliştirecek profesyonel sorular seni bekliyor.'
+                            : 'Mülakat detayını görüntülüyorsun. Hazır olduğunda AI ile soruları hazırlatıp direkt başlayabilirsin.'}
+                    </Text>
 
                     <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
-                        {questions.map((q, i) => (
-                            <View key={q.id} style={styles.questionItem}>
-                                <View style={styles.questionNumCircle}>
-                                    <Text style={styles.questionNum}>{i + 1}</Text>
-                                </View>
-                                <Text style={[styles.questionTxt, { flex: 1 }]}>{q.questionText}</Text>
-                                <View style={styles.questionActions}>
-                                    <TouchableOpacity
-                                        onPress={() => handleMoveQuestion(i, 'up')}
-                                        disabled={i === 0}
-                                        style={[styles.qActionBtn, i === 0 && { opacity: 0.3 }]}
-                                    >
-                                        <Ionicons name="chevron-up" size={18} color={PRIMARY} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleMoveQuestion(i, 'down')}
-                                        disabled={i === questions.length - 1}
-                                        style={[styles.qActionBtn, i === questions.length - 1 && { opacity: 0.3 }]}
-                                    >
-                                        <Ionicons name="chevron-down" size={18} color={PRIMARY} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleDeleteQuestion(q.id)}
-                                        style={styles.qActionBtn}
-                                    >
-                                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                                    </TouchableOpacity>
-                                </View>
+                        {questions.length === 0 ? (
+                            <View style={styles.emptyQuestionsBox}>
+                                <Ionicons name="information-circle-outline" size={24} color="#64748B" />
+                                <Text style={styles.emptyQuestionsText}>Henüz hazırlanmış soru yok.</Text>
                             </View>
-                        ))}
+                        ) : (
+                            questions.map((q, i) => (
+                                <View key={q.id} style={styles.questionItem}>
+                                    <View style={styles.questionNumCircle}>
+                                        <Text style={styles.questionNum}>{i + 1}</Text>
+                                    </View>
+                                    <Text style={[styles.questionTxt, { flex: 1 }]}>{q.questionText}</Text>
+                                    <View style={styles.questionActions}>
+                                        <TouchableOpacity
+                                            onPress={() => handleMoveQuestion(i, 'up')}
+                                            disabled={i === 0}
+                                            style={[styles.qActionBtn, i === 0 && { opacity: 0.3 }]}
+                                        >
+                                            <Ionicons name="chevron-up" size={18} color={PRIMARY} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleMoveQuestion(i, 'down')}
+                                            disabled={i === questions.length - 1}
+                                            style={[styles.qActionBtn, i === questions.length - 1 && { opacity: 0.3 }]}
+                                        >
+                                            <Ionicons name="chevron-down" size={18} color={PRIMARY} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDeleteQuestion(q.id)}
+                                            style={styles.qActionBtn}
+                                        >
+                                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))
+                        )}
                     </ScrollView>
 
                     <TouchableOpacity
                         style={styles.primaryBtn}
-                        onPress={handleStart}
+                        onPress={questions.length > 0 ? handleStart : handlePrepareWithAI}
                         disabled={submitting}
                     >
                         {submitting ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <>
-                                <Text style={styles.primaryBtnText}>Mülakatı Başlat</Text>
-                                <Ionicons name="play-circle" size={24} color="#fff" />
+                                <Text style={styles.primaryBtnText}>
+                                    {questions.length > 0 ? 'Mülakatı Başlat' : 'Mülakata Hazırlan'}
+                                </Text>
+                                <Ionicons name={questions.length > 0 ? 'play-circle' : 'logo-electron'} size={24} color="#fff" />
                             </>
                         )}
                     </TouchableOpacity>
@@ -354,6 +398,16 @@ const styles = StyleSheet.create({
     title: { fontSize: 24, fontWeight: '900', color: '#1E293B', marginBottom: 8 },
     subtitle: { fontSize: 14, color: '#64748B', fontWeight: '500', marginBottom: 24, lineHeight: 20 },
     scrollList: { flex: 1 },
+    emptyQuestionsBox: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 16,
+        alignItems: 'center',
+        gap: 8,
+    },
+    emptyQuestionsText: { fontSize: 14, color: '#64748B', fontWeight: '600' },
     questionItem: {
         flexDirection: 'row',
         backgroundColor: CARD_BG,

@@ -234,6 +234,17 @@ export default function WorkEventsScreen() {
                         <Ionicons name="add" size={22} color="#fff" />
                     </TouchableOpacity>
                 </View>
+
+                {/* TABS */}
+                <View style={styles.tabRow}>
+                    <TouchableOpacity style={[styles.tab, styles.activeTab]}>
+                        <Text style={[styles.tabTxt, styles.activeTabTxt]}>Toplantılarım</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.tab} onPress={() => router.replace('/(work)/my-interviews')}>
+                        <Text style={styles.tabTxt}>Mülakatlarım</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.statsRow}>
                     <StatItem value={counts.total} label="Toplanti" />
                     <StatItem value={counts.upcoming} label="Yaklasan" />
@@ -457,6 +468,32 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     headerTitle: { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+    tabRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        marginTop: 18,
+        marginBottom: 8,
+        gap: 12,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderBottomWidth: 3,
+        borderBottomColor: 'transparent',
+    },
+    activeTab: {
+        borderBottomColor: '#fff',
+    },
+    tabTxt: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.6)',
+    },
+    activeTabTxt: {
+        color: '#fff',
+        fontWeight: '800',
+    },
     iconBtn: {
         width: 40,
         height: 40,
