@@ -15,6 +15,7 @@ public class InterviewSessionResponse {
     private String overallFeedback;
     private Integer overallScore;
     private Instant createdAt;
+    private Instant interviewDate;
     private List<QuestionResponseDTO> questions;
 
     @Data

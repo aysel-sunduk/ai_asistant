@@ -1,5 +1,6 @@
 package com.aiasistan.service;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,6 +53,10 @@ public class InterviewService {
         session.setJobDescription(request.getJobDescription());
         session.setStatus("SETUP");
 
+        if (request.getInterviewDate() != null && !request.getInterviewDate().isBlank()) {
+            session.setInterviewDate(Instant.parse(request.getInterviewDate()));
+        }
+
         InterviewSession savedSession = sessionRepository.save(session);
 
         // AI ile soruları üret
@@ -80,12 +85,52 @@ public class InterviewService {
     }
 
     /**
+     * Kullanıcının tüm mülakatlarını döner.
+     */
+    public List<InterviewSessionResponse> getUserSessions(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
+        return sessionRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Oturum detaylarını döner.
      */
     public InterviewSessionResponse getSession(UUID sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
         return mapToResponse(session);
+    }
+
+    /**
+     * Oturumu günceller.
+     */
+    public InterviewSessionResponse updateSession(UUID sessionId, UpdateInterviewSessionRequest request) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+
+        if (request.getTitle() != null)
+            session.setTitle(request.getTitle());
+        if (request.getPosition() != null)
+            session.setPosition(request.getPosition());
+        if (request.getJobDescription() != null)
+            session.setJobDescription(request.getJobDescription());
+        if (request.getInterviewDate() != null && !request.getInterviewDate().isBlank()) {
+            session.setInterviewDate(Instant.parse(request.getInterviewDate()));
+        }
+
+        return mapToResponse(sessionRepository.save(session));
+    }
+
+    /**
+     * Oturumu siler.
+     */
+    public void deleteSession(UUID sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+        sessionRepository.delete(session);
     }
 
     /**
@@ -100,7 +145,8 @@ public class InterviewService {
         }
 
         // Mevcut soruları yumuşak sil (Soft delete)
-        List<InterviewQuestion> currentQuestions = questionRepository.findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session);
+        List<InterviewQuestion> currentQuestions = questionRepository
+                .findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session);
         for (InterviewQuestion q : currentQuestions) {
             q.setDeleted(true);
         }
@@ -126,7 +172,7 @@ public class InterviewService {
     public void deleteQuestion(UUID questionId) {
         InterviewQuestion question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new RuntimeException("Soru bulunamadı"));
-        
+
         if (!"SETUP".equals(question.getSession().getStatus())) {
             throw new RuntimeException("Sadece SETUP aşamasında sorular silinebilir");
         }
@@ -245,8 +291,10 @@ public class InterviewService {
         resp.setOverallFeedback(session.getOverallFeedback());
         resp.setOverallScore(session.getOverallScore());
         resp.setCreatedAt(session.getCreatedAt());
+        resp.setInterviewDate(session.getInterviewDate());
 
-        List<InterviewSessionResponse.QuestionResponseDTO> qDtos = questionRepository.findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session).stream()
+        List<InterviewSessionResponse.QuestionResponseDTO> qDtos = questionRepository
+                .findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session).stream()
                 .map(q -> {
                     InterviewSessionResponse.QuestionResponseDTO qDto = new InterviewSessionResponse.QuestionResponseDTO();
                     qDto.setId(q.getId());

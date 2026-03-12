@@ -24,6 +24,15 @@ public class InterviewController {
     }
 
     /**
+     * Kullanıcının tüm mülakatlarını listeler.
+     */
+    @GetMapping("/my-sessions")
+    public ResponseEntity<List<InterviewSessionResponse>> getMySessions(
+            org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.ok(interviewService.getUserSessions(authentication.getName()));
+    }
+
+    /**
      * Adım 1: Yeni mülakat oturumu başlatır ve AI soruları üretir.
      */
     @PostMapping("/create")
@@ -39,6 +48,25 @@ public class InterviewController {
     @GetMapping("/{id}")
     public ResponseEntity<InterviewSessionResponse> getSession(@PathVariable UUID id) {
         return ResponseEntity.ok(interviewService.getSession(id));
+    }
+
+    /**
+     * Oturumu günceller.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<InterviewSessionResponse> updateSession(
+            @PathVariable UUID id,
+            @RequestBody UpdateInterviewSessionRequest request) {
+        return ResponseEntity.ok(interviewService.updateSession(id, request));
+    }
+
+    /**
+     * Oturumu siler.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSession(@PathVariable UUID id) {
+        interviewService.deleteSession(id);
+        return ResponseEntity.ok().build();
     }
 
     /**

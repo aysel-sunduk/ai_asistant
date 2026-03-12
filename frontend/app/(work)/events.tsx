@@ -102,7 +102,7 @@ export default function WorkEventsScreen() {
 
     const handleConsentConfirm = () => {
         setConsentVisible(false);
-        router.push('/(work)/interview-setup');
+        router.push('/(work)/my-interviews');
     };
 
     const showToast = (type: ToastType, message: string) => {
@@ -396,9 +396,9 @@ export default function WorkEventsScreen() {
             </Modal>
 
             <MascotButton onPress={handleMascotPress} />
-            
-            <InterviewConsentModal 
-                visible={consentVisible} 
+
+            <InterviewConsentModal
+                visible={consentVisible}
                 onClose={() => setConsentVisible(false)}
                 onConfirm={handleConsentConfirm}
             />

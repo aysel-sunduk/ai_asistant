@@ -12,6 +12,7 @@ export interface InterviewSession {
     title: string;
     position: string;
     jobDescription?: string;
+    interviewDate?: string;
     status: 'SETUP' | 'IN_PROGRESS' | 'COMPLETED';
     overallFeedback?: string;
     overallScore?: number;
@@ -23,6 +24,14 @@ export interface CreateInterviewSessionRequest {
     title: string;
     position: string;
     jobDescription?: string;
+    interviewDate?: string;
+}
+
+export interface UpdateInterviewSessionRequest {
+    title?: string;
+    position?: string;
+    jobDescription?: string;
+    interviewDate?: string;
 }
 
 export interface UpdateInterviewQuestionsRequest {
@@ -35,4 +44,11 @@ export interface UpdateInterviewQuestionsRequest {
 export interface SubmitAnswerRequest {
     questionId: string;
     answerText: string;
+}
+
+export interface ReorderQuestionsRequest {
+    orders: {
+        id: string;
+        orderNo: number;
+    }[];
 }

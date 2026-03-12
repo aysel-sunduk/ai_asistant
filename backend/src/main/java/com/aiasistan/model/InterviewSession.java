@@ -30,6 +30,9 @@ public class InterviewSession {
     @Column(name = "job_description", columnDefinition = "TEXT")
     private String jobDescription;
 
+    @Column(name = "interview_date")
+    private Instant interviewDate;
+
     @Column(nullable = false)
     private String status = "SETUP"; // SETUP, IN_PROGRESS, COMPLETED
 
@@ -93,6 +96,14 @@ public class InterviewSession {
 
     public void setJobDescription(String jobDescription) {
         this.jobDescription = jobDescription;
+    }
+
+    public Instant getInterviewDate() {
+        return interviewDate;
+    }
+
+    public void setInterviewDate(Instant interviewDate) {
+        this.interviewDate = interviewDate;
     }
 
     public String getStatus() {

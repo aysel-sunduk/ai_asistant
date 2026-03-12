@@ -1,11 +1,18 @@
 import { interviewApi } from '../src/api/interview.api';
-import type { 
-    CreateInterviewSessionRequest, 
+import type {
+    CreateInterviewSessionRequest,
+    UpdateInterviewSessionRequest,
     UpdateInterviewQuestionsRequest,
+    ReorderQuestionsRequest,
     SubmitAnswerRequest
 } from '../src/models/interview.model';
 
 export const interviewService = {
+    listMySessions: async () => {
+        const response = await interviewApi.listMySessions();
+        return response.data;
+    },
+
     createSession: async (request: CreateInterviewSessionRequest) => {
         const response = await interviewApi.createSession(request);
         return response.data;
@@ -16,8 +23,26 @@ export const interviewService = {
         return response.data;
     },
 
+    updateSession: async (id: string, request: UpdateInterviewSessionRequest) => {
+        const response = await interviewApi.updateSession(id, request);
+        return response.data;
+    },
+
+    deleteSession: async (id: string) => {
+        await interviewApi.deleteSession(id);
+    },
+
     updateQuestions: async (id: string, request: UpdateInterviewQuestionsRequest) => {
         const response = await interviewApi.updateQuestions(id, request);
+        return response.data;
+    },
+
+    deleteQuestion: async (id: string) => {
+        await interviewApi.deleteQuestion(id);
+    },
+
+    reorderQuestions: async (id: string, request: ReorderQuestionsRequest) => {
+        const response = await interviewApi.reorderQuestions(id, request);
         return response.data;
     },
 

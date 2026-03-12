@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const PRIMARY = '#4F46E5'; // Indigo
 const ACCENT = '#6366F1';
@@ -28,6 +29,8 @@ export default function InterviewSetupScreen() {
     const [title, setTitle] = useState('');
     const [position, setPosition] = useState('');
     const [jobDescription, setJobDescription] = useState('');
+    const [interviewDate, setInterviewDate] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const handleCreate = async () => {
         if (!title.trim() || !position.trim()) {
@@ -41,8 +44,9 @@ export default function InterviewSetupScreen() {
                 title: title.trim(),
                 position: position.trim(),
                 jobDescription: jobDescription.trim(),
+                interviewDate: interviewDate ? interviewDate.toISOString() : undefined,
             });
-            
+
             router.push({
                 pathname: '/(work)/interview-session',
                 params: { sessionId: session.id }
@@ -61,8 +65,8 @@ export default function InterviewSetupScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             <View style={styles.header}>
-                <TouchableOpacity 
-                    onPress={() => router.back()} 
+                <TouchableOpacity
+                    onPress={() => router.back()}
                     style={styles.backBtn}
                     activeOpacity={0.7}
                 >
@@ -72,7 +76,7 @@ export default function InterviewSetupScreen() {
                 <View style={{ width: 44 }} />
             </View>
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
                 showsVerticalScrollIndicator={false}
             >
@@ -132,10 +136,33 @@ export default function InterviewSetupScreen() {
                             />
                         </View>
                     </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Mülakat Tarihi</Text>
+                        <TouchableOpacity style={styles.inputWrapper} onPress={() => setShowDatePicker(true)}>
+                            <Ionicons name="calendar-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                            <Text style={[styles.input, { paddingVertical: 14, color: interviewDate ? '#1E293B' : '#94A3B8' }]}>
+                                {interviewDate
+                                    ? interviewDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
+                                    : 'Tarih seç (opsiyonel)'}
+                            </Text>
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={interviewDate || new Date()}
+                                mode="date"
+                                display="spinner"
+                                onChange={(_, date) => {
+                                    setShowDatePicker(Platform.OS === 'ios');
+                                    if (date) setInterviewDate(date);
+                                }}
+                            />
+                        )}
+                    </View>
                 </View>
 
-                <TouchableOpacity 
-                    style={[styles.mainBtn, loading && styles.disabledBtn]} 
+                <TouchableOpacity
+                    style={[styles.mainBtn, loading && styles.disabledBtn]}
                     onPress={handleCreate}
                     disabled={loading}
                     activeOpacity={0.8}

@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
 import type { InterviewSession } from '../../src/models/interview.model';
+import { Alert as RNAlert } from 'react-native';
 
 const PRIMARY = '#4F46E5'; // Indigo
 const SECONDARY = '#EEF2FF';
@@ -28,7 +29,7 @@ export default function InterviewSessionScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
-    
+
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [session, setSession] = useState<InterviewSession | null>(null);
@@ -113,6 +114,37 @@ export default function InterviewSessionScreen() {
         Alert.alert('Bilgi', 'Google Speech-to-Text API kurulumu devam ediyor. Yakinda hazir olacak!');
     };
 
+    const handleDeleteQuestion = async (questionId: string) => {
+        if (!session) return;
+        try {
+            await interviewService.deleteQuestion(questionId);
+            await loadSession();
+        } catch (error) {
+            Alert.alert('Hata', 'Soru silinemedi.');
+        }
+    };
+
+    const handleMoveQuestion = async (index: number, direction: 'up' | 'down') => {
+        if (!session || !sessionId) return;
+        const qs = [...session.questions];
+        const swapIdx = direction === 'up' ? index - 1 : index + 1;
+        if (swapIdx < 0 || swapIdx >= qs.length) return;
+
+        const orders = qs.map((q, i) => {
+            let newOrder = q.orderNo;
+            if (i === index) newOrder = qs[swapIdx].orderNo;
+            if (i === swapIdx) newOrder = qs[index].orderNo;
+            return { id: q.id, orderNo: newOrder };
+        });
+
+        try {
+            await interviewService.reorderQuestions(sessionId, { orders });
+            await loadSession();
+        } catch (error) {
+            Alert.alert('Hata', 'Sıralama güncellenemedi.');
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -126,7 +158,7 @@ export default function InterviewSessionScreen() {
     const currentQuestion = questions[currentIndex];
 
     return (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
             style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
@@ -144,21 +176,43 @@ export default function InterviewSessionScreen() {
                 <View style={styles.viewContainer}>
                     <Text style={styles.title}>İşte Hazırladığım Sorular</Text>
                     <Text style={styles.subtitle}>Seni terletecek ama geliştirecek 5 profesyonel soru seni bekliyor.</Text>
-                    
+
                     <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
                         {questions.map((q, i) => (
                             <View key={q.id} style={styles.questionItem}>
                                 <View style={styles.questionNumCircle}>
                                     <Text style={styles.questionNum}>{i + 1}</Text>
                                 </View>
-                                <Text style={styles.questionTxt}>{q.questionText}</Text>
+                                <Text style={[styles.questionTxt, { flex: 1 }]}>{q.questionText}</Text>
+                                <View style={styles.questionActions}>
+                                    <TouchableOpacity
+                                        onPress={() => handleMoveQuestion(i, 'up')}
+                                        disabled={i === 0}
+                                        style={[styles.qActionBtn, i === 0 && { opacity: 0.3 }]}
+                                    >
+                                        <Ionicons name="chevron-up" size={18} color={PRIMARY} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => handleMoveQuestion(i, 'down')}
+                                        disabled={i === questions.length - 1}
+                                        style={[styles.qActionBtn, i === questions.length - 1 && { opacity: 0.3 }]}
+                                    >
+                                        <Ionicons name="chevron-down" size={18} color={PRIMARY} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => handleDeleteQuestion(q.id)}
+                                        style={styles.qActionBtn}
+                                    >
+                                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         ))}
                     </ScrollView>
 
-                    <TouchableOpacity 
-                        style={styles.primaryBtn} 
-                        onPress={handleStart} 
+                    <TouchableOpacity
+                        style={styles.primaryBtn}
+                        onPress={handleStart}
                         disabled={submitting}
                     >
                         {submitting ? (
@@ -203,19 +257,19 @@ export default function InterviewSessionScreen() {
                     </View>
 
                     <View style={styles.actionRow}>
-                        <TouchableOpacity 
-                            style={[styles.micBtn, isListening && styles.micBtnActive]} 
+                        <TouchableOpacity
+                            style={[styles.micBtn, isListening && styles.micBtnActive]}
                             onPress={toggleListening}
                             activeOpacity={0.7}
                         >
-                            <Ionicons 
-                                name={isListening ? "stop" : "mic"} 
-                                size={26} 
-                                color="#fff" 
+                            <Ionicons
+                                name={isListening ? "stop" : "mic"}
+                                size={26}
+                                color="#fff"
                             />
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.nextBtn, !answerText.trim() && styles.disabledBtn]} 
+                        <TouchableOpacity
+                            style={[styles.nextBtn, !answerText.trim() && styles.disabledBtn]}
                             onPress={handleSubmitAnswer}
                             disabled={submitting || !answerText.trim()}
                         >
@@ -252,8 +306,8 @@ export default function InterviewSessionScreen() {
                         </View>
                     </View>
 
-                    <TouchableOpacity 
-                        style={styles.secondaryBtn} 
+                    <TouchableOpacity
+                        style={styles.secondaryBtn}
                         onPress={() => router.replace('/(work)/events')}
                     >
                         <Text style={styles.secondaryBtnText}>Ana Menüye Dön</Text>
@@ -324,6 +378,12 @@ const styles = StyleSheet.create({
     },
     questionNum: { fontSize: 16, fontWeight: '800', color: PRIMARY },
     questionTxt: { flex: 1, fontSize: 15, color: '#334155', fontWeight: '600', lineHeight: 22 },
+    questionActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },
+    qActionBtn: {
+        width: 30, height: 30, borderRadius: 10,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center', justifyContent: 'center',
+    },
     primaryBtn: {
         backgroundColor: PRIMARY,
         height: 64,

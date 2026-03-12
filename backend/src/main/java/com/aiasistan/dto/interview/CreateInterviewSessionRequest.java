@@ -12,4 +12,6 @@ public class CreateInterviewSessionRequest {
     private String position;
 
     private String jobDescription;
+
+    private String interviewDate;
 }
