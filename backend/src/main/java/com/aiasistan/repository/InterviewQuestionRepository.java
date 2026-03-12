@@ -11,5 +11,5 @@ import com.aiasistan.model.InterviewSession;
 
 @Repository
 public interface InterviewQuestionRepository extends JpaRepository<InterviewQuestion, UUID> {
-    List<InterviewQuestion> findBySessionOrderByOrderNoAsc(InterviewSession session);
+    List<InterviewQuestion> findBySessionAndIsDeletedFalseOrderByOrderNoAsc(InterviewSession session);
 }

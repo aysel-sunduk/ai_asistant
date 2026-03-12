@@ -77,11 +77,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Diyet onerici yuklenemedi: {e}")
 
-    # try:
-    #     from app.models.stt_engine import _load_stt_model
-    #     _load_stt_model()
-    # except Exception as e:
-    #     logger.error(f"STT (Whisper) modeli yuklenemedi: {e}")
+    try:
+        from app.models.stt_engine import _load_stt_model
+        _load_stt_model()
+    except Exception as e:
+        logger.error(f"STT (Whisper) modeli yuklenemedi: {e}")
 
     # Arka planda baslik onericiyi yukle (bloklamasin)
     # def load_title_bg():

@@ -99,9 +99,12 @@ public class InterviewService {
             throw new RuntimeException("Sadece SETUP aşamasında sorular düzenlenebilir");
         }
 
-        // Mevcut soruları temizle (Kariyer.net mantığı: kullanıcı
-        // silebilir/düzenleyebilir)
-        questionRepository.deleteAll(session.getQuestions());
+        // Mevcut soruları yumuşak sil (Soft delete)
+        List<InterviewQuestion> currentQuestions = questionRepository.findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session);
+        for (InterviewQuestion q : currentQuestions) {
+            q.setDeleted(true);
+        }
+        questionRepository.saveAll(currentQuestions);
         session.getQuestions().clear();
 
         List<InterviewQuestion> newQuestions = new ArrayList<>();
@@ -114,6 +117,42 @@ public class InterviewService {
         }
 
         session.setQuestions(newQuestions);
+        return mapToResponse(session);
+    }
+
+    /**
+     * Tekil soruyu yumuşak siler (Soft delete).
+     */
+    public void deleteQuestion(UUID questionId) {
+        InterviewQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı"));
+        
+        if (!"SETUP".equals(question.getSession().getStatus())) {
+            throw new RuntimeException("Sadece SETUP aşamasında sorular silinebilir");
+        }
+
+        question.setDeleted(true);
+        questionRepository.save(question);
+    }
+
+    /**
+     * Soruların sırasını günceller.
+     */
+    public InterviewSessionResponse reorderQuestions(UUID sessionId, UpdateQuestionOrderRequest request) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+
+        if (!"SETUP".equals(session.getStatus())) {
+            throw new RuntimeException("Sadece SETUP aşamasında sıralama değiştirilebilir");
+        }
+
+        for (UpdateQuestionOrderRequest.QuestionOrderDTO dto : request.getOrders()) {
+            InterviewQuestion q = questionRepository.findById(dto.getId())
+                    .orElseThrow(() -> new RuntimeException("Soru bulunamadı: " + dto.getId()));
+            q.setOrderNo(dto.getOrderNo());
+            questionRepository.save(q);
+        }
+
         return mapToResponse(session);
     }
 
@@ -207,7 +246,7 @@ public class InterviewService {
         resp.setOverallScore(session.getOverallScore());
         resp.setCreatedAt(session.getCreatedAt());
 
-        List<InterviewSessionResponse.QuestionResponseDTO> qDtos = session.getQuestions().stream()
+        List<InterviewSessionResponse.QuestionResponseDTO> qDtos = questionRepository.findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session).stream()
                 .map(q -> {
                     InterviewSessionResponse.QuestionResponseDTO qDto = new InterviewSessionResponse.QuestionResponseDTO();
                     qDto.setId(q.getId());

@@ -52,6 +52,25 @@ public class InterviewController {
     }
 
     /**
+     * Tekil soruyu siler (Soft delete).
+     */
+    @DeleteMapping("/question/{id}")
+    public ResponseEntity<Void> deleteQuestion(@PathVariable UUID id) {
+        interviewService.deleteQuestion(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Soruların sırasını günceller.
+     */
+    @PutMapping("/{id}/questions/reorder")
+    public ResponseEntity<InterviewSessionResponse> reorderQuestions(
+            @PathVariable UUID id,
+            @RequestBody UpdateQuestionOrderRequest request) {
+        return ResponseEntity.ok(interviewService.reorderQuestions(id, request));
+    }
+
+    /**
      * Adım 3: Mülakatı başlatır (Soru cevaplama evresi).
      */
     @PostMapping("/{id}/start")

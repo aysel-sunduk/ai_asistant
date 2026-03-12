@@ -23,7 +23,7 @@ public class SttService {
 
     private static final Logger logger = LoggerFactory.getLogger(SttService.class);
 
-    @Value("${app.ml-service.url:http://localhost:8000}")
+    @Value("${app.ai.ml-service-url:${ML_SERVICE_URL:http://localhost:8000}}")
     private String mlServiceUrl;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
