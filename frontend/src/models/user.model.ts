@@ -70,8 +70,8 @@ export const GENDER_LABELS: Record<string, string> = {
 };
 
 export const VISIBILITY_LABELS: Record<string, string> = {
-    PUBLIC: 'Herkese Açık',
-    PRIVATE: 'Gizli',
+    PUBLIC: 'Açık',
+    PRIVATE: 'Özel',
     FRIENDS_ONLY: 'Sadece Arkadaşlar',
 };
 

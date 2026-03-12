@@ -18,18 +18,13 @@ import {
 } from 'react-native';
 import { userApi } from '../src/api/user.api';
 import type { UpdateProfileRequest, UserProfile } from '../src/models/user.model';
-import { ACTIVITY_LEVEL_LABELS, GENDER_LABELS, VISIBILITY_LABELS } from '../src/models/user.model';
+import { VISIBILITY_LABELS } from '../src/models/user.model';
 import { useAuthStore } from '../src/store/auth.store';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
-
-const formatMinorToLira = (minor?: number | null): string => {
-    if (minor == null) return '—';
-    return `₺${(minor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
-};
 
 export default function PersonalInfoScreen() {
     const router = useRouter();
@@ -64,21 +59,6 @@ export default function PersonalInfoScreen() {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
 
-    const updateMapField = (root: 'notifications' | 'onboarding' | 'interests', key: string, value: any) => {
-        setForm((prev) => ({
-            ...prev,
-            [root]: { ...(prev[root] || {}), [key]: value },
-        }));
-    };
-
-    const removeMapKey = (root: 'notifications' | 'onboarding' | 'interests', key: string) => {
-        setForm((prev) => {
-            const copy = { ...(prev[root] || {}) };
-            delete copy[key];
-            return { ...prev, [root]: copy };
-        });
-    };
-
     const handleSave = async () => {
         const fullName = `${form.firstName || ''} ${form.lastName || ''}`.trim();
         if (!fullName) {
@@ -92,17 +72,12 @@ export default function PersonalInfoScreen() {
                 birthDate: form.birthDate || undefined,
                 gender: form.gender || undefined,
                 timezone: form.timezone || undefined,
-                locale: form.locale || undefined,
                 profileVisibility: form.profileVisibility || undefined,
                 heightCm: form.heightCm ?? undefined,
                 weightKg: form.weightKg ?? undefined,
                 preferredCurrency: form.preferredCurrency || undefined,
-                monthlyIncomeEstimateMinor: form.monthlyIncomeEstimateMinor ?? undefined,
                 showEmail: form.showEmail ?? undefined,
                 showPhone: form.showPhone ?? undefined,
-                interests: form.interests || undefined,
-                onboarding: form.onboarding || undefined,
-                notifications: form.notifications || undefined,
                 activityLevel: form.activityLevel || undefined,
             };
             const res = await userApi.updateProfile(body);
@@ -138,10 +113,6 @@ export default function PersonalInfoScreen() {
             </View>
         );
     }
-
-    const interestKeys = form.interests ? Object.keys(form.interests) : [];
-    const notifKeys = form.notifications ? Object.keys(form.notifications) : [];
-    const onboardKeys = form.onboarding ? Object.keys(form.onboarding) : [];
 
     return (
         <View style={styles.container}>
@@ -195,65 +166,15 @@ export default function PersonalInfoScreen() {
                         />
                     </View>
 
-                    {/* ═══ 2. SAĞLIK ═══ */}
-                    <SectionHeader icon="heart-outline" title="Sağlık" color="#FF6B6B" />
-                    <View style={styles.card}>
-                        <Field label="Doğum Tarihi" value={form.birthDate} icon="calendar-outline"
-                            editing={isEditing} onChange={(v) => updateField('birthDate', v)}
-                            placeholder="YYYY-MM-DD" />
-                        <PickerField
-                            label="Cinsiyet" icon="male-female-outline" value={form.gender}
-                            options={Object.entries(GENDER_LABELS)}
-                            editing={isEditing} onChange={(v) => updateField('gender', v)} />
-                        <Field label="Boy (cm)" value={form.heightCm?.toString()} icon="resize-outline"
-                            editing={isEditing} onChange={(v) => updateField('heightCm', Number(v) || undefined)}
-                            keyboard="numeric" placeholder="175" />
-                        <Field label="Kilo (kg)" value={form.weightKg?.toString()} icon="barbell-outline"
-                            editing={isEditing} onChange={(v) => updateField('weightKg', Number(v) || undefined)}
-                            keyboard="numeric" placeholder="70" />
-                        <PickerField
-                            label="Hareket Durumu" icon="walk-outline" value={form.activityLevel}
-                            options={Object.entries(ACTIVITY_LEVEL_LABELS)}
-                            editing={isEditing} onChange={(v) => updateField('activityLevel', v)} last />
-                    </View>
-
-                    {/* ═══ 3. TERCİHLER ═══ */}
+                    {/* ═══ 2. TERCİHLER ═══ */}
                     <SectionHeader icon="settings-outline" title="Tercihler" color="#4ECDC4" />
                     <View style={styles.card}>
                         <Field label="Saat Dilimi" value={form.timezone} icon="time-outline"
                             editing={isEditing} onChange={(v) => updateField('timezone', v)}
                             placeholder="Europe/Istanbul" />
-                        <Field label="Dil" value={form.locale} icon="language-outline"
-                            editing={isEditing} onChange={(v) => updateField('locale', v)}
-                            placeholder="tr" />
                         <Field label="Para Birimi" value={form.preferredCurrency} icon="cash-outline"
                             editing={isEditing} onChange={(v) => updateField('preferredCurrency', v)}
-                            placeholder="TRY" />
-                        {/* Aylık Gelir */}
-                        <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
-                            <View style={styles.fieldLabelRow}>
-                                <View style={[styles.fieldIcon, { backgroundColor: '#34D399' + '15' }]}>
-                                    <Ionicons name="wallet-outline" size={16} color="#34D399" />
-                                </View>
-                                <Text style={styles.fieldLabel}>Aylık Gelir (tahmini)</Text>
-                            </View>
-                            {isEditing ? (
-                                <TextInput
-                                    style={styles.fieldInput}
-                                    value={form.monthlyIncomeEstimateMinor != null
-                                        ? (form.monthlyIncomeEstimateMinor / 100).toString() : ''}
-                                    onChangeText={(v) => updateField('monthlyIncomeEstimateMinor',
-                                        v ? Math.round(Number(v) * 100) : undefined)}
-                                    placeholder="30000"
-                                    placeholderTextColor="#C4C4C4"
-                                    keyboardType="numeric"
-                                />
-                            ) : (
-                                <Text style={styles.fieldValue}>
-                                    {formatMinorToLira(form.monthlyIncomeEstimateMinor)}
-                                </Text>
-                            )}
-                        </View>
+                            placeholder="TRY" last />
                     </View>
 
                     {/* ═══ 4. GİZLİLİK ═══ */}
@@ -301,89 +222,6 @@ export default function PersonalInfoScreen() {
                         </View>
                     </View>
 
-                    {/* ═══ 5. BİLDİRİMLER ═══ */}
-                    <SectionHeader icon="notifications-outline" title="Bildirimler" color="#F59E0B" />
-                    <MapSection
-                        data={form.notifications}
-                        color="#F59E0B"
-                        emptyText="Bildirim tercihi yok"
-                        editing={isEditing}
-                        onAdd={(k, v) => updateMapField('notifications', k, v)}
-                        onRemove={(k) => removeMapKey('notifications', k)}
-                    />
-
-                    {/* ═══ 5. KİŞİSELLEŞTİRME ═══ */}
-                    <SectionHeader icon="sparkles-outline" title="Kişiselleştirme" color="#A78BFA" />
-                    <View style={styles.card}>
-                        {/* İlgi Alanları */}
-                        <View style={styles.fieldRow}>
-                            <View style={styles.fieldLabelRow}>
-                                <View style={[styles.fieldIcon, { backgroundColor: '#A78BFA' + '15' }]}>
-                                    <Ionicons name="heart-circle-outline" size={16} color="#A78BFA" />
-                                </View>
-                                <Text style={styles.fieldLabel}>İlgi Alanları</Text>
-                            </View>
-                            {interestKeys.length > 0 ? (
-                                <View style={styles.tagsRow}>
-                                    {interestKeys.map((key) => (
-                                        <View key={key} style={styles.tagWrap}>
-                                            <View style={styles.tag}>
-                                                <Text style={styles.tagText}>{key}</Text>
-                                            </View>
-                                            {isEditing && (
-                                                <TouchableOpacity
-                                                    style={styles.tagRemove}
-                                                    onPress={() => removeMapKey('interests', key)}
-                                                >
-                                                    <Ionicons name="close-circle" size={16} color="#FF6B6B" />
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    ))}
-                                </View>
-                            ) : (
-                                <Text style={styles.fieldValueEmpty}>Henüz eklenmedi</Text>
-                            )}
-                            {isEditing && (
-                                <AddKeyButton
-                                    placeholder="Yeni ilgi alanı..."
-                                    onAdd={(k) => updateMapField('interests', k, {})}
-                                />
-                            )}
-                        </View>
-                        {/* Onboarding */}
-                        <View style={[styles.fieldRow, { borderTopWidth: 1, borderTopColor: '#F5F5F5' }]}>
-                            <View style={styles.fieldLabelRow}>
-                                <View style={[styles.fieldIcon, { backgroundColor: '#4ECDC4' + '15' }]}>
-                                    <Ionicons name="rocket-outline" size={16} color="#4ECDC4" />
-                                </View>
-                                <Text style={styles.fieldLabel}>Onboarding</Text>
-                            </View>
-                            {onboardKeys.length > 0 ? (
-                                <View style={styles.tagsRow}>
-                                    {onboardKeys.map((key) => (
-                                        <View key={key} style={styles.tagWrap}>
-                                            <View style={[styles.tag, { backgroundColor: '#D1FAE5' }]}>
-                                                <Text style={[styles.tagText, { color: '#059669' }]}>
-                                                    {key}: {JSON.stringify(form.onboarding?.[key]) ?? '—'}
-                                                </Text>
-                                            </View>
-                                            {isEditing && (
-                                                <TouchableOpacity
-                                                    style={styles.tagRemove}
-                                                    onPress={() => removeMapKey('onboarding', key)}
-                                                >
-                                                    <Ionicons name="close-circle" size={16} color="#FF6B6B" />
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    ))}
-                                </View>
-                            ) : (
-                                <Text style={styles.fieldValueEmpty}>Onboarding verisi yok</Text>
-                            )}
-                        </View>
-                    </View>
 
                     {/* ─── Actions ─── */}
                     {isEditing && (
@@ -466,7 +304,10 @@ function PickerField({
     options: [string, string][]; editing?: boolean; onChange?: (v: string) => void;
     last?: boolean;
 }) {
-    const displayValue = options.find(([k]) => k === value)?.[1] || value || '—';
+    const normalizedValue = (value || '').toUpperCase();
+    const displayValue = options.find(([k]) => k === normalizedValue)?.[1]
+        || (value?.toLowerCase() === 'private' ? 'Özel' : value?.toLowerCase() === 'public' ? 'Açık' : value)
+        || '—';
     return (
         <View style={[styles.fieldRow, !last && { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }]}>
             <View style={styles.fieldLabelRow}>
@@ -480,10 +321,10 @@ function PickerField({
                     {options.map(([key, lbl]) => (
                         <TouchableOpacity
                             key={key}
-                            style={[styles.pickerChip, value === key && styles.pickerChipActive]}
+                            style={[styles.pickerChip, normalizedValue === key && styles.pickerChipActive]}
                             onPress={() => onChange?.(key)}
                         >
-                            <Text style={[styles.pickerChipText, value === key && styles.pickerChipTextActive]}>
+                            <Text style={[styles.pickerChipText, normalizedValue === key && styles.pickerChipTextActive]}>
                                 {lbl}
                             </Text>
                         </TouchableOpacity>
@@ -492,82 +333,6 @@ function PickerField({
             ) : (
                 <Text style={styles.fieldValue}>{displayValue}</Text>
             )}
-        </View>
-    );
-}
-
-function MapSection({
-    data, color, emptyText, editing, onAdd, onRemove,
-}: {
-    data?: Record<string, any>; color: string; emptyText: string;
-    editing: boolean;
-    onAdd: (key: string, value: any) => void;
-    onRemove: (key: string) => void;
-}) {
-    const keys = data ? Object.keys(data) : [];
-    return (
-        <View style={styles.card}>
-            <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
-                {keys.length > 0 ? (
-                    <View style={styles.tagsRow}>
-                        {keys.map((key) => {
-                            const val = data?.[key];
-                            const display = typeof val === 'boolean'
-                                ? (val ? 'Açık' : 'Kapalı')
-                                : typeof val === 'object'
-                                    ? JSON.stringify(val)
-                                    : String(val ?? '');
-                            return (
-                                <View key={key} style={styles.tagWrap}>
-                                    <View style={[styles.tag, { backgroundColor: color + '15' }]}>
-                                        <Text style={[styles.tagText, { color }]}>{key}</Text>
-                                        {display && display !== '{}' && (
-                                            <Text style={[styles.tagSubText, { color: color + 'CC' }]}>
-                                                {display}
-                                            </Text>
-                                        )}
-                                    </View>
-                                    {editing && (
-                                        <TouchableOpacity
-                                            style={styles.tagRemove}
-                                            onPress={() => onRemove(key)}
-                                        >
-                                            <Ionicons name="close-circle" size={16} color="#FF6B6B" />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            );
-                        })}
-                    </View>
-                ) : (
-                    <Text style={styles.fieldValueEmpty}>{emptyText}</Text>
-                )}
-                {editing && (
-                    <AddKeyButton placeholder="Yeni ekle..." onAdd={(k) => onAdd(k, {})} />
-                )}
-            </View>
-        </View>
-    );
-}
-
-function AddKeyButton({ placeholder, onAdd }: { placeholder: string; onAdd: (key: string) => void }) {
-    const [value, setValue] = React.useState('');
-    return (
-        <View style={styles.addKeyRow}>
-            <TextInput
-                style={styles.addKeyInput}
-                value={value}
-                onChangeText={setValue}
-                placeholder={placeholder}
-                placeholderTextColor="#C4C4C4"
-            />
-            <TouchableOpacity
-                style={[styles.addKeyBtn, !value.trim() && { opacity: 0.4 }]}
-                onPress={() => { if (value.trim()) { onAdd(value.trim()); setValue(''); } }}
-                disabled={!value.trim()}
-            >
-                <Ionicons name="add" size={18} color="#fff" />
-            </TouchableOpacity>
         </View>
     );
 }
@@ -650,31 +415,6 @@ const styles = StyleSheet.create({
     pickerChipActive: { backgroundColor: PURPLE, borderColor: PURPLE },
     pickerChipText: { fontSize: 12, fontWeight: '600', color: '#666' },
     pickerChipTextActive: { color: '#fff' },
-
-    /* Tags */
-    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginLeft: 36, marginTop: 4 },
-    tagWrap: { flexDirection: 'row', alignItems: 'center' },
-    tag: {
-        backgroundColor: '#EDE9FE', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-    },
-    tagText: { fontSize: 12, fontWeight: '600', color: PURPLE },
-    tagSubText: { fontSize: 10, fontWeight: '500' },
-    tagRemove: { marginLeft: 2 },
-
-    /* Add Key */
-    addKeyRow: {
-        flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 36, marginTop: 12,
-    },
-    addKeyInput: {
-        flex: 1, fontSize: 13, fontWeight: '500', color: '#1A1A2E', backgroundColor: '#F8F9FA',
-        borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-        borderWidth: 1, borderColor: '#E0E0E0',
-    },
-    addKeyBtn: {
-        width: 34, height: 34, borderRadius: 10, backgroundColor: PURPLE,
-        alignItems: 'center', justifyContent: 'center',
-    },
 
     /* Actions */
     actions: { marginTop: 28, gap: 12 },

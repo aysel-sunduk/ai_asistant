@@ -134,22 +134,11 @@ export default function ProfileScreen() {
             color: '#FF6B6B',
         },
         {
-            icon: 'language-outline',
-            label: 'Dil',
-            subtitle: 'Türkçe',
-            color: '#6C63FF',
-        },
-        {
-            icon: 'help-circle-outline',
-            label: 'Yardım & Destek',
-            subtitle: 'SSS, iletişim',
-            color: '#9BA1A6',
-        },
-        {
             icon: 'information-circle-outline',
             label: 'Hakkında',
-            subtitle: 'Sürüm 1.0.0',
+            subtitle: 'Uygulama Bilgileri',
             color: '#4ECDC4',
+            onPress: () => router.push('/about'),
         },
     ];
 
