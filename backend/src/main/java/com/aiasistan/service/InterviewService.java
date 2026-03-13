@@ -6,8 +6,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.multipart.MultipartFile;
+
 import com.aiasistan.dto.interview.*;
 import com.aiasistan.model.InterviewQuestion;
 import com.aiasistan.model.InterviewSession;
@@ -41,11 +42,53 @@ public class InterviewService {
     }
 
     /**
+     * Kullanıcının tüm mülakatlarını User ID ile döner.
+     */
+    public List<InterviewSessionResponse> getUserSessionsByUserId(UUID userId) {
+        if (userId == null) {
+            return List.of();
+        }
+
+        return sessionRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(session -> session.getUser() != null &&
+                        userId.equals(session.getUser().getId()))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Email ile kullanıcının mülakatlarını döner.
+     * Kesin filtreleme: Önce kullanıcıyı bulur, sonra o kullanıcıya ait mülakatları ID ile çeker.
+     * Kod seviyesinde de mülakatların o kullanıcıya ait olduğunu doğrular.
+     */
+    public List<InterviewSessionResponse> getUserSessions(String userEmail) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return List.of();
+        }
+
+        User user = userRepository.findByEmail(userEmail).orElse(null);
+        if (user == null) {
+            return List.of();
+        }
+
+        UUID searchUserId = user.getId();
+        
+        // Doğrudan Repository'nin ID bazlı metodunu kullanıyoruz
+        return sessionRepository.findByUserIdOrderByCreatedAtDesc(searchUserId)
+                .stream()
+                .filter(s -> s.getUser() != null && searchUserId.equals(s.getUser().getId())) // Ekstra Java katmanı kontrolü
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Adım 1: Oturumu oluşturur ve AI ile taslak soruları üretir.
      */
-    public InterviewSessionResponse createSession(String userEmail, CreateInterviewSessionRequest request) {
-        User user = userRepository.findByEmail(userEmail)
+    public InterviewSessionResponse createSession(UUID userId, CreateInterviewSessionRequest request) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
+
         InterviewSession session = new InterviewSession();
         session.setUser(user);
         session.setTitle(request.getTitle());
@@ -85,27 +128,250 @@ public class InterviewService {
     }
 
     /**
-     * Kullanıcının tüm mülakatlarını döner.
+     * Overloaded createSession - email ile
      */
-    public List<InterviewSessionResponse> getUserSessions(String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
-        return sessionRepository.findByUserOrderByCreatedAtDesc(user).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public InterviewSessionResponse createSession(String userEmail, CreateInterviewSessionRequest request) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return createSession(userId, request);
     }
 
     /**
-     * Oturum detaylarını döner.
+     * Oturum detaylarını kullanıcı ID kontrolü ile döner
      */
-    public InterviewSessionResponse getSession(UUID sessionId) {
-        InterviewSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+    public InterviewSessionResponse getSessionForUser(UUID sessionId, UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
         return mapToResponse(session);
     }
 
     /**
-     * Oturumu günceller.
+     * Overloaded getSessionForUser - email ile
+     */
+    public InterviewSessionResponse getSessionForUser(UUID sessionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return getSessionForUser(sessionId, userId);
+    }
+
+    /**
+     * Oturum güncelleme - kullanıcı ID ile
+     */
+    public InterviewSessionResponse updateSessionForUser(UUID sessionId, UpdateInterviewSessionRequest request,
+            UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        return updateSession(session.getId(), request);
+    }
+
+    /**
+     * Overloaded updateSessionForUser - email ile
+     */
+    public InterviewSessionResponse updateSessionForUser(UUID sessionId, UpdateInterviewSessionRequest request,
+            String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return updateSessionForUser(sessionId, request, userId);
+    }
+
+    /**
+     * Oturum silme - kullanıcı ID ile
+     */
+    public void deleteSessionForUser(UUID sessionId, UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        sessionRepository.delete(session);
+    }
+
+    /**
+     * Overloaded deleteSessionForUser - email ile
+     */
+    public void deleteSessionForUser(UUID sessionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        deleteSessionForUser(sessionId, userId);
+    }
+
+    /**
+     * Soruları güncelleme - kullanıcı ID ile
+     */
+    public InterviewSessionResponse updateQuestionsForUser(UUID sessionId, UpdateInterviewQuestionsRequest request,
+            UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        return updateQuestions(session.getId(), request);
+    }
+
+    /**
+     * Overloaded updateQuestionsForUser - email ile
+     */
+    public InterviewSessionResponse updateQuestionsForUser(UUID sessionId, UpdateInterviewQuestionsRequest request,
+            String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return updateQuestionsForUser(sessionId, request, userId);
+    }
+
+    /**
+     * Soru silme - kullanıcı ID ile
+     */
+    public void deleteQuestionForUser(UUID questionId, UUID userId) {
+        InterviewQuestion question = requireQuestionOwner(questionId, userId);
+        if (!"SETUP".equals(question.getSession().getStatus())) {
+            throw new RuntimeException("Sadece SETUP aşamasında sorular silinebilir");
+        }
+        question.setDeleted(true);
+        questionRepository.save(question);
+    }
+
+    /**
+     * Overloaded deleteQuestionForUser - email ile
+     */
+    public void deleteQuestionForUser(UUID questionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        deleteQuestionForUser(questionId, userId);
+    }
+
+    /**
+     * Soruları yeniden sıralama - kullanıcı ID ile
+     */
+    public InterviewSessionResponse reorderQuestionsForUser(UUID sessionId, UpdateQuestionOrderRequest request,
+            UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        return reorderQuestions(session.getId(), request);
+    }
+
+    /**
+     * Overloaded reorderQuestionsForUser - email ile
+     */
+    public InterviewSessionResponse reorderQuestionsForUser(UUID sessionId, UpdateQuestionOrderRequest request,
+            String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return reorderQuestionsForUser(sessionId, request, userId);
+    }
+
+    /**
+     * Mülakatı başlatma - kullanıcı ID ile
+     */
+    public void startAnsweringForUser(UUID sessionId, UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        session.setStatus("IN_PROGRESS");
+        sessionRepository.save(session);
+    }
+
+    /**
+     * Overloaded startAnsweringForUser - email ile
+     */
+    public void startAnsweringForUser(UUID sessionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        startAnsweringForUser(sessionId, userId);
+    }
+
+    /**
+     * Cevap gönderme - kullanıcı ID ile
+     */
+    public void submitAnswerForUser(SubmitAnswerRequest request, UUID userId) {
+        InterviewQuestion question = requireQuestionOwner(request.getQuestionId(), userId);
+        question.setAnswerText(request.getAnswerText());
+        questionRepository.save(question);
+    }
+
+    /**
+     * Overloaded submitAnswerForUser - email ile
+     */
+    public void submitAnswerForUser(SubmitAnswerRequest request, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        submitAnswerForUser(request, userId);
+    }
+
+    /**
+     * Video cevap gönderme - kullanıcı ID ile
+     */
+    public String submitVideoAnswerForUser(UUID questionId, MultipartFile file, UUID userId) {
+        InterviewQuestion question = requireQuestionOwner(questionId, userId);
+        String transcription = sttService.transcribe(file);
+        if (transcription == null || transcription.isBlank()) {
+            throw new RuntimeException("Video/ses çözümlenemedi. Lütfen tekrar deneyin.");
+        }
+        question.setAnswerText(transcription);
+        questionRepository.save(question);
+        return transcription;
+    }
+
+    /**
+     * Overloaded submitVideoAnswerForUser - email ile
+     */
+    public String submitVideoAnswerForUser(UUID questionId, MultipartFile file, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return submitVideoAnswerForUser(questionId, file, userId);
+    }
+
+    /**
+     * Mülakatı bitir ve analiz et - kullanıcı ID ile
+     */
+    public InterviewSessionResponse finishAndAnalyzeForUser(UUID sessionId, UUID userId) {
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+        return finishAndAnalyze(session.getId());
+    }
+
+    /**
+     * Overloaded finishAndAnalyzeForUser - email ile
+     */
+    public InterviewSessionResponse finishAndAnalyzeForUser(UUID sessionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        return finishAndAnalyzeForUser(sessionId, userId);
+    }
+
+    /**
+     * Email'den User ID'yi bul
+     */
+    public UUID getUserIdByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(User::getId)
+                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı: " + email));
+    }
+
+
+    /**
+     * Soru ID'sinden oturum ID'sini bul
+     */
+    public UUID getSessionIdByQuestionId(UUID questionId) {
+        InterviewQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı: " + questionId));
+        return question.getSession().getId();
+    }
+
+    /**
+     * Oturum sahibi kontrolü - User ID ile
+     */
+    private InterviewSession requireSessionOwner(UUID sessionId, UUID userId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı: " + sessionId));
+
+        if (session.getUser() == null || userId == null ||
+                !userId.equals(session.getUser().getId())) {
+            throw new AccessDeniedException("Bu oturuma erişim yetkiniz yok");
+        }
+        return session;
+    }
+
+    /**
+     * Soru sahibi kontrolü - User ID ile
+     */
+    private InterviewQuestion requireQuestionOwner(UUID questionId, UUID userId) {
+        InterviewQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı: " + questionId));
+
+        InterviewSession session = question.getSession();
+        if (session == null || session.getUser() == null || userId == null ||
+                !userId.equals(session.getUser().getId())) {
+            throw new AccessDeniedException("Bu soruya erişim yetkiniz yok");
+        }
+        return question;
+    }
+
+    /**
+     * Oturum detaylarını döner (iç metod)
+     */
+    public InterviewSessionResponse getSession(UUID sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        return mapToResponse(session);
+    }
+
+    /**
+     * Oturumu günceller (iç metod)
      */
     public InterviewSessionResponse updateSession(UUID sessionId, UpdateInterviewSessionRequest request) {
         InterviewSession session = sessionRepository.findById(sessionId)
@@ -125,16 +391,7 @@ public class InterviewService {
     }
 
     /**
-     * Oturumu siler.
-     */
-    public void deleteSession(UUID sessionId) {
-        InterviewSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
-        sessionRepository.delete(session);
-    }
-
-    /**
-     * Adım 2: Kullanıcının düzenlediği soruları günceller.
+     * Adım 2: Kullanıcının düzenlediği soruları günceller (iç metod)
      */
     public InterviewSessionResponse updateQuestions(UUID sessionId, UpdateInterviewQuestionsRequest request) {
         InterviewSession session = sessionRepository.findById(sessionId)
@@ -167,22 +424,7 @@ public class InterviewService {
     }
 
     /**
-     * Tekil soruyu yumuşak siler (Soft delete).
-     */
-    public void deleteQuestion(UUID questionId) {
-        InterviewQuestion question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new RuntimeException("Soru bulunamadı"));
-
-        if (!"SETUP".equals(question.getSession().getStatus())) {
-            throw new RuntimeException("Sadece SETUP aşamasında sorular silinebilir");
-        }
-
-        question.setDeleted(true);
-        questionRepository.save(question);
-    }
-
-    /**
-     * Soruların sırasını günceller.
+     * Soruların sırasını günceller (iç metod)
      */
     public InterviewSessionResponse reorderQuestions(UUID sessionId, UpdateQuestionOrderRequest request) {
         InterviewSession session = sessionRepository.findById(sessionId)
@@ -203,7 +445,7 @@ public class InterviewService {
     }
 
     /**
-     * Adım 3: Mülakatı başlatır (Status -> IN_PROGRESS).
+     * Adım 3: Mülakatı başlatır (Status -> IN_PROGRESS) - iç metod
      */
     public void startAnswering(UUID sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
@@ -213,7 +455,7 @@ public class InterviewService {
     }
 
     /**
-     * Adım 3 (Cevaplama - Metin): Soru cevabını kaydeder.
+     * Adım 3 (Cevaplama - Metin): Soru cevabını kaydeder (iç metod)
      */
     public void submitAnswer(SubmitAnswerRequest request) {
         InterviewQuestion question = questionRepository.findById(request.getQuestionId())
@@ -224,7 +466,8 @@ public class InterviewService {
     }
 
     /**
-     * Adım 3 (Cevaplama - Video/Ses): Dosyayı alır, metne çevirir ve kaydeder.
+     * Adım 3 (Cevaplama - Video/Ses): Dosyayı alır, metne çevirir ve kaydeder (iç
+     * metod)
      */
     public String submitVideoAnswer(UUID questionId, MultipartFile file) {
         InterviewQuestion question = questionRepository.findById(questionId)
@@ -242,7 +485,7 @@ public class InterviewService {
     }
 
     /**
-     * Adım 4: Mülakatı bitirir ve toplu analiz yapar.
+     * Adım 4: Mülakatı bitirir ve toplu analiz yapar (iç metod)
      */
     public InterviewSessionResponse finishAndAnalyze(UUID sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
@@ -261,13 +504,14 @@ public class InterviewService {
 
         session.setOverallFeedback(analysis);
         session.setStatus("COMPLETED");
-
-        // Skoru ayıkla (OpenRouter "SKOR: 85" dönüyor demiştik)
         session.setOverallScore(extractScore(analysis));
 
         return mapToResponse(sessionRepository.save(session));
     }
 
+    /**
+     * Skoru analiz metninden çıkarır
+     */
     private Integer extractScore(String analysis) {
         try {
             int index = analysis.indexOf("[SKOR:");
@@ -281,9 +525,37 @@ public class InterviewService {
         return 0;
     }
 
+    /**
+     * Oturumu siler (iç metod)
+     */
+    public void deleteSession(UUID sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+        sessionRepository.delete(session);
+    }
+
+    /**
+     * Tekil soruyu yumuşak siler (iç metod)
+     */
+    public void deleteQuestion(UUID questionId) {
+        InterviewQuestion question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Soru bulunamadı"));
+
+        if (!"SETUP".equals(question.getSession().getStatus())) {
+            throw new RuntimeException("Sadece SETUP aşamasında sorular silinebilir");
+        }
+
+        question.setDeleted(true);
+        questionRepository.save(question);
+    }
+
+    /**
+     * Session'ı Response DTO'suna dönüştürür
+     */
     private InterviewSessionResponse mapToResponse(InterviewSession session) {
         InterviewSessionResponse resp = new InterviewSessionResponse();
         resp.setId(session.getId());
+        resp.setUserId(session.getUser() != null ? session.getUser().getId() : null);
         resp.setTitle(session.getTitle());
         resp.setPosition(session.getPosition());
         resp.setJobDescription(session.getJobDescription());

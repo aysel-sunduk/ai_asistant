@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 public class InterviewSessionResponse {
     private UUID id;
+    private UUID userId;
     private String title;
     private String position;
     private String jobDescription;

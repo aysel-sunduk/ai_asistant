@@ -22,10 +22,10 @@ public class UserProfile {
     @Column(name = "user_id")
     private UUID userId;
 
-    // Bire bir ilişki tanımı
     @OneToOne
     @MapsId // userId alanını User'ın id'si ile eşleştirir
     @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
     @Column(name = "full_name")
