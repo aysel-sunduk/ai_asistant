@@ -1,9 +1,11 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    Image,
     Platform,
     ScrollView,
     StatusBar,
@@ -12,10 +14,20 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { API_BASE_URL } from '../../src/api/client';
 import { blogApi } from '../../src/api/blog.api';
 import { socialApi } from '../../src/api/social.api';
 import { userApi } from '../../src/api/user.api';
+import { userService } from '../../services/user.service';
 import { useAuthStore } from '../../src/store/auth.store';
+
+const getImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = API_BASE_URL;
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const PURPLE = '#6C63FF';
 const PURPLE_LIGHT = '#8B83FF';
@@ -39,20 +51,75 @@ export default function ProfileScreen() {
     const profile = useAuthStore((s) => s.profile);
     const logout = useAuthStore((s) => s.logout);
     const setUser = useAuthStore((s) => s.setUser);
+    const setProfile = useAuthStore((s) => s.setProfile); // assuming exist, if not we update user
 
-    const [stats, setStats] = React.useState({ followers: 0, following: 0, posts: 0 });
+    const [stats, setStats] = useState({ followers: 0, following: 0, posts: 0 });
+    const [isUploadingPicture, setIsUploadingPicture] = useState(false);
 
     useEffect(() => {
         const fetchMe = async () => {
             try {
                 const res = await userApi.getMe();
+                const profileRes = await userService.getProfile();
                 setUser(res.data.data);
+                // Also update profile state if possible, though authStore might sync it.
+                if (setProfile) setProfile(profileRes);
             } catch (err) {
                 console.log('[Profile] Failed to fetch user details:', err);
             }
         };
         fetchMe();
     }, []);
+
+    const handlePickImage = async () => {
+        try {
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permission.granted) {
+                Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin vermeniz gerekiyor.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                await uploadImage(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.log('Image picker error:', error);
+            Alert.alert('Hata', 'Görsel seçilemedi.');
+        }
+    };
+
+    const uploadImage = async (uri: string) => {
+        setIsUploadingPicture(true);
+        try {
+            const formData = new FormData();
+            const filename = uri.split('/').pop() || 'profile.jpg';
+            const match = /\.(\w+)$/.exec(filename.toLowerCase());
+            let type = match ? `image/${match[1]}` : `image/jpeg`;
+            if (type === 'image/jpg') type = 'image/jpeg';
+
+            formData.append('file', {
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+                name: filename,
+                type,
+            } as any);
+
+            const updatedProfile = await userService.uploadProfilePicture(formData);
+            if (setProfile) setProfile(updatedProfile);
+            Alert.alert('Başarılı', 'Profil fotoğrafı güncellendi');
+        } catch (error) {
+            console.log('Upload picture error:', error);
+            Alert.alert('Hata', 'Profil fotoğrafı yüklenemedi.');
+        } finally {
+            setIsUploadingPicture(false);
+        }
+    };
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -173,14 +240,23 @@ export default function ProfileScreen() {
                 {/* Profil Header */}
                 <View style={styles.headerGradient}>
                     <View style={styles.headerContent}>
-                        <View style={styles.avatarOuter}>
+                        <TouchableOpacity style={styles.avatarOuter} onPress={handlePickImage} disabled={isUploadingPicture}>
                             <View style={styles.avatarCircle}>
-                                <Text style={styles.avatarText}>{initials}</Text>
+                                {isUploadingPicture ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : profile?.profilePictureUrl ? (
+                                    <Image 
+                                        source={{ uri: getImageUrl(profile.profilePictureUrl) as string }} 
+                                        style={{ width: 88, height: 88, borderRadius: 44 }} 
+                                    />
+                                ) : (
+                                    <Text style={styles.avatarText}>{initials}</Text>
+                                )}
                             </View>
                             <View style={styles.editBadge}>
                                 <Ionicons name="camera" size={12} color="#fff" />
                             </View>
-                        </View>
+                        </TouchableOpacity>
                         <Text style={styles.displayName}>{displayName}</Text>
                         <Text style={styles.email}>{user?.email || ''}</Text>
 

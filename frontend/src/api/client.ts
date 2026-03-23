@@ -14,7 +14,7 @@ const resolveApiBaseUrl = (): string => {
     return DEFAULT_API_URL;
 };
 
-const API_BASE_URL = resolveApiBaseUrl();
+export const API_BASE_URL = resolveApiBaseUrl();
 console.log('[ApiClient] Base URL:', API_BASE_URL);
 
 const apiClient = axios.create({

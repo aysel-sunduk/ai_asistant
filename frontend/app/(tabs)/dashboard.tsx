@@ -15,7 +15,9 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Image,
 } from 'react-native';
+import { API_BASE_URL } from '../../src/api/client';
 import { familyService } from '../../services/family.service';
 import { remindersService } from '../../services/reminders.service';
 import { socialService } from '../../services/social.service';
@@ -25,10 +27,16 @@ import type { Reminder } from '../../src/models/reminder.model';
 import type { FollowRequestItem } from '../../src/models/social.model';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMenuStore } from '../../src/store/menu.store';
-import { sendTestNotification } from '../../src/hooks/usePushNotifications';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
+
+const getImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = API_BASE_URL;
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -169,9 +177,16 @@ export default function DashboardScreen() {
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.welcomeSection}>
                     <TouchableOpacity style={styles.avatarCircle} activeOpacity={0.7} onPress={() => router.push('/(tabs)/profile')}>
-                        <Text style={styles.avatarText}>
-                            {(profile?.firstName?.charAt(0) || user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'K').toUpperCase()}
-                        </Text>
+                        {profile?.profilePictureUrl ? (
+                            <Image
+                                source={{ uri: getImageUrl(profile.profilePictureUrl) as string }}
+                                style={{ width: 52, height: 52, borderRadius: 26 }}
+                            />
+                        ) : (
+                            <Text style={styles.avatarText}>
+                                {(profile?.firstName?.charAt(0) || user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'K').toUpperCase()}
+                            </Text>
+                        )}
                     </TouchableOpacity>
                     <View style={styles.welcomeText}>
                         <Text style={styles.greeting}>Hos geldin</Text>
@@ -202,12 +217,6 @@ export default function DashboardScreen() {
                     <Text style={styles.aiCardText}>
                         Yaklasan hatirlaticilarin ve modullerden son hareketlerin burada gorunur.
                     </Text>
-                    <TouchableOpacity
-                        style={{ marginTop: 15, backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start' }}
-                        onPress={sendTestNotification}
-                    >
-                        <Text style={{ color: PURPLE, fontWeight: '700', fontSize: 13 }}>Test Bildirimi Gonder</Text>
-                    </TouchableOpacity>
                 </View>
 
                 {financeReport && (

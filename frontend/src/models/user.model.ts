@@ -39,6 +39,7 @@ export interface UserProfile {
     bmi?: number;
     bmr?: number;
     bodyFatPercentage?: number;
+    profilePictureUrl?: string;
 }
 
 // ─── PUT /api/v1/profile Request ───

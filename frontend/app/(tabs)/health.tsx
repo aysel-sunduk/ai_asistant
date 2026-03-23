@@ -313,6 +313,7 @@ function HealthTabScreen() {
                 source: 'manual',
                 data: { amount_ml: ml } as WaterData,
             });
+            await fetchLogs();
             setActiveModal(null);
             setWaterAmount('250');
         } catch {
@@ -336,6 +337,7 @@ function HealthTabScreen() {
                     fat_g: mealFat ? parseFloat(mealFat) : undefined,
                 } as MealData,
             });
+            await fetchLogs();
             setActiveModal(null);
             resetMealForm();
             void loadDailyNutrition();
@@ -344,13 +346,27 @@ function HealthTabScreen() {
         }
     };
 
-    const handleDeleteLog = async (id: string) => {
-        try {
-            await deleteLog(id);
-            void loadDailyNutrition();
-        } catch {
-            Alert.alert('Hata', 'Kayit silinemedi.');
-        }
+    const handleDeleteLog = (id: string) => {
+        Alert.alert(
+            'Emin misiniz?',
+            'Bu öğünü silmek istediğinize emin misiniz?',
+            [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteLog(id);
+                            void loadDailyNutrition();
+                            await fetchLogs();
+                        } catch {
+                            Alert.alert('Hata', 'Kayit silinemedi.');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const handlePickImage = async (useCamera: boolean) => {
@@ -739,18 +755,22 @@ function HealthTabScreen() {
                             <Text style={styles.modalFieldLabel}>Makrolar (opsiyonel)</Text>
                             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                                 <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Kalori (kcal)</Text>
                                     <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Kalori" keyboardType="numeric" value={mealCal} onChangeText={setMealCal} />
                                 </View>
                                 <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Protein (g)</Text>
                                     <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Protein" keyboardType="numeric" value={mealProtein} onChangeText={setMealProtein} />
                                 </View>
                             </View>
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                                 <View style={{ flex: 1 }}>
-                                    <TextInput style={styles.modalInput} placeholder="Karb" keyboardType="numeric" value={mealCarbs} onChangeText={setMealCarbs} />
+                                    <Text style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Karb (g)</Text>
+                                    <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Karb" keyboardType="numeric" value={mealCarbs} onChangeText={setMealCarbs} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <TextInput style={styles.modalInput} placeholder="Yag" keyboardType="numeric" value={mealFat} onChangeText={setMealFat} />
+                                    <Text style={{ fontSize: 12, color: GRAY, marginBottom: 4 }}>Yağ (g)</Text>
+                                    <TextInput style={[styles.modalInput, { marginBottom: 0 }]} placeholder="Yag" keyboardType="numeric" value={mealFat} onChangeText={setMealFat} />
                                 </View>
                             </View>
 
