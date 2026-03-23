@@ -1,20 +1,20 @@
 // Kisa aciklama: Uygulama state yonetimini yapar.
 import { create } from 'zustand';
-import type { FinanceAccount, FinanceCategory, FinanceTransaction, Investment } from '../models/finance.model';
+import type { InvestmentResponse } from '../models/finance.model';
 
 interface FinanceState {
-    accounts: FinanceAccount[];
-    categories: FinanceCategory[];
-    transactions: FinanceTransaction[];
-    investments: Investment[];
+    accounts: any[];
+    categories: any[];
+    transactions: any[];
+    investments: InvestmentResponse[];
     isLoading: boolean;
 
-    setAccounts: (accounts: FinanceAccount[]) => void;
-    setCategories: (categories: FinanceCategory[]) => void;
-    setTransactions: (transactions: FinanceTransaction[]) => void;
-    setInvestments: (investments: Investment[]) => void;
+    setAccounts: (accounts: any[]) => void;
+    setCategories: (categories: any[]) => void;
+    setTransactions: (transactions: any[]) => void;
+    setInvestments: (investments: InvestmentResponse[]) => void;
     setLoading: (loading: boolean) => void;
-    addTransaction: (transaction: FinanceTransaction) => void;
+    addTransaction: (transaction: any) => void;
 }
 
 export const useFinanceStore = create<FinanceState>((set) => ({

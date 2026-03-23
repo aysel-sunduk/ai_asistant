@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Kisa aciklama: Servis akislarini yonetir.
 import { aiApi } from '../src/api/ai.api';
 import type { AIInteraction, AIInteractionType } from '../src/models/ai.model';

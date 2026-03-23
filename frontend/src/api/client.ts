@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-const DEFAULT_API_URL = 'http://192.168.234.217:8080/api';
+const DEFAULT_API_URL = 'http://10.166.144.153:8080/api';
 
 const resolveApiBaseUrl = (): string => {
     // 1. Try ENV variable

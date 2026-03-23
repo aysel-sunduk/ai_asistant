@@ -109,6 +109,17 @@ public class InterviewController {
     }
 
     /**
+     * Yapay zeka ile mevcut mülakat için yeni sorular üretir.
+     * Sadece oturum sahibi yapabilir.
+     */
+    @PostMapping("/{id}/generate-questions")
+    public ResponseEntity<InterviewSessionResponse> generateQuestions(
+            org.springframework.security.core.Authentication authentication,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(interviewService.generateQuestionsForUser(id, authentication.getName()));
+    }
+
+    /**
      * Tekil soruyu siler (Soft delete). Sadece oturum sahibi yapabilir.
      */
     @DeleteMapping("/question/{id}")

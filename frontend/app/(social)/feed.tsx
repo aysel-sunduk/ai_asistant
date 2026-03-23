@@ -17,8 +17,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Toast from '../../components/ui/Toast';
 import UserProfileModal from '../../components/social/UserProfileModal';
+import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import { socialService } from '../../services/social.service';
 import type { BlogPost } from '../../src/models/blog.model';

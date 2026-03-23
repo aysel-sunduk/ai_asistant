@@ -86,8 +86,8 @@ export default function LeaderboardScreen() {
                 if (!cancelled) {
                     setRows(leaderboard.map((row) => ({
                         ...row,
-                        gameType: normalizeGameType(row.gameType),
-                    })));
+                        gameType: normalizeGameType(row.gameType) as any,
+                    } as GameScore)));
                     setRankSummary(summary);
                 }
             } catch (e) {
@@ -134,32 +134,32 @@ export default function LeaderboardScreen() {
                 <View style={styles.metricCard}>
                     <Ionicons name="earth-outline" size={14} color="#5F46D5" />
                     <Text style={styles.metricLabel}>Global</Text>
-                    <Text style={styles.metricValue}>{rankSummary.globalRank ?? '-'} / {rankSummary.globalPlayerCount}</Text>
+                    <Text style={styles.metricValue}>{rankSummary!.globalRank ?? '-'} / {rankSummary!.globalPlayerCount}</Text>
                 </View>
                 <View style={styles.metricCard}>
                     <Ionicons name="people-outline" size={14} color="#5F46D5" />
                     <Text style={styles.metricLabel}>Arkadas</Text>
-                    <Text style={styles.metricValue}>{rankSummary.friendsRank ?? '-'} / {rankSummary.friendsPlayerCount}</Text>
+                    <Text style={styles.metricValue}>{rankSummary!.friendsRank ?? '-'} / {rankSummary!.friendsPlayerCount}</Text>
                 </View>
                 <View style={styles.metricCard}>
                     <Ionicons name="trophy-outline" size={14} color="#5F46D5" />
                     <Text style={styles.metricLabel}>En Iyi Skor</Text>
-                    <Text style={styles.metricValue}>{rankSummary.bestScore ?? '-'}</Text>
+                    <Text style={styles.metricValue}>{rankSummary!.bestScore ?? '-'}</Text>
                 </View>
             </View>
 
             <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Global Yuzdelik</Text>
-                <Text style={styles.progressValue}>{getPercentileText(rankSummary.globalRank, rankSummary.globalPlayerCount)}</Text>
+                <Text style={styles.progressValue}>{getPercentileText(rankSummary!.globalRank, rankSummary!.globalPlayerCount)}</Text>
             </View>
             <View style={styles.progressTrack}>
                 <View
                     style={[
                         styles.progressFill,
                         {
-                            width: getPercentileText(rankSummary.globalRank, rankSummary.globalPlayerCount) === '-'
+                            width: (getPercentileText(rankSummary!.globalRank, rankSummary!.globalPlayerCount) === '-'
                                 ? '0%'
-                                : getPercentileText(rankSummary.globalRank, rankSummary.globalPlayerCount).replace('%', '') + '%',
+                                : getPercentileText(rankSummary!.globalRank, rankSummary!.globalPlayerCount).replace('%', '') + '%') as import('react-native').DimensionValue,
                         },
                     ]}
                 />

@@ -1,10 +1,12 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
@@ -13,13 +15,10 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Modal,
-    Animated,
 } from 'react-native';
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
-import { useEffect, useRef } from 'react';
 
 const COLOR = '#6C63FF';
 
@@ -267,7 +266,7 @@ export default function CreatePostScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>Benim Bloglarim</Text>
+                <Text style={styles.sectionTitle}>Benim Bloglarım</Text>
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="small" color={COLOR} />

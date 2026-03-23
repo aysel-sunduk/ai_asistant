@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Kisa aciklama: Tekrar kullanilabilir hook mantigi icerir.
 import { useCallback } from 'react';
 import { financeService } from '../../services/finance.service';

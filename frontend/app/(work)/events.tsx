@@ -21,8 +21,7 @@ import {
 import Toast from '../../components/ui/Toast';
 import { workService } from '../../services/work.service';
 import type { WorkEvent, WorkEventsSummary } from '../../src/models/work.model';
-import { MascotButton } from '../../components/ui/MascotButton';
-import { InterviewConsentModal } from '../../components/ui/InterviewConsentModal';
+
 
 const COLOR = '#5B8DEF';
 const QUICK_FILTERS = ['ALL', 'UPCOMING', 'ONGOING', 'TODAY', 'THIS_WEEK'] as const;
@@ -94,16 +93,7 @@ export default function WorkEventsScreen() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<ToastType>('info');
-    const [consentVisible, setConsentVisible] = useState(false);
 
-    const handleMascotPress = () => {
-        setConsentVisible(true);
-    };
-
-    const handleConsentConfirm = () => {
-        setConsentVisible(false);
-        router.push('/(work)/my-interviews');
-    };
 
     const showToast = (type: ToastType, message: string) => {
         setToastType(type);
@@ -406,13 +396,7 @@ export default function WorkEventsScreen() {
                 </Pressable>
             </Modal>
 
-            <MascotButton onPress={handleMascotPress} />
 
-            <InterviewConsentModal
-                visible={consentVisible}
-                onClose={() => setConsentVisible(false)}
-                onConfirm={handleConsentConfirm}
-            />
         </View>
     );
 }

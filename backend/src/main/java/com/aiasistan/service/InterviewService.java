@@ -3,6 +3,8 @@ package com.aiasistan.service;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import com.aiasistan.service.OpenRouterAiService;
 @Service
 @Transactional
 public class InterviewService {
+    private static final Logger logger = LoggerFactory.getLogger(InterviewService.class);
 
     private final InterviewSessionRepository sessionRepository;
     private final InterviewQuestionRepository questionRepository;
@@ -66,18 +69,11 @@ public class InterviewService {
         if (userEmail == null || userEmail.isBlank()) {
             return List.of();
         }
-
-        User user = userRepository.findByEmail(userEmail).orElse(null);
-        if (user == null) {
-            return List.of();
-        }
-
-        UUID searchUserId = user.getId();
         
-        // Doğrudan Repository'nin ID bazlı metodunu kullanıyoruz
-        return sessionRepository.findByUserIdOrderByCreatedAtDesc(searchUserId)
+        // Doğrudan Repository'nin email bazlı metodunu kullanıyoruz
+        return sessionRepository.findByUserEmailOrderByCreatedAtDesc(userEmail)
                 .stream()
-                .filter(s -> s.getUser() != null && searchUserId.equals(s.getUser().getId())) // Ekstra Java katmanı kontrolü
+                .filter(s -> s.getUser() != null && userEmail.equals(s.getUser().getEmail())) // Ekstra Java katmanı kontrolü
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -149,6 +145,45 @@ public class InterviewService {
     public InterviewSessionResponse getSessionForUser(UUID sessionId, String userEmail) {
         UUID userId = getUserIdByEmail(userEmail);
         return getSessionForUser(sessionId, userId);
+    }
+
+    /**
+     * Sadece mülakat sorularını yeniden üretir
+     */
+    public InterviewSessionResponse generateQuestionsForUser(UUID sessionId, String userEmail) {
+        UUID userId = getUserIdByEmail(userEmail);
+        InterviewSession session = requireSessionOwner(sessionId, userId);
+
+        if (!"SETUP".equals(session.getStatus())) {
+            throw new RuntimeException("Sadece SETUP aşamasında soruları yeniden üretebilirsiniz.");
+        }
+
+        List<String> questionsText = aiService.generateInterviewQuestions(
+                session.getTitle(),
+                session.getPosition(),
+                session.getJobDescription(),
+                5 // Varsayılan numara
+        );
+
+        if (questionsText == null || questionsText.isEmpty()) {
+            throw new RuntimeException("Mülakat soruları üretilemedi. Lütfen daha sonra tekrar deneyin.");
+        }
+
+        // 1. Mevcut soruları sil (orphanRemoval=true sayesinde)
+        session.getQuestions().clear();
+        sessionRepository.saveAndFlush(session); // Silme işlemini hemen yansıt
+
+        // 2. Yeni soruları ekle
+        for (int i = 0; i < questionsText.size(); i++) {
+            InterviewQuestion q = new InterviewQuestion();
+            q.setSession(session);
+            q.setQuestionText(questionsText.get(i));
+            q.setOrderNo(i + 1);
+            session.getQuestions().add(q);
+        }
+
+        InterviewSession savedSession = sessionRepository.save(session);
+        return mapToResponse(savedSession);
     }
 
     /**
@@ -401,26 +436,20 @@ public class InterviewService {
             throw new RuntimeException("Sadece SETUP aşamasında sorular düzenlenebilir");
         }
 
-        // Mevcut soruları yumuşak sil (Soft delete)
-        List<InterviewQuestion> currentQuestions = questionRepository
-                .findBySessionAndIsDeletedFalseOrderByOrderNoAsc(session);
-        for (InterviewQuestion q : currentQuestions) {
-            q.setDeleted(true);
-        }
-        questionRepository.saveAll(currentQuestions);
+        // Mevcut soruları temizle (orphanRemoval=true otomatik fiziksel siler)
         session.getQuestions().clear();
+        sessionRepository.saveAndFlush(session);
 
-        List<InterviewQuestion> newQuestions = new ArrayList<>();
         for (UpdateInterviewQuestionsRequest.QuestionUpdateDTO dto : request.getQuestions()) {
             InterviewQuestion q = new InterviewQuestion();
             q.setSession(session);
             q.setQuestionText(dto.getQuestionText());
             q.setOrderNo(dto.getOrderNo());
-            newQuestions.add(questionRepository.save(q));
+            session.getQuestions().add(q);
         }
 
-        session.setQuestions(newQuestions);
-        return mapToResponse(session);
+        InterviewSession savedSession = sessionRepository.save(session);
+        return mapToResponse(savedSession);
     }
 
     /**
@@ -513,14 +542,23 @@ public class InterviewService {
      * Skoru analiz metninden çıkarır
      */
     private Integer extractScore(String analysis) {
+        if (analysis == null || analysis.isBlank()) return 0;
         try {
-            int index = analysis.indexOf("[SKOR:");
-            if (index != -1) {
-                String scoreStr = analysis.substring(index + 6, analysis.indexOf("]", index)).trim();
-                return Integer.parseInt(scoreStr);
+            // Case-insensitive regex to find [SKOR: 85] or [SKOR: 85/100]
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[SKOR\\s*:\\s*(\\d+)[^\\]]*\\]");
+            java.util.regex.Matcher matcher = pattern.matcher(analysis);
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+            
+            // Fallback: look for any "Skor: 85" or "Puan: 85"
+            pattern = java.util.regex.Pattern.compile("(?i)(skor|puan|başarı skoru)\\s*:\\s*(\\d+)");
+            matcher = pattern.matcher(analysis);
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(2));
             }
         } catch (Exception e) {
-            // Log error
+            logger.warn("Skor ayıklanırken hata: {}", e.getMessage());
         }
         return 0;
     }

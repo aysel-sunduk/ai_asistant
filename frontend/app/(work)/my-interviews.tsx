@@ -445,7 +445,7 @@ export default function MyInterviewsScreen() {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.createBtn, creating && { opacity: 0.6 }]}
-                                    onPress={handleCreate}
+                                    onPress={() => handleCreate('save')}
                                     disabled={creating}
                                 >
                                     {creating && creatingMode === 'save' ? (

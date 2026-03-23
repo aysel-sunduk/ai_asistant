@@ -91,11 +91,30 @@ export default function InterviewSessionScreen() {
         }
     };
 
+    const handleRegenerateQuestions = async () => {
+        if (!sessionId) return;
+        try {
+            setSubmitting(true);
+            const updated = await interviewService.generateQuestions(sessionId as string);
+            setSession(updated);
+        } catch (error: any) {
+            Alert.alert('Hata', error?.response?.data?.message || 'Sorular yenilenemedi. Lütfen tekrar deneyin.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const handleSubmitAnswer = async () => {
         if (!session || !answerText.trim()) return;
         const currentQuestion = session.questions[currentIndex];
         try {
-            setSubmitting(true);
+            // Yerel state'i güncelle (Geri gelince cevabı görebilmek için)
+            if (session) {
+                const updatedQuestions = [...session.questions];
+                updatedQuestions[currentIndex].answerText = answerText.trim();
+                setSession({ ...session, questions: updatedQuestions });
+            }
+
             await interviewService.submitAnswer({
                 questionId: currentQuestion.id,
                 answerText: answerText.trim()
@@ -105,12 +124,25 @@ export default function InterviewSessionScreen() {
                 setCurrentIndex(prev => prev + 1);
                 setAnswerText('');
             } else {
-                handleFinish();
+                await handleFinish();
             }
         } catch (error) {
             Alert.alert('Hata', 'Cevap gönderilemedi.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handlePrevious = () => {
+        if (currentIndex > 0 && session) {
+            // Mevcut cevabı yerel state'e kaydet (opsiyonel ama iyi olur)
+            const updatedQuestions = [...session.questions];
+            updatedQuestions[currentIndex].answerText = answerText;
+            setSession({ ...session, questions: updatedQuestions });
+
+            const prevIndex = currentIndex - 1;
+            setCurrentIndex(prevIndex);
+            setAnswerText(session.questions[prevIndex].answerText || '');
         }
     };
 
@@ -205,7 +237,14 @@ export default function InterviewSessionScreen() {
 
             {mode === 'SETUP' && (
                 <View style={styles.viewContainer}>
-                    <Text style={styles.title}>İşte Hazırladığım Sorular</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={[styles.title, { marginBottom: 0 }]}>İşte Hazırladığım Sorular</Text>
+                        {questions.length > 0 && (
+                            <TouchableOpacity onPress={handleRegenerateQuestions} disabled={submitting} style={{ padding: 4 }}>
+                                <Ionicons name="refresh-circle" size={32} color={PRIMARY} style={{ opacity: submitting ? 0.5 : 1 }} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <Text style={styles.subtitle}>
                         {questions.length > 0
                             ? 'Seni terletecek ama geliştirecek profesyonel sorular seni bekliyor.'
@@ -301,6 +340,15 @@ export default function InterviewSessionScreen() {
                     </View>
 
                     <View style={styles.actionRow}>
+                        {currentIndex > 0 && (
+                            <TouchableOpacity
+                                style={styles.backBtn}
+                                onPress={handlePrevious}
+                                disabled={submitting}
+                            >
+                                <Ionicons name="chevron-back" size={24} color={PRIMARY} />
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             style={[styles.micBtn, isListening && styles.micBtnActive]}
                             onPress={toggleListening}
@@ -500,7 +548,25 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         lineHeight: 24,
     },
-    actionRow: { flexDirection: 'row', gap: 16, marginTop: 24 },
+    actionRow: { 
+        flexDirection: 'row', 
+        gap: 16, 
+        marginTop: 24,
+        elevation: 4,
+    },
+    backBtn: {
+        width: 64,
+        height: 64,
+        borderRadius: 24,
+        backgroundColor: SECONDARY,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 2,
+    },
     micBtn: {
         width: 64,
         height: 64,

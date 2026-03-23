@@ -1,0 +1,54 @@
+app/(work)/my-interviews.tsx(448,37): error TS2322: Type '(mode?: "save" | "prepare") => Promise<void>' is not assignable to type '(event: GestureResponderEvent) => void'.
+  Types of parameters 'mode' and 'event' are incompatible.
+    Type 'GestureResponderEvent' is not assignable to type '"save" | "prepare" | undefined'.
+components/blog/CommentItem.tsx(4,15): error TS2305: Module '"../../src/models/blog.model"' has no exported member 'Comment'.
+components/blog/PostCard.tsx(15,23): error TS2339: Property 'summary' does not exist on type 'BlogPost'.
+components/blog/PostCard.tsx(15,87): error TS2339: Property 'summary' does not exist on type 'BlogPost'.
+components/finance/AccountCard.tsx(4,15): error TS2305: Module '"../../src/models/finance.model"' has no exported member 'FinanceAccount'.
+components/finance/InvestmentCard.tsx(4,15): error TS2305: Module '"../../src/models/finance.model"' has no exported member 'Investment'.
+components/finance/TransactionCard.tsx(4,15): error TS2305: Module '"../../src/models/finance.model"' has no exported member 'FinanceTransaction'.
+components/games/GameCard.tsx(4,15): error TS2305: Module '"../../src/models/game.model"' has no exported member 'GameType'.
+components/health/ExerciseCard.tsx(13,45): error TS2339: Property 'value' does not exist on type 'HealthLog'.
+components/health/ExerciseCard.tsx(13,57): error TS2339: Property 'unit' does not exist on type 'HealthLog'.
+components/health/ExerciseCard.tsx(14,18): error TS2339: Property 'note' does not exist on type 'HealthLog'.
+components/health/ExerciseCard.tsx(14,57): error TS2339: Property 'note' does not exist on type 'HealthLog'.
+components/health/MealCard.tsx(13,45): error TS2339: Property 'value' does not exist on type 'HealthLog'.
+components/health/MealCard.tsx(13,57): error TS2339: Property 'unit' does not exist on type 'HealthLog'.
+components/health/MealCard.tsx(14,18): error TS2339: Property 'note' does not exist on type 'HealthLog'.
+components/health/MealCard.tsx(14,57): error TS2339: Property 'note' does not exist on type 'HealthLog'.
+components/ui/Avatar.tsx(18,103): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ImageProps): Image', gave the following error.
+    Type 'ViewStyle | undefined' is not assignable to type 'ImageStyle | Falsy | RegisteredStyle<ImageStyle> | RecursiveArray<ImageStyle | Falsy | RegisteredStyle<ImageStyle>> | readonly (ImageStyle | ... 1 more ... | RegisteredStyle<...>)[]'.
+      Type 'ViewStyle' is not assignable to type 'ImageStyle | Falsy | RegisteredStyle<ImageStyle> | RecursiveArray<ImageStyle | Falsy | RegisteredStyle<ImageStyle>> | readonly (ImageStyle | ... 1 more ... | RegisteredStyle<...>)[]'.
+        Type 'ViewStyle' is not assignable to type 'ImageStyle'.
+          Types of property 'overflow' are incompatible.
+            Type '"visible" | "hidden" | "scroll" | undefined' is not assignable to type '"visible" | "hidden" | undefined'.
+              Type '"scroll"' is not assignable to type '"visible" | "hidden" | undefined'.
+  Overload 2 of 2, '(props: ImageProps, context: any): Image', gave the following error.
+    Type 'ViewStyle | undefined' is not assignable to type 'ImageStyle | Falsy | RegisteredStyle<ImageStyle> | RecursiveArray<ImageStyle | Falsy | RegisteredStyle<ImageStyle>> | readonly (ImageStyle | ... 1 more ... | RegisteredStyle<...>)[]'.
+      Type 'ViewStyle' is not assignable to type 'ImageStyle | Falsy | RegisteredStyle<ImageStyle> | RecursiveArray<ImageStyle | Falsy | RegisteredStyle<ImageStyle>> | readonly (ImageStyle | ... 1 more ... | RegisteredStyle<...>)[]'.
+        Type 'ViewStyle' is not assignable to type 'ImageStyle'.
+          Types of property 'overflow' are incompatible.
+            Type '"visible" | "hidden" | "scroll" | undefined' is not assignable to type '"visible" | "hidden" | undefined'.
+              Type '"scroll"' is not assignable to type '"visible" | "hidden" | undefined'.
+components/ui/collapsible.tsx(5,28): error TS2307: Cannot find module '@/components/themed-text' or its corresponding type declarations.
+components/ui/collapsible.tsx(6,28): error TS2307: Cannot find module '@/components/themed-view' or its corresponding type declarations.
+components/work/ReminderCard.tsx(20,67): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+services/ai.service.ts(7,38): error TS2339: Property 'sendPrompt' does not exist on type '{ getInteractions: (params?: Record<string, unknown> | undefined) => Promise<AxiosResponse<AIInteraction[], any, {}>>; getDailySuggestion: () => Promise<...>; ... 4 more ...; getInvestmentInsights: () => Promise<...>; }'.
+services/ai.service.ts(12,38): error TS2339: Property 'getHistory' does not exist on type '{ getInteractions: (params?: Record<string, unknown> | undefined) => Promise<AxiosResponse<AIInteraction[], any, {}>>; getDailySuggestion: () => Promise<...>; ... 4 more ...; getInvestmentInsights: () => Promise<...>; }'.
+src/hooks/useContacts.ts(21,54): error TS2345: Argument of type 'Partial<Contact>' is not assignable to parameter of type 'ContactRequest'.
+  Types of property 'name' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/hooks/useContacts.ts(27,58): error TS2345: Argument of type 'Partial<Contact>' is not assignable to parameter of type 'ContactRequest'.
+  Types of property 'name' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/hooks/useFinance.ts(4,15): error TS2305: Module '"../models/finance.model"' has no exported member 'FinanceTransaction'.
+src/hooks/useFinance.ts(13,51): error TS2339: Property 'getAccounts' does not exist on type '{ getInvestments: (page?: number, size?: number, sortBy?: string, sortDirection?: string) => Promise<PageResponse<InvestmentResponse>>; getInvestmentById: (id: string) => Promise<...>; ... 24 more ...; getInvestmentRecommendations: () => Promise<...>; }'.
+src/hooks/useFinance.ts(21,49): error TS2339: Property 'getCategories' does not exist on type '{ getInvestments: (page?: number, size?: number, sortBy?: string, sortDirection?: string) => Promise<PageResponse<InvestmentResponse>>; getInvestmentById: (id: string) => Promise<...>; ... 24 more ...; getInvestmentRecommendations: () => Promise<...>; }'.
+src/hooks/useFinance.ts(28,55): error TS2339: Property 'getTransactions' does not exist on type '{ getInvestments: (page?: number, size?: number, sortBy?: string, sortDirection?: string) => Promise<PageResponse<InvestmentResponse>>; getInvestmentById: (id: string) => Promise<...>; ... 24 more ...; getInvestmentRecommendations: () => Promise<...>; }'.
+src/hooks/useFinance.ts(36,50): error TS2339: Property 'createTransaction' does not exist on type '{ getInvestments: (page?: number, size?: number, sortBy?: string, sortDirection?: string) => Promise<PageResponse<InvestmentResponse>>; getInvestmentById: (id: string) => Promise<...>; ... 24 more ...; getInvestmentRecommendations: () => Promise<...>; }'.
+src/hooks/useFinance.ts(43,30): error TS2345: Argument of type 'PageResponse<InvestmentResponse>' is not assignable to parameter of type 'InvestmentResponse[]'.
+  Type 'PageResponse<InvestmentResponse>' is missing the following properties from type 'InvestmentResponse[]': length, pop, push, concat, and 35 more.

@@ -6,8 +6,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +36,25 @@ public class OpenRouterAiService {
     private String modelConfig;
 
     private List<String> getModels() {
+        List<String> stableModels = List.of(
+            "google/gemini-2.0-flash:free",
+            "google/gemma-3-27b-it:free",
+            "qwen/qwen-2.5-72b-instruct:free",
+            "mistralai/mistral-small-3.1-24b-instruct:free",
+            "deepseek/deepseek-chat:free"
+        );
+
         if (modelConfig == null || modelConfig.isBlank()) {
-            return List.of("google/gemini-2.0-flash-exp:free");
+            return stableModels;
         }
-        return List.of(modelConfig.split(","));
+
+        List<String> userModels = Arrays.stream(modelConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank() && !s.equals("openrouter/auto-free"))
+                .collect(Collectors.toList());
+        
+        if (userModels.isEmpty()) return stableModels;
+        return userModels;
     }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -109,8 +126,10 @@ public class OpenRouterAiService {
                     + "- Sadece başlıkları yaz, açıklama ekleme";
 
             String response = callOpenRouter(prompt);
-            if (response != null) {
-                return parseTitleSuggestions(response, safeCount);
+            if (response != null && !response.startsWith("API_ERROR:")) {
+                return parseQuestions(response, safeCount);
+            } else if (response != null && response.startsWith("API_ERROR:")) {
+                throw new RuntimeException("Yapay zeka servisi reddetti: " + response.substring(10));
             }
 
         } catch (Exception e) {
@@ -133,44 +152,35 @@ public class OpenRouterAiService {
             int safeCount = Math.min(Math.max(count, 3), 10);
 
             StringBuilder promptBuilder = new StringBuilder();
-            promptBuilder.append("Sen profesyonel bir İnsan Kaynakları (İK) uzmanısın. ")
-                    .append("Aşağıdaki pozisyon için mülakatta sorulacak ").append(safeCount)
-                    .append(" adet soru üret.\n\n")
+            promptBuilder.append("Sen profesyonel bir İnsan Kaynakları (İK) uzmanı ve teknik mülakatçısın. ")
+                    .append("Lütfen aşağıdaki iş başvurusuna özel, adayın bu role uygunluğunu test edecek ").append(safeCount)
+                    .append(" adet mantıklı ve pratik mülakat sorusu üret.\n\n")
                     .append("Mülakat Başlığı: ").append(title).append("\n")
                     .append("Pozisyon: ").append(position).append("\n");
 
             if (jobDescription != null && !jobDescription.isBlank()) {
-                promptBuilder.append("İş Tanımı: ").append(jobDescription).append("\n");
+                promptBuilder.append("İş Tanımı ve Gereksinimler: ").append(jobDescription).append("\n\nÖNEMLİ: Soruları kalıplaşmış sorulardan ziyade, doğrudan bu iş tanımındaki görevlere, beklenen yetkinliklere ve olası zorlu senaryolara göre özel olarak hazırla.\n");
             }
 
-            promptBuilder.append("\nKurallar:\n")
-                    .append("- Sorular Türkçe olsun.\n")
-                    .append("- Sorular hem teknik hem de davranışsal (soft skill) yetkinlikleri ölçsün.\n")
-                    .append("- Her soru yeni bir satırda olsun ve numaralandır (1. 2. 3. şeklinde).\n")
-                    .append("- Sadece soruları yaz, giriş cümlesi, açıklama veya sonuç ekleme. Sadece liste.");
+            promptBuilder.append("\n\nLütfen bu mülakat için teknik ve yetkinlik bazlı ").append(safeCount).append(" adet profesyonel soru hazırla.\n")
+                    .append("ÖNEMLİ: SADECE bir JSON array döndür (Örn: [\"Soru 1\", \"Soru 2\"]). Giriş metni, açıklama veya 'İşte sorularınız' gibi ifadeler ASLA ekleme. Sadece saf JSON array döndür.");
 
             String response = callOpenRouter(promptBuilder.toString());
-            if (response != null) {
-                return parseTitleSuggestions(response, safeCount);
+            if (response != null && !response.startsWith("API_ERROR:")) {
+                return parseQuestions(response, safeCount);
+            } else if (response != null && response.startsWith("API_ERROR:")) {
+                throw new RuntimeException("Yapay zeka servisi reddetti: " + response.substring(10));
             }
 
         } catch (Exception e) {
             logger.error("Mülakat soruları üretilirken hata: {}", e.getMessage());
+            throw new RuntimeException("Mülakat soruları üretilemedi: " + e.getMessage());
         }
 
-        return getFallbackQuestions(position);
+        throw new RuntimeException("Geçerli bir API anahtarı veya kota bulunamadı. Lütfen backend çevresel değişkenlerini (OPENROUTER_API_KEY) kontrol edin.");
     }
 
-    private List<String> getFallbackQuestions(String position) {
-        logger.warn("AI soruları üretilemedi, varsayılan (fallback) sorular kullanılıyor. Pozisyon: {}", position);
-        return List.of(
-            "Bize kendinizden ve deneyimlerinizden bahseder misiniz?",
-            "Bu pozisyon için sizi en güçlü aday yapan özellikleriniz nelerdir?",
-            "Projelerinizde karşılaştığınız en büyük teknik zorluk neydi ve nasıl çözdünüz?",
-            "Takım çalışmasında yaşadığınız bir çatışmayı nasıl yönettiniz?",
-            "Önümüzdeki 5 yıl içinde kendinizi kariyer olarak nerede görüyorsunuz?"
-        );
-    }
+
 
     /**
      * Tüm mülakat oturumunu analiz eder, genel skor ve geri bildirim üretir.
@@ -191,11 +201,15 @@ public class OpenRouterAiService {
                         .append("Cevap: ").append(pair.get("answer")).append("\n---\n");
             }
 
-            promptBuilder.append("\nLütfen şu formatta bir değerlendirme yap:\n")
-                    .append("1. Genel Değerlendirme (Olumlu ve geliştirilmesi gereken yönler)\n")
-                    .append("2. Her soru için kısa teknik/davranışsal geri bildirim\n")
-                    .append("3. 100 üzerinden bir başarı skoru (Format: [SKOR: 85])\n\n")
-                    .append("Yanıtın nazik, yapıcı ve tamamen Türkçe olsun.");
+            promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI** değerlendirmeyi yap:\n")
+                    .append("1. **Genel Değerlendirme**: Adayın profilini, iletişim becerilerini ve genel teknik seviyesini en az 2 paragraf halinde, çok detaylı analiz et.\n")
+                    .append("2. **Soru Bazlı Derin Teknik Analiz**: Her bir soru ve cevap çifti için:\n")
+                    .append("   - Cevabın doğruluğunu ve eksiklerini teknik terimlerle açıkla.\n")
+                    .append("   - Bu cevabın 'Senior' seviyesine taşınması için gereken ek bilgileri ve örnek kod yapılarını/mimari yaklaşımları anlat.\n")
+                    .append("   - Her soru için en az 1-2 uzun paragraf geri bildirim ver.\n")
+                    .append("3. **Stratejik İyileştirme Yol Haritası**: Adayın eksik olduğu teknolojiler ve konularda çalışması için detaylı bir öğrenme planı sun.\n")
+                    .append("4. **Başarı Skoru**: 100 üzerinden bir toplam puan (Format: [SKOR: 85])\n\n")
+                    .append("ÖNEMLİ: Yanıtın kesinlikle kısa olmasın, teknik detaylara doygun ve profesyonel olsun. Yanıtın tamamen Türkçe olsun.");
 
             return callOpenRouter(promptBuilder.toString());
 
@@ -218,6 +232,8 @@ public class OpenRouterAiService {
         logger.info("OpenRouter isteği başlatılıyor. Denenecek model sayısı: {}. Anahtar uzunluğu: {}", 
                 modelsToTry.size(), apiKey.length());
         
+        String lastError = null;
+
         for (String currentModel : modelsToTry) {
             String sanitizedModel = currentModel.trim();
             try {
@@ -228,7 +244,7 @@ public class OpenRouterAiService {
                         "model", sanitizedModel,
                         "messages", List.of(
                                 Map.of("role", "user", "content", userMessage)),
-                        "max_tokens", 1000,
+                        "max_tokens", 4000,
                         "temperature", 0.7);
 
                 String jsonBody = objectMapper.writeValueAsString(requestBody);
@@ -239,7 +255,7 @@ public class OpenRouterAiService {
                         .header("Authorization", "Bearer " + apiKey)
                         .header("HTTP-Referer", "https://ai-asistan.app")
                         .header("X-Title", "AI Asistan")
-                        .timeout(Duration.ofSeconds(20))
+                        .timeout(Duration.ofSeconds(120))
                         .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                         .build();
 
@@ -261,7 +277,14 @@ public class OpenRouterAiService {
                     String errorBody = response.body();
                     logger.warn("OpenRouter API {} hatası (model: {}). Yanıt: {}", 
                             response.statusCode(), sanitizedModel, errorBody);
-                    // 429 (Too Many Requests) durumunda hızlıca bir sonrakine geç
+                    
+                    if (response.statusCode() == 401 || response.statusCode() == 403 || response.statusCode() == 402) {
+                        return "API_ERROR: HTTP " + response.statusCode() + " - Yetersiz bakiye veya geçersiz API anahtarı.";
+                    } else if (response.statusCode() == 404 || response.statusCode() == 429 || response.statusCode() == 400) {
+                        lastError = "HTTP " + response.statusCode() + " (" + sanitizedModel + ") -> " + errorBody;
+                    } else {
+                        return "API_ERROR: HTTP " + response.statusCode() + " - Beklenmeyen hata: " + errorBody;
+                    }
                 }
 
             } catch (InterruptedException e) {
@@ -270,43 +293,72 @@ public class OpenRouterAiService {
                 break;
             } catch (Exception e) {
                 logger.error("OpenRouter API hatası (model: {}): {}", sanitizedModel, e.getMessage());
+                lastError = e.getMessage();
             }
             
             logger.warn("Model {} başarısız oldu, bir sonraki deneniyor...", sanitizedModel);
         }
 
-        return null;
+        return "API_ERROR: Tüm modeller (404/429/400) reddetti. Son denenen modelin hatası: " + (lastError != null ? lastError : "Bilinmiyor");
     }
 
     /**
      * AI yanıtından başlık listesi çıkarır.
      */
-    private List<String> parseTitleSuggestions(String response, int maxCount) {
-        List<String> titles = new ArrayList<>();
-        String[] lines = response.split("\n");
+    private List<String> parseQuestions(String response, int maxCount) {
+        List<String> questions = new ArrayList<>();
+        String content = response.trim();
 
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-
-            // Numaralı satırları al: "1. Başlık", "1) Başlık", "- Başlık"
-            String cleaned = trimmed.replaceFirst("^\\d+[.)\\-]\\s*", "").trim();
-            // Tırnak işaretlerini temizle
-            cleaned = cleaned.replaceAll("^\"|\"$", "").trim();
-            cleaned = cleaned.replaceAll("^«|»$", "").trim();
-
-            if (!cleaned.isEmpty() && cleaned.length() >= 5 && cleaned.length() <= 200) {
-                titles.add(cleaned);
-            }
-
-            if (titles.size() >= maxCount) {
-                break;
+        // 1. JSON Array tespiti (Metin içinden ayıkla)
+        int startIndex = content.indexOf("[");
+        int endIndex = content.lastIndexOf("]");
+        
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            String jsonPart = content.substring(startIndex, endIndex + 1);
+            try {
+                JsonNode node = objectMapper.readTree(jsonPart);
+                if (node.isArray()) {
+                    for (JsonNode item : node) {
+                        String q = item.asText().trim();
+                        // Giriş cümlelerini filtrele (Örn: "İşte sorularınız:", "Mülakat Soruları")
+                        if (!q.isEmpty() && !q.toLowerCase().contains("hazırladım") && !q.endsWith(":")) {
+                            questions.add(q);
+                        }
+                    }
+                    if (!questions.isEmpty()) return questions;
+                }
+            } catch (Exception e) {
+                logger.warn("JSON ayrıştırma hatası, fallback moduna geçiliyor: {}", e.getMessage());
             }
         }
 
-        return titles.isEmpty() ? getFallbackQuestions("genel") : titles;
+        String[] lines = content.split("\n");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+
+            // Giriş cümlelerini (header/intro) filtrele
+            if (trimmed.endsWith(":") || trimmed.toLowerCase().contains("hazırladım") || 
+                trimmed.toLowerCase().contains("sorular şunlardır") || trimmed.length() < 10) {
+                continue;
+            }
+
+            // Numarayı temizle: "1. Soru", "1) Soru", "- Soru"
+            String cleaned = trimmed.replaceFirst("^\\d+[.)\\\\-]\\s*", "").trim();
+            // Tırnakları temizle
+            cleaned = cleaned.replaceAll("^[\"«'']|[\"»'']$", "").trim();
+
+            if (!cleaned.isEmpty() && cleaned.length() >= 5) {
+                questions.add(cleaned);
+            }
+            if (questions.size() >= maxCount) break;
+        }
+
+        if (questions.isEmpty()) {
+            throw new RuntimeException("Yapay zeka yanıtı anlaşılamadı veya boş. Yanıt: " + 
+                (content.length() > 50 ? content.substring(0, 50) + "..." : content));
+        }
+        return questions;
     }
 
     /**
