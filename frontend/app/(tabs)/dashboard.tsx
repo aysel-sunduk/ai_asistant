@@ -230,16 +230,16 @@ export default function DashboardScreen() {
                         <View style={styles.financeStatsRow}>
                             <View style={styles.financeStat}>
                                 <Text style={styles.financeLabel}>Gelir</Text>
-                                <Text style={styles.financeIncome}>?{Number(financeReport.totalIncome || 0).toFixed(2)}</Text>
+                                <Text style={styles.financeIncome}>₺{Number(financeReport.totalIncome || 0).toFixed(2)}</Text>
                             </View>
                             <View style={styles.financeStat}>
                                 <Text style={styles.financeLabel}>Gider</Text>
-                                <Text style={styles.financeExpense}>?{Number(financeReport.totalExpense || 0).toFixed(2)}</Text>
+                                <Text style={styles.financeExpense}>₺{Number(financeReport.totalExpense || 0).toFixed(2)}</Text>
                             </View>
                             <View style={styles.financeStat}>
                                 <Text style={styles.financeLabel}>Net</Text>
                                 <Text style={[styles.financeNet, Number(financeReport.balance || 0) >= 0 ? styles.financeIncome : styles.financeExpense]}>
-                                    ?{Number(financeReport.balance || 0).toFixed(2)}
+                                    ₺{Number(financeReport.balance || 0).toFixed(2)}
                                 </Text>
                             </View>
                         </View>

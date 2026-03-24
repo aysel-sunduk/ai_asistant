@@ -1,5 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 // @ts-ignore
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { aiApi } from '../../src/api/ai.api';
 import apiClient from '../../src/api/client';
@@ -96,6 +98,7 @@ function inRange(date: Date, start: Date, end: Date): boolean {
 }
 
 function HealthTabScreen() {
+    const router = useRouter();
     const { logs, isLoading, fetchLogs, fetchNutrition, createLog, deleteLog } = useHealth();
     const didInitRef = useRef(false);
 
@@ -631,6 +634,27 @@ function HealthTabScreen() {
                             </View>
                         </View>
 
+                        <TouchableOpacity 
+                            style={styles.dietPlanLinkCard}
+                            onPress={() => router.push('/(health)/diet-plan')}
+                        >
+                            <LinearGradient 
+                                colors={['#4CAF50', '#2E7D32']} 
+                                start={{x: 0, y: 0}} 
+                                end={{x: 1, y: 0}}
+                                style={styles.dietPlanGradient}
+                            >
+                                <View style={styles.dietPlanIconBg}>
+                                    <Ionicons name="restaurant" size={24} color="#4CAF50" />
+                                </View>
+                                <View style={styles.dietPlanTextContainer}>
+                                    <Text style={styles.dietPlanTitle}>Kişiselleştirilmiş Diyet Planı</Text>
+                                    <Text style={styles.dietPlanSubtitle}>Hedefine uygun günlük öğünlerini gör</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={24} color="#fff" />
+                            </LinearGradient>
+                        </TouchableOpacity>
+
                         <Text style={styles.sectionTitle}>Yeni Öğün Ekle</Text>
                         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                             <TouchableOpacity style={[styles.aiPhotoBtn, { flex: 1 }]} onPress={() => handlePickImage(true)}>
@@ -860,6 +884,43 @@ const styles = StyleSheet.create({
     aiPhotoBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
     addManualBtn: { backgroundColor: '#F8F9FA', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
     addManualBtnText: { color: '#64748B', fontSize: 14, fontWeight: '700' },
+    dietPlanLinkCard: {
+        marginBottom: 20,
+        borderRadius: 20,
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+    },
+    dietPlanGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+    },
+    dietPlanIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    dietPlanTextContainer: {
+        flex: 1,
+    },
+    dietPlanTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    dietPlanSubtitle: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        marginTop: 2,
+    },
 });
 
 export default HealthTabScreen;

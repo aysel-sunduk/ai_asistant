@@ -10,8 +10,22 @@ const resolveApiBaseUrl = (): string => {
     const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
     if (envUrl) return envUrl.replace(/\/$/, '');
 
-    // 2. Force default (Don't try to guess hostUri as it picks up the wrong local IP)
-    return DEFAULT_API_URL;
+    // 2. Local fallback
+    // Android emulator: 10.0.2.2
+    // iOS/Web: localhost (or LAN IP if using physical device)
+    // Note: If using physical device, change 'localhost' to your computer's IP
+    const host = '10.166.144.153'; // Your current LAN IP
+    
+    try {
+        const { Platform } = require('react-native');
+        if (Platform.OS === 'android') {
+            return 'http://10.0.2.2:8080/api';
+        }
+    } catch (e) {
+        // Fallback for non-react-native environments if needed
+    }
+    
+    return `http://${host}:8080/api`;
 };
 
 export const API_BASE_URL = resolveApiBaseUrl();

@@ -11,6 +11,7 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
+from app.utils.translator import translate_food_name
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,7 @@ class DietRecommender:
                     'slot': slot,
                     'slot_label': SLOT_LABELS_TR.get(slot, slot),
                     'recipe_id': int(recipe['id']),
-                    'name': recipe['name'],
+                    'name': translate_food_name(recipe['name']),
                     'calories': round(recipe['calories'], 1),
                     'protein': round(recipe['protein'], 1),
                     'fat': round(recipe['fat'], 1),
@@ -231,7 +232,7 @@ class DietRecommender:
                 'slot': slot,
                 'slot_label': SLOT_LABELS_TR.get(slot, slot),
                 'recipe_id': int(recipe['id']),
-                'name': recipe['name'],
+                'name': translate_food_name(recipe['name']),
                 'calories': round(recipe['calories'], 1),
                 'protein': round(recipe['protein'], 1),
                 'fat': round(recipe['fat'], 1),

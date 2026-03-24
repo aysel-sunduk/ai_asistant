@@ -1,5 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { googleCalendarService } from '../../services/google-calendar.service';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -85,6 +86,7 @@ export default function RemindersScreen() {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
     const [toastMessage, setToastMessage] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const showToast = (type: 'success' | 'error' | 'info', message: string) => {
         setToastType(type);
@@ -217,6 +219,19 @@ export default function RemindersScreen() {
         }
     };
 
+    const handleResync = async () => {
+        setIsSyncing(true);
+        try {
+            await googleCalendarService.resync();
+            showToast('success', 'Google Takvim ile tüm veriler senkronize edildi.');
+            await loadReminders();
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Senkronizasyon başarısız.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const removeReminder = (id: string) => {
         Alert.alert('Hatirlaticiyi sil', 'Bu kayit kalici olarak silinsin mi?', [
             { text: 'Iptal', style: 'cancel' },
@@ -245,9 +260,18 @@ export default function RemindersScreen() {
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Hatirlaticilar</Text>
-                    <TouchableOpacity onPress={openCreateModal} style={styles.backBtn}>
-                        <Ionicons name="add" size={24} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity onPress={handleResync} style={styles.backBtn} disabled={isSyncing}>
+                            {isSyncing ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Ionicons name="sync" size={20} color="#fff" />
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={openCreateModal} style={styles.backBtn}>
+                            <Ionicons name="add" size={24} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={styles.summaryRow}>
                     <Ionicons name="alarm" size={28} color="#fff" />

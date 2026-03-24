@@ -1,7 +1,7 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -21,6 +21,8 @@ import { socialApi } from '../../src/api/social.api';
 import { userApi } from '../../src/api/user.api';
 import { userService } from '../../services/user.service';
 import { useAuthStore } from '../../src/store/auth.store';
+import { googleCalendarService } from '../../services/google-calendar.service';
+import * as Linking from 'expo-linking';
 
 const getImageUrl = (path?: string) => {
     if (!path) return null;
@@ -55,21 +57,57 @@ export default function ProfileScreen() {
 
     const [stats, setStats] = useState({ followers: 0, following: 0, posts: 0 });
     const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+    const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const { code } = useLocalSearchParams<{ code?: string }>();
+
+    const fetchStatusAndStats = useCallback(async () => {
+        try {
+            const res = await userApi.getMe();
+            const profileRes = await userService.getProfile();
+            setUser(res.data.data);
+            if (setProfile) setProfile(profileRes);
+
+            const [socialRes, blogRes, calendarRes] = await Promise.all([
+                socialApi.getStats(),
+                blogApi.getUserVisiblePosts(res.data.data.id, 0, 1),
+                googleCalendarService.getStatus().catch(() => ({ connected: false }))
+            ]);
+            setStats({
+                followers: socialRes.data?.data?.followersCount || 0,
+                following: socialRes.data?.data?.followingCount || 0,
+                posts: blogRes.data?.data?.totalElements || 0,
+            });
+            setCalendarStatus(calendarRes);
+        } catch (err) {
+            console.log('[Profile] Failed to fetch data:', err);
+        }
+    }, [setUser, setProfile]);
 
     useEffect(() => {
-        const fetchMe = async () => {
-            try {
-                const res = await userApi.getMe();
-                const profileRes = await userService.getProfile();
-                setUser(res.data.data);
-                // Also update profile state if possible, though authStore might sync it.
-                if (setProfile) setProfile(profileRes);
-            } catch (err) {
-                console.log('[Profile] Failed to fetch user details:', err);
-            }
-        };
-        fetchMe();
-    }, []);
+        fetchStatusAndStats();
+    }, [fetchStatusAndStats]);
+
+    // Handle OAuth Callback
+    useEffect(() => {
+        if (code && !isConnecting) {
+            const connectCalendar = async () => {
+                setIsConnecting(true);
+                try {
+                    const redirectUri = Linking.createURL('/profile');
+                    await googleCalendarService.connect(code, redirectUri);
+                    Alert.alert('Başarılı', 'Google Takvim başarıyla bağlandı!');
+                    // Clear the code from URL if possible, or just refresh status
+                    await fetchStatusAndStats();
+                } catch (err) {
+                    Alert.alert('Hata', 'Bağlantı kurulamadı.');
+                } finally {
+                    setIsConnecting(false);
+                }
+            };
+            connectCalendar();
+        }
+    }, [code]);
 
     const handlePickImage = async () => {
         try {
@@ -125,21 +163,54 @@ export default function ProfileScreen() {
         const fetchStats = async () => {
             if (!user?.id) return;
             try {
-                const [socialRes, blogRes] = await Promise.all([
+                const [socialRes, blogRes, calendarRes] = await Promise.all([
                     socialApi.getStats(),
-                    blogApi.getUserVisiblePosts(user.id, 0, 1)
+                    blogApi.getUserVisiblePosts(user.id, 0, 1),
+                    googleCalendarService.getStatus().catch(() => ({ connected: false }))
                 ]);
                 setStats({
                     followers: socialRes.data?.data?.followersCount || 0,
                     following: socialRes.data?.data?.followingCount || 0,
                     posts: blogRes.data?.data?.totalElements || 0,
                 });
+                setCalendarStatus(calendarRes);
             } catch (err) {
-                console.log('[Profile] Failed to fetch stats:', err);
+                console.log('[Profile] Failed to fetch stats/calendar:', err);
             }
         };
         fetchStats();
     }, [user?.id]);
+
+    const handleGoogleCalendar = async () => {
+        if (calendarStatus?.connected) {
+            Alert.alert('Bağlantıyı Kes', 'Google Takvim bağlantısını kesmek istediğinize emin misiniz?', [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Bağlantıyı Kes',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await googleCalendarService.disconnect();
+                            setCalendarStatus({ connected: false });
+                            Alert.alert('Başarılı', 'Bağlantı kesildi.');
+                        } catch (err) {
+                            Alert.alert('Hata', 'Bağlantı kesilemedi.');
+                        }
+                    }
+                }
+            ]);
+        } else {
+            try {
+                // In a real app, redirectUri should be your deep link scheme or a specific web route
+                const redirectUri = Linking.createURL('/profile');
+                const { authUrl } = await googleCalendarService.getAuthUrl(redirectUri);
+                // Redirect user to browser for OAuth
+                await Linking.openURL(authUrl);
+            } catch (err) {
+                Alert.alert('Hata', 'Bağlantı penceresi açılamadı.');
+            }
+        }
+    };
 
     const displayName = profile?.fullName
         ? profile.fullName
@@ -194,6 +265,13 @@ export default function ProfileScreen() {
     ];
 
     const appItems: MenuItem[] = [
+        {
+            icon: 'logo-google',
+            label: 'Google Takvim',
+            subtitle: calendarStatus?.connected ? `Bağlı: ${calendarStatus.email || 'Aktif'}` : 'Henüz bağlanmadı',
+            color: '#4285F4',
+            onPress: handleGoogleCalendar,
+        },
         {
             icon: 'color-palette-outline',
             label: 'Görünüm',

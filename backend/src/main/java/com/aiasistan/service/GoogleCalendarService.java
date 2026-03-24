@@ -274,6 +274,16 @@ public class GoogleCalendarService {
         payload.put("description", "Kaynak modul: " + safe(reminder.getSourceModule()));
         payload.put("start", Map.of("dateTime", reminder.getRemindAt().toString()));
         payload.put("end", Map.of("dateTime", reminder.getRemindAt().plusMinutes(15).toString()));
+        
+        // Add default reminders
+        payload.put("reminders", Map.of(
+            "useDefault", false,
+            "overrides", List.of(
+                Map.of("method", "popup", "minutes", 10),
+                Map.of("method", "email", "minutes", 1440)
+            )
+        ));
+
         payload.put("extendedProperties", Map.of("private", Map.of(
                 "source", "reminder",
                 "sourceId", reminder.getId().toString())));
@@ -299,6 +309,15 @@ public class GoogleCalendarService {
         payload.put("location", safe(event.getLocation()));
         payload.put("start", Map.of("dateTime", event.getStartTime().toString()));
         payload.put("end", Map.of("dateTime", event.getEndTime().toString()));
+        
+        // Add default reminders
+        payload.put("reminders", Map.of(
+            "useDefault", false,
+            "overrides", List.of(
+                Map.of("method", "popup", "minutes", 15)
+            )
+        ));
+
         payload.put("extendedProperties", Map.of("private", Map.of(
                 "source", "work_event",
                 "sourceId", event.getId().toString())));
@@ -324,6 +343,16 @@ public class GoogleCalendarService {
         payload.put("start", Map.of("date", birthday.getBirthDate().toString()));
         payload.put("end", Map.of("date", birthday.getBirthDate().plusDays(1).toString()));
         payload.put("recurrence", List.of("RRULE:FREQ=YEARLY"));
+        
+        // Add default reminders for all-day events (birthdays)
+        payload.put("reminders", Map.of(
+            "useDefault", false,
+            "overrides", List.of(
+                Map.of("method", "popup", "minutes", 24 * 60), // 1 day before
+                Map.of("method", "email", "minutes", 24 * 60)
+            )
+        ));
+
         payload.put("extendedProperties", Map.of("private", Map.of(
                 "source", "family_birthday",
                 "sourceId", birthday.getId().toString())));

@@ -18,4 +18,8 @@ export const healthApi = {
         apiClient.get<ApiResponse<{ totalCalories: number; totalProtein: number; totalCarbs: number; totalFat: number }>>('/v1/health/logs/daily-nutrition', {
             params: { date }
         }),
+    getDietRecommendation: (data: { calorieTarget?: number; dietGoal?: string; allergies?: string[]; preference?: string; excludedFoods?: string[] }) =>
+        apiClient.post<ApiResponse<any>>('/v1/health/diet/recommend', data),
+    mealSwap: (data: { slot: string; calorieTarget?: number; dietGoal?: string; excludedRecipeIds?: number[]; preference?: string }) =>
+        apiClient.post<ApiResponse<any>>('/v1/health/diet/meal-swap', data),
 };

@@ -74,6 +74,42 @@ export interface HealthGoals {
     userId: string;
     waterMlTarget: number;
     stepsTarget: number;
+    dietGoal?: 'LOSE_WEIGHT' | 'MAINTAIN' | 'GAIN_WEIGHT';
+    calorieTarget?: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface DietMeal {
+    slot: 'BREAKFAST' | 'SNACK_AM' | 'LUNCH' | 'SNACK_PM' | 'DINNER';
+    slot_label: string;
+    recipe_id: number | null;
+    name: string;
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+    prep_minutes: number;
+    similarity_score: number;
+}
+
+export interface DietPlan {
+    daily_plan: {
+        calorie_target: number;
+        total_calories: number;
+        total_protein: number;
+        total_carbs: number;
+        total_fat: number;
+        diet_goal: string;
+        meals: DietMeal[];
+    };
+    macro_summary: {
+        protein_pct: number;
+        carbs_pct: number;
+        fat_pct: number;
+    };
+    metadata: {
+        total_recipes_in_db: number;
+        preference: string;
+    };
 }
