@@ -1,7 +1,7 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
@@ -22,6 +22,7 @@ import { useColorScheme } from '../../hooks/use-color-scheme';
 const { width } = Dimensions.get('window');
 
 export default function DietPlanScreen() {
+    const router = useRouter();
     const mode = useThemeStore((s) => s.mode);
     const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
     const isDark = resolveTheme(mode, systemScheme) === 'dark';
@@ -125,6 +126,9 @@ export default function DietPlanScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadDietPlan(true); }} />}
         >
             <View style={[styles.header, { backgroundColor: '#4CAF50' }]}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={26} color="#ffffff" />
+                </TouchableOpacity>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerSubtitle}>Kişisel Diyet Planın</Text>
                     <Text style={[styles.headerTitle, isDark && styles.textDark]}>
@@ -213,7 +217,8 @@ const styles = StyleSheet.create({
     errorText: { marginTop: 12, color: '#666', fontSize: 16, textAlign: 'center', marginBottom: 20 },
     retryBtn: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#4CAF50', borderRadius: 25 },
     retryText: { color: '#fff', fontWeight: 'bold' },
-    header: { paddingVertical: 40, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    header: { paddingVertical: 40, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, paddingTop: 60 },
+    backButton: { position: 'absolute', top: 50, left: 16, zIndex: 10, padding: 8 },
     headerContent: { alignItems: 'center' },
     headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 16, marginBottom: 4 },
     headerTitle: { color: '#fff', fontSize: 28, fontWeight: 'bold', marginBottom: 16 },
