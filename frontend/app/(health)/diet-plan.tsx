@@ -1,6 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -124,7 +124,7 @@ export default function DietPlanScreen() {
             style={[styles.container, isDark && styles.containerDark]}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadDietPlan(true); }} />}
         >
-            <LinearGradient colors={['#4CAF50', '#2E7D32']} style={styles.header}>
+            <View style={[styles.header, { backgroundColor: '#4CAF50' }]}>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerSubtitle}>Kişisel Diyet Planın</Text>
                     <Text style={[styles.headerTitle, isDark && styles.textDark]}>
@@ -136,7 +136,7 @@ export default function DietPlanScreen() {
                         <Text style={styles.calorieText}>{daily_plan.calorie_target} kcal Hedef</Text>
                     </View>
                 </View>
-            </LinearGradient>
+            </View>
 
             <View style={styles.content}>
                 {/* Makro Özeti */}
@@ -193,10 +193,10 @@ export default function DietPlanScreen() {
                 ))}
 
                 <TouchableOpacity style={styles.regenerateBtn} onPress={() => loadDietPlan()}>
-                    <LinearGradient colors={['#4CAF50', '#388E3C']} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.regenGradient}>
+                    <View style={[styles.regenGradient, { backgroundColor: '#4CAF50' }]}>
                         <Ionicons name="shuffle" size={24} color="#fff" />
                         <Text style={styles.regenText}>Tüm Günü Yeniden Planla</Text>
-                    </LinearGradient>
+                    </View>
                 </TouchableOpacity>
 
                 <View style={{ height: 40 }} />

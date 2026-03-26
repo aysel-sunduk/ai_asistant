@@ -1,6 +1,6 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 // @ts-ignore
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -643,12 +643,7 @@ function HealthTabScreen() {
                             style={styles.dietPlanLinkCard}
                             onPress={() => router.push('/(health)/diet-plan')}
                         >
-                            <LinearGradient 
-                                colors={['#4CAF50', '#2E7D32']} 
-                                start={{x: 0, y: 0}} 
-                                end={{x: 1, y: 0}}
-                                style={styles.dietPlanGradient}
-                            >
+                            <View style={[styles.dietPlanGradient, { backgroundColor: '#4CAF50' }]}>
                                 <View style={styles.dietPlanIconBg}>
                                     <Ionicons name="restaurant" size={24} color="#4CAF50" />
                                 </View>
@@ -657,7 +652,7 @@ function HealthTabScreen() {
                                     <Text style={styles.dietPlanSubtitle}>Hedefine uygun günlük öğünlerini gör</Text>
                                 </View>
                                 <Ionicons name="chevron-forward" size={24} color="#fff" />
-                            </LinearGradient>
+                            </View>
                         </TouchableOpacity>
 
                         <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Yeni Öğün Ekle</Text>
