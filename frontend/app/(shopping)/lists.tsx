@@ -1,7 +1,7 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -50,9 +50,16 @@ const isInCurrentPeriod = (dateStr: string, period: ShoppingRecurrenceType | 'AL
 
 export default function ListsScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ addItem?: string }>();
     const { lists, isLoading, fetchLists, createList, deleteList, updateListArchive } = useShopping();
 
     const [newListName, setNewListName] = useState('');
+
+    useEffect(() => {
+        if (params.addItem) {
+            setNewListName(params.addItem);
+        }
+    }, [params.addItem]);
     const [dateFilter, setDateFilter] = useState<ShoppingRecurrenceType | 'ALL' | 'ARCHIVED'>('WEEKLY');
     const [overviewTab, setOverviewTab] = useState<'PENDING' | 'DONE'>('PENDING');
     const [allPendingItems, setAllPendingItems] = useState<ShoppingItem[]>([]);

@@ -101,6 +101,17 @@ public class PushNotificationService {
     }
 
     @Transactional
+    public void sendShoppingReminder(UUID userId, String itemName) {
+        sendToUser(
+                userId,
+                "Alisveris Hatirlaticisi",
+                itemName + " bitmis olabilir, listenize eklemek ister misiniz?",
+                Map.of(
+                        "type", "shopping_reminder",
+                        "itemName", itemName));
+    }
+
+    @Transactional
     protected void sendToUser(UUID userId, String title, String body, Map<String, Object> data) {
         if (!enabled || userId == null) {
             return;

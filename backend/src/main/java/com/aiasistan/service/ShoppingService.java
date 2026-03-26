@@ -276,6 +276,38 @@ public class ShoppingService {
         return normalized;
     }
 
+    @Transactional
+    public void setupTestItems(String userEmail) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        
+        // Test Listesi
+        ShoppingList list = new ShoppingList();
+        list.setUserId(userId);
+        list.setName("Test Alisveris");
+        list.setRecurrenceType("WEEKLY");
+        ShoppingList savedList = shoppingListRepository.save(list);
+        
+        // 14 gün önce alınan Yumurta
+        ShoppingItem item1 = new ShoppingItem();
+        item1.setList(savedList);
+        item1.setName("Yumurta");
+        item1.setProductKey("yumurta");
+        item1.setIsChecked(true);
+        item1.setCheckedAt(OffsetDateTime.now().minusDays(14));
+        item1.setQuantity(1);
+        shoppingItemRepository.save(item1);
+        
+        // 7 gün önce alınan Yumurta (7 gün aralık)
+        ShoppingItem item2 = new ShoppingItem();
+        item2.setList(savedList);
+        item2.setName("Yumurta");
+        item2.setProductKey("yumurta");
+        item2.setIsChecked(true);
+        item2.setCheckedAt(OffsetDateTime.now().minusDays(7));
+        item2.setQuantity(1);
+        shoppingItemRepository.save(item2);
+    }
+
     private String normalizeProductKey(String name) {
         return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }

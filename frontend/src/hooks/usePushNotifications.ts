@@ -4,6 +4,7 @@
 // Bu hook Expo Go'da sessizce atlar, uygulama cokmez.
 import { useState, useEffect, useRef } from 'react';
 import { Platform, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { userApi } from '../api/user.api';
 
 // Lazy import: native modul yoksa null doner
@@ -46,6 +47,7 @@ if (Notifications) {
 }
 
 export function usePushNotifications() {
+    const router = useRouter();
     const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
     const [notification, setNotification] = useState<any>(undefined);
     const notificationListener = useRef<any>(null);
@@ -87,7 +89,15 @@ export function usePushNotifications() {
 
             responseListener.current = Notifications.addNotificationResponseReceivedListener(
                 (response) => {
-                    console.log('[PushNotifications] Bildirime tiklandi:', response.notification.request.content.title);
+                    const data = response.notification.request.content.data;
+                    console.log('[PushNotifications] Bildirime tiklandi:', response.notification.request.content.title, data);
+                    
+                    if (data?.type === 'shopping_reminder' && data?.itemName) {
+                        router.push({ 
+                            pathname: '/(shopping)/lists', 
+                            params: { addItem: String(data.itemName) } 
+                        });
+                    }
                 },
             );
         } catch {

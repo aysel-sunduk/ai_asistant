@@ -30,6 +30,7 @@ import com.aiasistan.dto.ShoppingItemDto;
 import com.aiasistan.dto.ShoppingListDto;
 import com.aiasistan.dto.ShoppingRecommendationDto;
 import com.aiasistan.service.ShoppingRecommendationService;
+import com.aiasistan.service.ShoppingReminderScheduler;
 import com.aiasistan.service.ShoppingService;
 
 import jakarta.validation.Valid;
@@ -46,13 +47,16 @@ public class ShoppingController {
 
   private final ShoppingService shoppingService;
   private final ShoppingRecommendationService shoppingRecommendationService;
+  private final ShoppingReminderScheduler shoppingReminderScheduler;
 
   public ShoppingController(
     ShoppingService shoppingService,
-    ShoppingRecommendationService shoppingRecommendationService
+    ShoppingRecommendationService shoppingRecommendationService,
+    ShoppingReminderScheduler shoppingReminderScheduler
   ) {
     this.shoppingService = shoppingService;
     this.shoppingRecommendationService = shoppingRecommendationService;
+    this.shoppingReminderScheduler = shoppingReminderScheduler;
   }
 
   @PostMapping("/lists")
@@ -266,5 +270,19 @@ public class ShoppingController {
   ) {
     var response = shoppingRecommendationService.getRecommendationMetrics(authentication.getName(), topK, maxUsers);
     return ResponseEntity.ok(ApiResponse.ok(response));
+  }
+
+  @PostMapping("/test/setup")
+  @Operation(summary = "Test verisi olustur (Yumurta tahmini icin)")
+  public ResponseEntity<ApiResponse<Void>> setupTest(Authentication authentication) {
+    shoppingService.setupTestItems(authentication.getName());
+    return ResponseEntity.ok(ApiResponse.ok(null, "Test verileri olusturuldu (7 gun aralikli 2 yumurta alimi)"));
+  }
+
+  @PostMapping("/test/run-reminders")
+  @Operation(summary = "Tahmin sistemini manuel tetikle")
+  public ResponseEntity<ApiResponse<Void>> runTestReminders() {
+    shoppingReminderScheduler.runShoppingReminders();
+    return ResponseEntity.ok(ApiResponse.ok(null, "Tahmin sistemi calistirildi"));
   }
 }
