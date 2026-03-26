@@ -20,6 +20,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { remindersService } from '../../services/reminders.service';
 import type { Reminder, ReminderRecurrence, ReminderStatus } from '../../src/models/reminder.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#60A5FA';
 const FILTERS = ['all', 'scheduled', 'sent', 'skipped', 'canceled'] as const;
@@ -73,6 +75,9 @@ const categoryTone = (sourceModule: Reminder['sourceModule']) => {
 
 export default function RemindersScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [loading, setLoading] = useState(true);
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [filter, setFilter] = useState<FilterValue>('all');
@@ -252,7 +257,7 @@ export default function RemindersScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
@@ -282,7 +287,7 @@ export default function RemindersScreen() {
                 </View>
             </View>
 
-            <View style={styles.filterWrap}>
+            <View style={[styles.filterWrap, isDark && styles.filterWrapDark]}>
                 {FILTERS.map((item) => (
                     <TouchableOpacity
                         key={item}
@@ -302,19 +307,19 @@ export default function RemindersScreen() {
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : filteredReminders.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyTitle}>Kayit yok</Text>
-                        <Text style={styles.emptySub}>Yeni bir hatirlatici ekleyebilirsin.</Text>
+                    <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Kayit yok</Text>
+                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Yeni bir hatirlatici ekleyebilirsin.</Text>
                     </View>
                 ) : (
                     filteredReminders.map((r) => (
-                        <View key={r.id} style={styles.card}>
+                        <View key={r.id} style={[styles.card, isDark && styles.cardDark]}>
                             <View style={[styles.categoryBar, { backgroundColor: categoryTone(r.sourceModule).bar }]} />
                             <View style={styles.cardHeader}>
-                                <Text style={styles.cardTitle}>{r.title}</Text>
+                                <Text style={[styles.cardTitle, isDark && styles.textDark]}>{r.title}</Text>
                                 <StatusBadge status={r.status} />
                             </View>
-                            <Text style={styles.cardTime}>{formatDateTime(r.remindAt)}</Text>
+                            <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(r.remindAt)}</Text>
                             <View style={styles.metaRow}>
                                 <MiniTag text={categoryTone(r.sourceModule).label} />
                                 <MiniTag text={r.recurrence === 'none' ? 'Tekrar yok' : REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />
@@ -363,13 +368,13 @@ export default function RemindersScreen() {
                 }}
             >
                 <View style={styles.modalBackdrop}>
-                    <View style={styles.modalSheet}>
-                        <Text style={styles.modalTitle}>{editingReminder ? 'Hatirlatici Duzenle' : 'Yeni Hatirlatici'}</Text>
+                    <View style={[styles.modalSheet, isDark && styles.modalSheetDark]}>
+                        <Text style={[styles.modalTitle, isDark && styles.textDark]}>{editingReminder ? 'Hatirlatici Duzenle' : 'Yeni Hatirlatici'}</Text>
                         <TextInput
                             value={title}
                             onChangeText={setTitle}
                             placeholder="Baslik"
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                         />
 
                         <View style={styles.pickRow}>
@@ -656,4 +661,14 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     modalSubmitText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    filterWrapDark: { backgroundColor: '#0B1220' },
+    emptyBoxDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    modalSheetDark: { backgroundColor: '#111827' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

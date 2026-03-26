@@ -6,6 +6,8 @@ import { Platform, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, Vi
 import { formatTime, getBestResult, getGameResults, type GameResult } from '../../src/utils/game.utils';
 import type { FrontendGameType } from '../../src/models/game.model';
 import { gamesService } from '../../services/games.service';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#A78BFA';
 
@@ -28,6 +30,10 @@ const GAMES: GameInfo[] = [
 ];
 
 export default function GameListScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [bestResults, setBestResults] = useState<Record<string, GameResult | null>>({});
     const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
@@ -77,14 +83,14 @@ export default function GameListScreen() {
     const totalPlays = Object.values(playCounts).reduce((sum, c) => sum + c, 0);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>🎮 Oyunlar</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>🎮 Oyunlar</Text>
                     <TouchableOpacity
                         onPress={() => router.push('/(games)/leaderboard' as any)}
                         style={styles.backBtn}
@@ -148,7 +154,7 @@ export default function GameListScreen() {
                 {GAMES.map((g) => (
                     <TouchableOpacity
                         key={g.id}
-                        style={styles.card}
+                        style={[styles.card, isDark && styles.cardDark]}
                         activeOpacity={0.7}
                         onPress={() => router.push(g.route as any)}
                     >
@@ -156,7 +162,7 @@ export default function GameListScreen() {
                             <Ionicons name={g.icon} size={24} color={COLOR} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>{g.title}</Text>
+                            <Text style={[styles.cardTitle, isDark && styles.textDark]}>{g.title}</Text>
                             <Text style={styles.cardSub}>{g.desc}</Text>
                         </View>
                         <View style={styles.rightCol}>
@@ -259,4 +265,11 @@ const styles = StyleSheet.create({
     },
     motivationMsg: { fontSize: 14, fontWeight: '700', color: '#4C1D95', lineHeight: 20 },
     motivationMeta: { marginTop: 6, fontSize: 11, color: '#7C3AED', fontWeight: '600' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

@@ -17,6 +17,8 @@ import {
 import { financeService } from '../../services/finance.service';
 import type { CurrencyHoldingRequest, InvestmentRequest } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -49,6 +51,10 @@ const CURRENCY_TYPES = [
 ];
 
 export default function AddTransactionScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [assetType, setAssetType] = useState('STOCK');
     const [symbol, setSymbol] = useState('');
@@ -132,7 +138,7 @@ export default function AddTransactionScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -143,13 +149,13 @@ export default function AddTransactionScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#1A1A2E" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{isCurrency ? 'Döviz Ekle' : isCommodity ? 'Emtia Ekle' : isOther ? 'Varlık Ekle' : 'Yatırım Ekle'}</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>{isCurrency ? 'Döviz Ekle' : isCommodity ? 'Emtia Ekle' : isOther ? 'Varlık Ekle' : 'Yatırım Ekle'}</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
                 <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
                     {/* Asset Type Picker */}
-                    <Text style={styles.label}>Tür</Text>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>Tür</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
                         {ASSET_TYPES.map((type) => {
                             const selected = assetType === type;
@@ -176,7 +182,7 @@ export default function AddTransactionScreen() {
                     {/* Symbol Selection */}
                     {isGold ? (
                         <>
-                            <Text style={styles.label}>Altın Tipi</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Altın Tipi</Text>
                             <View style={styles.goldTypeContainer}>
                                 {GOLD_TYPES.map((type) => (
                                     <TouchableOpacity
@@ -193,7 +199,7 @@ export default function AddTransactionScreen() {
                         </>
                     ) : isSilver ? (
                         <>
-                            <Text style={styles.label}>Gümüş Tipi</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Gümüş Tipi</Text>
                             <View style={styles.readOnlyContainer}>
                                 <Ionicons name="medal-outline" size={18} color={GRAY} />
                                 <Text style={styles.readOnlyText}>Gram Gümüş</Text>
@@ -201,7 +207,7 @@ export default function AddTransactionScreen() {
                         </>
                     ) : isCurrency ? (
                         <>
-                            <Text style={styles.label}>Para Birimi</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Para Birimi</Text>
                             <View style={styles.goldTypeContainer}>
                                 {CURRENCY_TYPES.map((type) => (
                                     <TouchableOpacity
@@ -218,11 +224,11 @@ export default function AddTransactionScreen() {
                         </>
                     ) : (
                         <>
-                            <Text style={styles.label}>{isOther ? 'Varlık Adı (Örn: Arsa, Saat)' : 'Sembol'}</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>{isOther ? 'Varlık Adı (Örn: Arsa, Saat)' : 'Sembol'}</Text>
                             <View style={styles.inputContainer}>
                                 <Ionicons name={isOther ? 'pricetag-outline' : 'search'} size={18} color={GRAY} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder={isOther ? "Varlık adı girin" : "Sembol girin"}
                                     placeholderTextColor="#C4C4C4"
                                     value={symbol}
@@ -234,11 +240,11 @@ export default function AddTransactionScreen() {
                     )}
 
                     {/* Quantity */}
-                    <Text style={styles.label}>Miktar</Text>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>Miktar</Text>
                     <View style={styles.inputContainer}>
                         <Ionicons name="layers-outline" size={18} color={GRAY} />
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                             placeholder="0.00"
                             placeholderTextColor="#C4C4C4"
                             value={quantity}
@@ -248,11 +254,11 @@ export default function AddTransactionScreen() {
                     </View>
 
                     {/* Cost / Rate */}
-                    <Text style={styles.label}>{isCurrency ? 'Alış Kuru (Opsiyonel)' : 'Ortalama Maliyet (Birim Fiyat)'}</Text>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>{isCurrency ? 'Alış Kuru (Opsiyonel)' : 'Ortalama Maliyet (Birim Fiyat)'}</Text>
                     <View style={styles.inputContainer}>
                         <Text style={styles.currencySymbol}>₺</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                             placeholder="0.00"
                             placeholderTextColor="#C4C4C4"
                             value={cost}
@@ -264,7 +270,7 @@ export default function AddTransactionScreen() {
                     {/* Currency Selection (Only for Investments) */}
                     {!isCurrency && (
                         <>
-                            <Text style={styles.label}>İşlem Para Birimi</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>İşlem Para Birimi</Text>
                             <View style={styles.currencyRow}>
                                 {['TRY', 'USD', 'EUR'].map((c) => (
                                     <TouchableOpacity
@@ -368,4 +374,11 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#E0E0E0',
     },
     readOnlyText: { fontSize: 15, fontWeight: '500', color: GRAY },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

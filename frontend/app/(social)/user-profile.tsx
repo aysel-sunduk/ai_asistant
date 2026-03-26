@@ -6,10 +6,16 @@ import { ActivityIndicator, Platform, ScrollView, StatusBar, StyleSheet, Text, T
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#34D399';
 
 export default function UserProfileScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const params = useLocalSearchParams<{ userId?: string; name?: string }>();
     const userId = params.userId;
@@ -40,14 +46,14 @@ export default function UserProfileScreen() {
     }, [userId]);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{name}</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>{name}</Text>
                     <View style={styles.backBtn} />
                 </View>
             </View>
@@ -58,7 +64,7 @@ export default function UserProfileScreen() {
                         <ActivityIndicator size="small" color={COLOR} />
                     </View>
                 ) : posts.length === 0 ? (
-                    <View style={styles.emptyCard}>
+                    <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                         <Text style={styles.emptyTitle}>Yayinlanmis yazi yok</Text>
                         <Text style={styles.emptySub}>Bu kullanicinin gormeye acik bloglari burada listelenir.</Text>
                     </View>
@@ -66,11 +72,11 @@ export default function UserProfileScreen() {
                     posts.map((p) => (
                         <TouchableOpacity
                             key={p.id}
-                            style={styles.card}
+                            style={[styles.card, isDark && styles.cardDark]}
                             activeOpacity={0.85}
                             onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
                         >
-                            <Text style={styles.title}>{p.title}</Text>
+                            <Text style={[styles.title, isDark && styles.textDark]}>{p.title}</Text>
                             <Text style={styles.meta}>
                                 {new Date(p.updatedAt).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </Text>
@@ -141,4 +147,11 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
     },
     metaBadgeText: { fontSize: 11, color: '#475569', fontWeight: '700' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

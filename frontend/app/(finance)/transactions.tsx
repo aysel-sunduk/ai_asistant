@@ -23,6 +23,8 @@ import type {
     FamilyTransactionResponse,
     FamilyTransactionType,
 } from '../../src/models/family.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 
@@ -32,6 +34,9 @@ const currency = (v: number) => `₺${Number(v || 0).toFixed(2)}`;
 
 export default function TransactionsScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const params = useLocalSearchParams();
     const externalStartDate = params.startDate as string | undefined;
     const externalEndDate = params.endDate as string | undefined;
@@ -287,7 +292,7 @@ export default function TransactionsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
@@ -338,8 +343,8 @@ export default function TransactionsScreen() {
             ) : (
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                     {!externalStartDate && (
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Donem Ozet</Text>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
+                            <Text style={[styles.cardTitle, isDark && styles.textDark]}>Donem Ozet</Text>
                             <View style={styles.summaryRow}>
                                 <MiniStat title="Gelir" value={currency(Number(report?.totalIncome || 0))} color="#16A34A" />
                                 <MiniStat title="Gider" value={currency(Number(report?.totalExpense || 0))} color="#DC2626" />
@@ -357,8 +362,8 @@ export default function TransactionsScreen() {
                     )}
 
                     {!externalStartDate && (
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Trend Grafigi</Text>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
+                            <Text style={[styles.cardTitle, isDark && styles.textDark]}>Trend Grafigi</Text>
                             <View style={styles.chartWrap}>
                                 {(report?.buckets || []).map((b) => (
                                     <ChartGroup key={`${b.label}-${b.startDate}`} bucket={b} maxValue={chartMax} />
@@ -372,7 +377,7 @@ export default function TransactionsScreen() {
                     )}
 
                     {incomeCategories.length > 0 && (
-                        <View style={styles.card}>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
                             <TouchableOpacity
                                 style={styles.cardHeader}
                                 onPress={() => setIsIncomeChartExpanded(!isIncomeChartExpanded)}
@@ -418,7 +423,7 @@ export default function TransactionsScreen() {
                     )}
 
                     {expenseCategories.length > 0 && (
-                        <View style={styles.card}>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
                             <TouchableOpacity
                                 style={styles.cardHeader}
                                 onPress={() => setIsExpenseChartExpanded(!isExpenseChartExpanded)}
@@ -463,8 +468,8 @@ export default function TransactionsScreen() {
                         </View>
                     )}
 
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Hizli Islem Ekle</Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <Text style={[styles.cardTitle, isDark && styles.textDark]}>Hizli Islem Ekle</Text>
                         <View style={styles.typeRow}>
                             <TypeBtn label="Gider" active={type === 'EXPENSE'} onPress={() => setType('EXPENSE')} />
                             <TypeBtn label="Gelir" active={type === 'INCOME'} onPress={() => setType('INCOME')} />
@@ -474,7 +479,7 @@ export default function TransactionsScreen() {
                             onChangeText={setAmount}
                             keyboardType="decimal-pad"
                             placeholder="Tutar (₺)"
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                         />
                         {type === 'INCOME' ? (
                             <View style={styles.categoryContainer}>
@@ -509,16 +514,16 @@ export default function TransactionsScreen() {
                             value={note}
                             onChangeText={setNote}
                             placeholder="Not (opsiyonel)"
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                         />
                         <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={onCreateTransaction}>
                             <Text style={styles.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydi Ekle'}</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.card}>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
                         <View style={styles.txHeaderRow}>
-                            <Text style={styles.cardTitle}>
+                            <Text style={[styles.cardTitle, isDark && styles.textDark]}>
                                 {externalStartDate ? 'Filtrelenmis Islemler' : 'Son Islemler'}
                             </Text>
                             {externalStartDate && (
@@ -820,4 +825,12 @@ const styles = StyleSheet.create({
     categoryTextActive: {
         color: '#fff',
     },
-});
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
+}
+);

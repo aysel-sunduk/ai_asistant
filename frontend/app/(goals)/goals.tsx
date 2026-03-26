@@ -19,6 +19,8 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useGoals } from '../../src/hooks/useGoals';
 import type { Goal } from '../../src/models/goal.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#FFD93D';
 const DARK = '#B8860B';
@@ -32,6 +34,10 @@ const PRESET_CATEGORIES = [
 const OTHER_CATEGORY = 'other';
 
 export default function GoalsScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const { goals, isLoading, fetchGoals, createGoal, deleteGoal } = useGoals();
     const [refreshing, setRefreshing] = useState(false);
@@ -128,7 +134,7 @@ export default function GoalsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
@@ -162,7 +168,7 @@ export default function GoalsScreen() {
                         </View>
 
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                             placeholder="Hedef adi (zorunlu)"
                             value={titleInput}
                             onChangeText={setTitleInput}
@@ -201,7 +207,7 @@ export default function GoalsScreen() {
 
                         {selectedCategory === OTHER_CATEGORY && (
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Diger kategori adini yaz"
                                 value={customCategoryInput}
                                 onChangeText={setCustomCategoryInput}
@@ -260,19 +266,19 @@ export default function GoalsScreen() {
                         <ActivityIndicator size="small" color={DARK} />
                     </View>
                 ) : goals.length === 0 ? (
-                    <View style={styles.emptyCard}>
+                    <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                         <Text style={styles.emptyTitle}>Hedef bulunmuyor</Text>
                         <Text style={styles.emptySub}>Yukaridan yeni hedef ekleyebilirsin.</Text>
                     </View>
                 ) : (
                     goals.map((g) => (
-                        <TouchableOpacity key={g.id} style={styles.card} activeOpacity={0.85} onPress={() => openDetail(g)}>
+                        <TouchableOpacity key={g.id} style={[styles.card, isDark && styles.cardDark]} activeOpacity={0.85} onPress={() => openDetail(g)}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.iconBox}>
                                     <Ionicons name={g.isCompleted ? 'checkmark-done-outline' : 'flag-outline'} size={20} color={DARK} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.cardTitle}>{g.title}</Text>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{g.title}</Text>
                                 <Text style={styles.cardSub}>Hedef: {g.targetDate || 'Belirtilmedi'}</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => handleDelete(g.id)} style={styles.deleteBtn}>
@@ -427,4 +433,11 @@ const styles = StyleSheet.create({
     },
     progressBar: { height: 6, borderRadius: 3, backgroundColor: '#F0F0F0', marginTop: 14 },
     progressFill: { height: 6, borderRadius: 3, backgroundColor: COLOR },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

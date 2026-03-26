@@ -18,6 +18,8 @@ import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
 import { useAuthStore } from '../../src/store/auth.store';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#6C63FF';
 const VISIBILITY_OPTIONS = ['private', 'followers', 'public'] as const;
@@ -25,6 +27,10 @@ const STATUS_OPTIONS = ['draft', 'published', 'archived'] as const;
 const PROFANITY_WARNING = 'Argo kelime kullandiniz, paylasim iptal edildi.';
 
 export default function PostDetailScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const params = useLocalSearchParams<{ id?: string }>();
     const id = typeof params.id === 'string' ? params.id : '';
@@ -192,14 +198,14 @@ export default function PostDetailScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Blog Detay</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Blog Detay</Text>
                     {isOwner ? (
                         <View style={styles.headerActions}>
                             <TouchableOpacity onPress={() => setEditMode((p) => !p)} style={styles.headerBtn}>
@@ -216,12 +222,12 @@ export default function PostDetailScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     {editMode ? (
                         <>
-                            <TextInput value={title} onChangeText={setTitle} style={styles.input} placeholder="Baslik" />
+                            <TextInput value={title} onChangeText={setTitle} style={[styles.input, isDark && styles.inputDark]} placeholder="Baslik" />
                             <TextInput value={content} onChangeText={setContent} style={[styles.input, styles.textarea]} multiline placeholder="Icerik" />
-                            <TextInput value={tags} onChangeText={setTags} style={styles.input} placeholder="Etiketler (virgulle)" />
+                            <TextInput value={tags} onChangeText={setTags} style={[styles.input, isDark && styles.inputDark]} placeholder="Etiketler (virgulle)" />
                             <Text style={styles.fieldLabel}>Gorunurluk</Text>
                             <View style={styles.optionRow}>
                                 {VISIBILITY_OPTIONS.map((v) => (
@@ -249,7 +255,7 @@ export default function PostDetailScreen() {
                         </>
                     ) : (
                         <>
-                            <Text style={styles.title}>{post.title}</Text>
+                            <Text style={[styles.title, isDark && styles.textDark]}>{post.title}</Text>
                             <Text style={styles.meta}>
                                 {statusLabel(post.status)} | {visibilityLabel(post.visibility)} | {new Date(post.updatedAt).toLocaleString('tr-TR')}
                             </Text>
@@ -277,7 +283,7 @@ export default function PostDetailScreen() {
                     )}
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Yorumlar</Text>
                     <View style={styles.commentInputRow}>
                         <TextInput
@@ -360,4 +366,11 @@ const styles = StyleSheet.create({
     commentDeleteBtn: { width: 26, height: 26, borderRadius: 8, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
     likedUsersRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, flexWrap: 'wrap' },
     likedUsersText: { fontSize: 11, color: '#64748B', flex: 1 },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

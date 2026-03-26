@@ -15,6 +15,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
 import type { InterviewSession } from '../../src/models/interview.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#5B8DEF';
 const BG = '#F8FAFC';
@@ -33,6 +35,10 @@ const formatDateVerbose = (iso?: string) => {
 };
 
 export default function InterviewDetailScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -98,14 +104,14 @@ export default function InterviewDetailScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
                         <Ionicons name="chevron-back" size={22} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Mülakat Detayı</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Mülakat Detayı</Text>
                     <View style={styles.iconBtnGhost} />
                 </View>
             </View>
@@ -114,8 +120,8 @@ export default function InterviewDetailScreen() {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadSession(true)} />}
             >
-                <View style={styles.card}>
-                    <Text style={styles.title}>{session.title}</Text>
+                <View style={[styles.card, isDark && styles.cardDark]}>
+                    <Text style={[styles.title, isDark && styles.textDark]}>{session.title}</Text>
                     <Text style={styles.position}>{session.position}</Text>
 
                     <View style={styles.metaRow}>
@@ -218,4 +224,11 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     prepareBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

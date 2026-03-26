@@ -17,6 +17,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { remindersService } from '../../services/reminders.service';
 import { workService } from '../../services/work.service';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#5B8DEF';
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
@@ -81,6 +83,10 @@ const mergeDate = (base: Date, part: Date, kind: 'date' | 'time') => {
 };
 
 export default function CreateEventScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -190,14 +196,14 @@ export default function CreateEventScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Yeni Toplanti</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Yeni Toplanti</Text>
                     <View style={{ width: 40 }} />
                 </View>
             </View>
@@ -205,17 +211,17 @@ export default function CreateEventScreen() {
             <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
                 {/* Title & Description Card */}
-                <View style={styles.card}>
-                    <Text style={styles.label}>Baslik</Text>
+                <View style={[styles.card, isDark && styles.cardDark]}>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>Baslik</Text>
                     <TextInput
                         value={title}
                         onChangeText={setTitle}
                         placeholder="Orn: Sprint Planning"
                         placeholderTextColor="#94A3B8"
-                        style={styles.input}
+                        style={[styles.input, isDark && styles.inputDark]}
                     />
 
-                    <Text style={styles.label}>Aciklama</Text>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>Aciklama</Text>
                     <TextInput
                         value={description}
                         onChangeText={setDescription}
@@ -227,7 +233,7 @@ export default function CreateEventScreen() {
                 </View>
 
                 {/* Date & Time Card */}
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Zamanlama</Text>
 
                     <View style={styles.timeRow}>
@@ -266,8 +272,8 @@ export default function CreateEventScreen() {
                 </View>
 
                 {/* Event Type & Priority */}
-                <View style={styles.card}>
-                    <Text style={styles.label}>Toplanti Tipi</Text>
+                <View style={[styles.card, isDark && styles.cardDark]}>
+                    <Text style={[styles.label, isDark && styles.subTextDark]}>Toplanti Tipi</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                         {EVENT_TYPES.map((item) => (
                             <Chip
@@ -295,7 +301,7 @@ export default function CreateEventScreen() {
                 </View>
 
                 {/* Online/Physical Selection */}
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Konum & Detaylar</Text>
 
                     <View style={styles.modeToggle}>
@@ -364,13 +370,13 @@ export default function CreateEventScreen() {
                         onChangeText={setParticipantCount}
                         placeholder="Orn: 6"
                         placeholderTextColor="#94A3B8"
-                        style={styles.input}
+                        style={[styles.input, isDark && styles.inputDark]}
                         keyboardType="number-pad"
                     />
                 </View>
 
                 {/* Reminder */}
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                         <Ionicons name="notifications-outline" size={20} color={COLOR} />
                         <Text style={styles.sectionTitleNoMargin}>Hatirlatma</Text>
@@ -588,4 +594,11 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     submitText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

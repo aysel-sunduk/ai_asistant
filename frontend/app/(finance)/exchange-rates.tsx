@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import { financeService } from '../../services/finance.service';
 import type { CurrencyRateResponse, FavoriteCurrencyResponse, SupportedCurrencyResponse } from '../../src/models/finance.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -42,6 +44,10 @@ const formatServerTime = (isoString?: string) => {
 };
 
 export default function ExchangeRatesScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
 
     const [favorites, setFavorites] = useState<FavoriteCurrencyResponse[]>([]);
@@ -206,14 +212,14 @@ export default function ExchangeRatesScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Kur Takip Listesi</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Kur Takip Listesi</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.searchRow}>
@@ -252,7 +258,7 @@ export default function ExchangeRatesScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Arama Sonuçları</Text>
                         {filteredSupported.length === 0 ? (
-                            <View style={styles.emptyCard}>
+                            <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                                 <Text style={styles.emptyText}>Sonuç bulunamadı</Text>
                             </View>
                         ) : (
@@ -312,9 +318,9 @@ export default function ExchangeRatesScreen() {
 
                 {/* Favorites List */}
                 {!isSearching && (
-                    <View style={styles.card}>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
                         {favorites.length === 0 ? (
-                            <View style={styles.emptyCard}>
+                            <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                                 <Ionicons name="star-outline" size={48} color="#E0E0E0" />
                                 <Text style={styles.emptyText}>Listeniz boş</Text>
                                 <Text style={[styles.emptyText, { fontSize: 12, marginTop: 4 }]}>Yukarıdan arama yaparak ekleyebilirsiniz.</Text>
@@ -434,4 +440,11 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
     },
     emptyText: { fontSize: 14, color: GRAY, textAlign: 'center' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

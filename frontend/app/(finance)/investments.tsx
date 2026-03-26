@@ -24,6 +24,8 @@ import { financeService } from '../../services/finance.service';
 import type { CurrencyHoldingResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 import { formatCurrency, getInvestmentDisplayName, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -31,6 +33,10 @@ const GRAY = '#9BA1A6';
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function InvestmentsScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [investments, setInvestments] = useState<InvestmentResponse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -359,7 +365,7 @@ export default function InvestmentsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
 
             {/* Header */}
@@ -367,7 +373,7 @@ export default function InvestmentsScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <Ionicons name="chevron-back" size={24} color="#1A1A2E" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Yatırımlarım</Text>
+                <Text style={[styles.headerTitle, isDark && styles.textDark]}>Yatırımlarım</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
                         onPress={() => setIsEditing(!isEditing)}
@@ -439,12 +445,12 @@ export default function InvestmentsScreen() {
                     onRequestClose={() => setEditingItem(null)}
                 >
                     <View style={styles.modalOverlay}>
-                        <View style={styles.modalContent}>
+                        <View style={[styles.modalContent, isDark && styles.cardDark]}>
                             <Text style={styles.modalTitle}>Düzenle</Text>
                             <Text style={styles.modalSubtitle}>{getInvestmentDisplayName(editingItem.symbol, editingItem.assetType)} ({editingItem.symbol})</Text>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Miktar</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Miktar</Text>
                                 <TextInput
                                     style={[styles.input, editingItem.assetType !== 'CURRENCY' && styles.disabledInput]}
                                     value={editQuantity}
@@ -458,9 +464,9 @@ export default function InvestmentsScreen() {
                             </View>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Birim Maliyet</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Birim Maliyet</Text>
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     value={editCost}
                                     onChangeText={setEditCost}
                                     keyboardType="decimal-pad"
@@ -577,4 +583,11 @@ const styles = StyleSheet.create({
     saveBtnText: { color: '#fff', fontWeight: '600' },
 
 
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

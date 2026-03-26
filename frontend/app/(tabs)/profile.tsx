@@ -23,6 +23,8 @@ import { userService } from '../../services/user.service';
 import { useAuthStore } from '../../src/store/auth.store';
 import { googleCalendarService } from '../../services/google-calendar.service';
 import * as Linking from 'expo-linking';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const getImageUrl = (path?: string) => {
     if (!path) return null;
@@ -53,7 +55,11 @@ export default function ProfileScreen() {
     const profile = useAuthStore((s) => s.profile);
     const logout = useAuthStore((s) => s.logout);
     const setUser = useAuthStore((s) => s.setUser);
-    const setProfile = useAuthStore((s) => s.setProfile); // assuming exist, if not we update user
+    const setProfile = useAuthStore((s) => s.setProfile);
+    const themeMode = useThemeStore((s) => s.mode);
+    const setThemeMode = useThemeStore((s) => s.setMode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(themeMode, systemScheme) === 'dark';
 
     const [stats, setStats] = useState({ followers: 0, following: 0, posts: 0 });
     const [isUploadingPicture, setIsUploadingPicture] = useState(false);
@@ -240,6 +246,19 @@ export default function ProfileScreen() {
         ]);
     };
 
+    const themeSubtitle = themeMode === 'dark' ? 'Koyu mod'
+        : themeMode === 'light' ? 'Açık mod'
+            : 'Sistem';
+
+    const handleThemeSelect = () => {
+        Alert.alert('Görünüm', 'Tema seçin', [
+            { text: 'Açık', onPress: () => { void setThemeMode('light'); } },
+            { text: 'Koyu', onPress: () => { void setThemeMode('dark'); } },
+            { text: 'Sistem', onPress: () => { void setThemeMode('system'); } },
+            { text: 'İptal', style: 'cancel' },
+        ]);
+    };
+
     const accountItems: MenuItem[] = [
         {
             icon: 'person-outline',
@@ -275,8 +294,9 @@ export default function ProfileScreen() {
         {
             icon: 'color-palette-outline',
             label: 'Görünüm',
-            subtitle: 'Tema, yazı boyutu',
+            subtitle: themeSubtitle,
             color: '#FF6B6B',
+            onPress: handleThemeSelect,
         },
         {
             icon: 'information-circle-outline',
@@ -290,7 +310,12 @@ export default function ProfileScreen() {
     const renderMenuItem = (item: MenuItem, index: number, isLast: boolean) => (
         <TouchableOpacity
             key={index}
-            style={[styles.menuItem, !isLast && styles.menuItemBorder]}
+            style={[
+                styles.menuItem,
+                !isLast && styles.menuItemBorder,
+                isDark && styles.menuItemDark,
+                isDark && !isLast && styles.menuItemBorderDark,
+            ]}
             activeOpacity={0.6}
             onPress={item.onPress}
         >
@@ -302,17 +327,17 @@ export default function ProfileScreen() {
                 />
             </View>
             <View style={styles.menuTextGroup}>
-                <Text style={[styles.menuLabel, item.isDestructive && styles.destructiveText]}>
+                <Text style={[styles.menuLabel, isDark && styles.menuLabelDark, item.isDestructive && styles.destructiveText]}>
                     {item.label}
                 </Text>
-                {item.subtitle && <Text style={styles.menuSubtitle}>{item.subtitle}</Text>}
+                {item.subtitle && <Text style={[styles.menuSubtitle, isDark && styles.menuSubtitleDark]}>{item.subtitle}</Text>}
             </View>
             <Ionicons name="chevron-forward" size={18} color="#D0D0D0" />
         </TouchableOpacity>
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" backgroundColor={PURPLE} />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* Profil Header */}
@@ -360,8 +385,8 @@ export default function ProfileScreen() {
 
                 {/* Menü Bölümü - Hesap */}
                 <View style={styles.menuSection}>
-                    <Text style={styles.sectionTitle}>Hesap</Text>
-                    <View style={styles.menuCard}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Hesap</Text>
+                    <View style={[styles.menuCard, isDark && styles.menuCardDark]}>
                         {accountItems.map((item, i) =>
                             renderMenuItem(item, i, i === accountItems.length - 1),
                         )}
@@ -370,8 +395,8 @@ export default function ProfileScreen() {
 
                 {/* Menü Bölümü - Uygulama */}
                 <View style={styles.menuSection}>
-                    <Text style={styles.sectionTitle}>Uygulama</Text>
-                    <View style={styles.menuCard}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Uygulama</Text>
+                    <View style={[styles.menuCard, isDark && styles.menuCardDark]}>
                         {appItems.map((item, i) =>
                             renderMenuItem(item, i, i === appItems.length - 1),
                         )}
@@ -380,7 +405,7 @@ export default function ProfileScreen() {
 
                 {/* Çıkış Butonu */}
                 <View style={styles.menuSection}>
-                    <View style={styles.menuCard}>
+                    <View style={[styles.menuCard, isDark && styles.menuCardDark]}>
                         {renderMenuItem(
                             {
                                 icon: 'log-out-outline',
@@ -395,7 +420,7 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                <Text style={styles.versionText}>AsistAI v1.0.0</Text>
+                <Text style={[styles.versionText, isDark && styles.versionTextDark]}>AsistAI v1.0.0</Text>
             </ScrollView>
         </View>
     );
@@ -405,6 +430,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8F9FA',
+    },
+    containerDark: {
+        backgroundColor: '#0B1220',
     },
 
     /* ─── Header ─── */
@@ -515,6 +543,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         marginLeft: 4,
     },
+    sectionTitleDark: {
+        color: '#94A3B8',
+    },
     menuCard: {
         backgroundColor: '#fff',
         borderRadius: 18,
@@ -525,15 +556,24 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 2,
     },
+    menuCardDark: {
+        backgroundColor: '#111827',
+    },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 14,
         paddingHorizontal: 16,
     },
+    menuItemDark: {
+        backgroundColor: '#111827',
+    },
     menuItemBorder: {
         borderBottomWidth: 1,
         borderBottomColor: BORDER,
+    },
+    menuItemBorderDark: {
+        borderBottomColor: '#1F2937',
     },
     menuIconCircle: {
         width: 38,
@@ -551,10 +591,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1A1A2E',
     },
+    menuLabelDark: {
+        color: '#E5E7EB',
+    },
     menuSubtitle: {
         fontSize: 12,
         color: GRAY,
         marginTop: 2,
+    },
+    menuSubtitleDark: {
+        color: '#9CA3AF',
     },
     destructiveText: {
         color: '#FF6B6B',
@@ -567,5 +613,8 @@ const styles = StyleSheet.create({
         color: '#C4C4C4',
         marginTop: 28,
         marginBottom: 36,
+    },
+    versionTextDark: {
+        color: '#6B7280',
     },
 });

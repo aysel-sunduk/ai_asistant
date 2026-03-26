@@ -7,6 +7,8 @@ import { gamesService } from '../../services/games.service';
 import type { FrontendGameType, GameRankSummary, GameScore } from '../../src/models/game.model';
 import { useAuthStore } from '../../src/store/auth.store';
 import { formatTime } from '../../src/utils/game.utils';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#A78BFA';
 
@@ -61,6 +63,10 @@ const getPercentileText = (rank: number | null, count: number): string => {
 };
 
 export default function LeaderboardScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const authUserId = useAuthStore((state) => state.user?.id);
     const [activeTab, setActiveTab] = useState<FrontendGameType>('memory');
@@ -168,7 +174,7 @@ export default function LeaderboardScreen() {
     ) : null;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
@@ -176,7 +182,7 @@ export default function LeaderboardScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Skor Tablosu</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Skor Tablosu</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
@@ -422,4 +428,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#7C5CFF',
         borderRadius: 999,
     },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

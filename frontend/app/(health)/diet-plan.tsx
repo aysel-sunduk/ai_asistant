@@ -16,10 +16,15 @@ import {
 } from 'react-native';
 import { healthService } from '../../services/health.service';
 import type { DietMeal, DietPlan } from '../../src/models/health.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const { width } = Dimensions.get('window');
 
 export default function DietPlanScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [plan, setPlan] = useState<DietPlan | null>(null);
@@ -116,13 +121,13 @@ export default function DietPlanScreen() {
 
     return (
         <ScrollView 
-            style={styles.container}
+            style={[styles.container, isDark && styles.containerDark]}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadDietPlan(true); }} />}
         >
             <LinearGradient colors={['#4CAF50', '#2E7D32']} style={styles.header}>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerSubtitle}>Kişisel Diyet Planın</Text>
-                    <Text style={styles.headerTitle}>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>
                         {daily_plan.diet_goal === 'LOSE_WEIGHT' ? 'Kilo Verme' : 
                          daily_plan.diet_goal === 'GAIN_WEIGHT' ? 'Kilo Alma' : 'Formu Koruma'}
                     </Text>
@@ -135,8 +140,8 @@ export default function DietPlanScreen() {
 
             <View style={styles.content}>
                 {/* Makro Özeti */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Besin Dağılımı (Günlük)</Text>
+                <View style={[styles.card, isDark && styles.cardDark]}>
+                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>Besin Dağılımı (Günlük)</Text>
                     {renderMacroBar('Protein', macro_summary.protein_pct, '#FF5252', daily_plan.total_protein, 'g')}
                     {renderMacroBar('Karbonhidrat', macro_summary.carbs_pct, '#42A5F5', daily_plan.total_carbs, 'g')}
                     {renderMacroBar('Yağ', macro_summary.fat_pct, '#FFA726', daily_plan.total_fat, 'g')}
@@ -148,9 +153,9 @@ export default function DietPlanScreen() {
                 </View>
 
                 {/* Öğünler */}
-                <Text style={styles.sectionTitle}>Günün Öğünleri</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Günün Öğünleri</Text>
                 {daily_plan.meals.map((meal, index) => (
-                    <View key={index} style={styles.mealCard}>
+                    <View key={index} style={[styles.mealCard, isDark && styles.cardDark]}>
                         <View style={styles.mealHeader}>
                             <View style={styles.mealSlotIcon}>
                                 <Ionicons 
@@ -242,4 +247,12 @@ const styles = StyleSheet.create({
     regenerateBtn: { marginTop: 10, borderRadius: 16, overflow: 'hidden', elevation: 3 },
     regenGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
     regenText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
+
 });

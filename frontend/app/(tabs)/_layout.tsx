@@ -1,22 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { usePushNotifications } from '../../src/hooks/usePushNotifications';
+import { useColorScheme } from '../../hooks/use-color-scheme';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
 
 const PURPLE = '#6C63FF';
 
 export default function TabsLayout() {
   usePushNotifications();
+  const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const mode = useThemeStore((s) => s.mode);
+  const resolved = resolveTheme(mode, systemScheme);
+  const isDark = resolved === 'dark';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: PURPLE,
-        tabBarInactiveTintColor: '#9BA1A6',
+        tabBarActiveTintColor: isDark ? '#A5B4FC' : PURPLE,
+        tabBarInactiveTintColor: isDark ? '#94A3B8' : '#9BA1A6',
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: isDark ? '#0F172A' : '#fff',
           borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopColor: isDark ? '#1E293B' : '#F0F0F0',
           paddingBottom: 6,
           paddingTop: 6,
           height: 60,

@@ -22,6 +22,8 @@ import { contactsService } from '../../services/contacts.service';
 import { familyService } from '../../services/family.service';
 import type { Contact } from '../../src/models/contact.model';
 import type { FamilyBirthdayResponse } from '../../src/models/family.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#FF8A65';
 
@@ -54,6 +56,10 @@ const daysUntilBirthday = (birthDateIso: string) => {
 };
 
 export default function ContactsScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [birthdays, setBirthdays] = useState<FamilyBirthdayResponse[]>([]);
@@ -257,14 +263,14 @@ export default function ContactsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Dogum Gunleri</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Dogum Gunleri</Text>
                     <TouchableOpacity onPress={openCreateModal} style={styles.backBtn}>
                         <Ionicons name="add" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -338,13 +344,13 @@ export default function ContactsScreen() {
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : upcomingBirthdays.length === 0 ? (
-                    <View style={styles.emptyCard}>
+                    <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                         <Text style={styles.emptyTitle}>Kayit yok</Text>
                         <Text style={styles.emptySub}>Herhangi bir kisi icin dogum gunu ekleyebilirsin.</Text>
                     </View>
                 ) : (
                     upcomingBirthdays.map((b) => (
-                        <View key={b.id} style={styles.card}>
+                        <View key={b.id} style={[styles.card, isDark && styles.cardDark]}>
                             <View style={styles.avatar}>
                                 <Text style={styles.avatarText}>
                                     {(b.fullName || '?')
@@ -356,7 +362,7 @@ export default function ContactsScreen() {
                                 </Text>
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle}>{b.fullName}</Text>
+                                <Text style={[styles.cardTitle, isDark && styles.textDark]}>{b.fullName}</Text>
                                 <Text style={styles.cardSub}>
                                     {b.relationship || 'Kisi'} | {trDate(b.birthDate)}
                                 </Text>
@@ -389,7 +395,7 @@ export default function ContactsScreen() {
                 }}
             >
                 <View style={styles.modalBackdrop}>
-                    <View style={styles.modalSheet}>
+                    <View style={[styles.modalSheet, isDark && styles.cardDark]}>
                         {!contactsPickerOpen ? (
                             <>
                                 <Text style={styles.modalTitle}>{editingBirthdayId ? 'Dogum Gunu Duzenle' : 'Dogum Gunu Ekle'}</Text>
@@ -403,7 +409,7 @@ export default function ContactsScreen() {
                                     placeholder="Ad Soyad"
                                     value={fullName}
                                     onChangeText={setFullName}
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                 />
                                 <Text style={styles.fieldLabel}>Yakinlik Derecesi</Text>
                                 <View style={styles.chipRow}>
@@ -421,7 +427,7 @@ export default function ContactsScreen() {
                                     ))}
                                 </View>
                                 <Text style={styles.fieldLabel}>Dogum Gunu (Gun/Ay)</Text>
-                                <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+                                <TouchableOpacity style={[styles.input, isDark && styles.inputDark]} onPress={() => setShowDatePicker(true)}>
                                     <Text style={styles.dateText}>
                                         {birthMonthDay.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })}
                                     </Text>
@@ -739,4 +745,11 @@ const styles = StyleSheet.create({
     bloodChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
     bloodChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
     bloodChipTextActive: { color: '#fff' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

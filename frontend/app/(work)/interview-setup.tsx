@@ -16,6 +16,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PRIMARY = '#4F46E5'; // Indigo
 const ACCENT = '#6366F1';
@@ -23,6 +25,10 @@ const BACKGROUND = '#F8FAFC';
 const CARD_BG = '#FFFFFF';
 
 export default function InterviewSetupScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
@@ -72,7 +78,7 @@ export default function InterviewSetupScreen() {
                 >
                     <Ionicons name="arrow-back" size={24} color="#1E293B" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Mülakat Hazırlığı</Text>
+                <Text style={[styles.headerTitle, isDark && styles.textDark]}>Mülakat Hazırlığı</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -92,13 +98,13 @@ export default function InterviewSetupScreen() {
                     </View>
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Mülakat Başlığı</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Mülakat Başlığı</Text>
                         <View style={styles.inputWrapper}>
                             <Ionicons name="document-text-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Örn: Google Frontend Developer Mülakatı"
                                 placeholderTextColor="#94A3B8"
                                 value={title}
@@ -108,11 +114,11 @@ export default function InterviewSetupScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Hedeflenen Pozisyon</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Hedeflenen Pozisyon</Text>
                         <View style={styles.inputWrapper}>
                             <Ionicons name="briefcase-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Örn: Senior React Native Developer"
                                 placeholderTextColor="#94A3B8"
                                 value={position}
@@ -122,7 +128,7 @@ export default function InterviewSetupScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>İş Tanımı (Önerilir)</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>İş Tanımı (Önerilir)</Text>
                         <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
@@ -138,7 +144,7 @@ export default function InterviewSetupScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Mülakat Tarihi</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Mülakat Tarihi</Text>
                         <TouchableOpacity style={styles.inputWrapper} onPress={() => setShowDatePicker(true)}>
                             <Ionicons name="calendar-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
                             <Text style={[styles.input, { paddingVertical: 14, color: interviewDate ? '#1E293B' : '#94A3B8' }]}>
@@ -276,4 +282,11 @@ const styles = StyleSheet.create({
     },
     mainBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
     disabledBtn: { opacity: 0.6 },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

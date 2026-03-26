@@ -21,6 +21,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { workService } from '../../services/work.service';
 import type { WorkEvent, WorkEventsSummary } from '../../src/models/work.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 
 const COLOR = '#5B8DEF';
@@ -80,6 +82,9 @@ const cardTone = (event: WorkEvent) => {
 
 export default function WorkEventsScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [events, setEvents] = useState<WorkEvent[]>([]);
@@ -211,7 +216,7 @@ export default function WorkEventsScreen() {
     }, [priorityFilter, quickFilter, statusFilter]);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
@@ -251,7 +256,7 @@ export default function WorkEventsScreen() {
                         value={query}
                         onChangeText={setQuery}
                         placeholder="Toplanti ara (min. 2 karakter)"
-                        style={styles.searchInput}
+                        style={[styles.searchInput, isDark && styles.inputDark]}
                     />
                     <TouchableOpacity style={styles.filterBtn} onPress={() => setFiltersVisible(true)}>
                         <Ionicons name="options-outline" size={16} color={COLOR} />
@@ -264,15 +269,15 @@ export default function WorkEventsScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>Toplantilar</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Toplantilar</Text>
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : events.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyTitle}>Toplanti bulunamadi</Text>
-                        <Text style={styles.emptySub}>Filtreleri degistirebilir veya yeni toplanti ekleyebilirsin.</Text>
+                    <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Toplanti bulunamadi</Text>
+                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Filtreleri degistirebilir veya yeni toplanti ekleyebilirsin.</Text>
                     </View>
                 ) : (
                     <View style={styles.list}>
@@ -287,8 +292,8 @@ export default function WorkEventsScreen() {
                                 >
                                     <View style={[styles.cardDot, { backgroundColor: tone.dot }]} />
                                     <View style={styles.cardBody}>
-                                        <Text style={styles.cardTitle}>{event.title}</Text>
-                                        <Text style={styles.cardTime}>{formatDateTime(event.startTime)}</Text>
+                                        <Text style={[styles.cardTitle, isDark && styles.textDark]}>{event.title}</Text>
+                                        <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(event.startTime)}</Text>
                                         <View style={styles.metaRow}>
                                             <MiniTag text={PRIORITY_LABELS[(event.priority as PriorityFilter) || 'LOW']} />
                                             <MiniTag text={STATUS_LABELS[(event.status as StatusFilter) || 'SCHEDULED']} />
@@ -323,11 +328,11 @@ export default function WorkEventsScreen() {
             >
                 <Pressable style={styles.modalBackdrop} onPress={() => setFiltersVisible(false)}>
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                        <Pressable style={styles.modalSheet} onPress={() => undefined}>
+                        <Pressable style={[styles.modalSheet, isDark && styles.modalSheetDark]} onPress={() => undefined}>
                             <View style={styles.modalHandle} />
                             <View style={styles.modalHeader}>
                                 <View>
-                                    <Text style={styles.modalTitle}>Filtreler</Text>
+                                    <Text style={[styles.modalTitle, isDark && styles.textDark]}>Filtreler</Text>
                                     <Text style={styles.modalSubTitle}>Toplantilari daha hizli daralt</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => setFiltersVisible(false)}>
@@ -640,4 +645,15 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     applyBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-});
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    emptyBoxDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    modalSheetDark: { backgroundColor: '#111827' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    sectionTitleDark: { color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
+}
+);

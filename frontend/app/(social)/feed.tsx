@@ -23,6 +23,8 @@ import { blogService } from '../../services/blog.service';
 import { socialService } from '../../services/social.service';
 import type { BlogPost } from '../../src/models/blog.model';
 import type { DiscoverUserItem, FollowRequestItem, FollowStats } from '../../src/models/social.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#6C63FF';
 
@@ -61,6 +63,9 @@ const relationLabel: Record<string, string> = {
 
 export default function FeedScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [activeTab, setActiveTab] = useState<TabKey>('discover');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -321,7 +326,7 @@ export default function FeedScreen() {
         <>
             <View style={styles.searchWrap}>
                 <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, isDark && styles.inputDark]}
                     placeholder="Kullanici ara (ad veya email)"
                     value={searchText}
                     onChangeText={setSearchText}
@@ -335,20 +340,20 @@ export default function FeedScreen() {
 
             {incomingRequests.length > 0 && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Gelen Takip Istekleri</Text>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Gelen Takip Istekleri</Text>
                     {incomingRequests.map((r) => {
                         const name = fullName(r.user.firstName, r.user.lastName);
                         const isBusy = busyUserId === r.user.userId;
                         return (
-                            <View key={r.user.userId} style={styles.userCard}>
+                            <View key={r.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
                                 <TouchableOpacity onPress={() => openProfile(r.user.userId)}>
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>{initials(name)}</Text>
                                     </View>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(r.user.userId)}>
-                                    <Text style={styles.cardTitle}>{name}</Text>
-                                    <Text style={styles.cardSub}>{r.user.email}</Text>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
+                                    <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{r.user.email}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity disabled={isBusy} style={styles.acceptBtn} onPress={() => handleIncomingRequest(r.user.userId, 'accept')}>
                                     <Text style={styles.acceptBtnText}>Kabul</Text>
@@ -363,15 +368,15 @@ export default function FeedScreen() {
             )}
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{discoverTitle}</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>{discoverTitle}</Text>
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="small" color={COLOR} />
                     </View>
                 ) : discoverUsers.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyTitle}>Kullanici bulunamadi</Text>
-                        <Text style={styles.emptySub}>Arama filtresini degistirebilirsin.</Text>
+                    <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Kullanici bulunamadi</Text>
+                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Arama filtresini degistirebilirsin.</Text>
                     </View>
                 ) : (
                     discoverUsers.map((item) => {
@@ -387,15 +392,15 @@ export default function FeedScreen() {
                                     ? 'Istek Gonder'
                                     : 'Takip Et';
                         return (
-                            <View key={item.user.userId} style={styles.userCard}>
+                            <View key={item.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
                                 <TouchableOpacity onPress={() => openProfile(item.user.userId)}>
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>{initials(name)}</Text>
                                     </View>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(item.user.userId)}>
-                                    <Text style={styles.cardTitle}>{name}</Text>
-                                    <Text style={styles.cardSub}>{item.user.email}</Text>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
+                                    <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{item.user.email}</Text>
                                     <Text style={styles.stateText}>
                                         {relationLabel[item.relationStatus] || item.relationStatus}
                                     </Text>
@@ -454,25 +459,25 @@ export default function FeedScreen() {
 
     const renderBlogsTab = () => (
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Takip Ettiklerinden</Text>
+            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Takip Ettiklerinden</Text>
             {feedPosts.length === 0 ? (
-                <View style={styles.emptyBox}>
-                    <Text style={styles.emptyTitle}>Feed bos</Text>
-                    <Text style={styles.emptySub}>Takip ettigin kullanicilarin bloglar burada gorunur.</Text>
+                <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                    <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Feed bos</Text>
+                    <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Takip ettigin kullanicilarin bloglar burada gorunur.</Text>
                 </View>
             ) : (
                 feedPosts.map((p) => (
                     <TouchableOpacity
                         key={p.id}
-                        style={styles.postCard}
+                        style={[styles.postCard, isDark && styles.postCardDark]}
                         activeOpacity={0.85}
                         onPress={() => router.push({ pathname: '/(social)/post-detail', params: { id: p.id } })}
                     >
-                        <Text style={styles.postTitle}>{p.title}</Text>
-                        <Text style={styles.postMeta}>
+                        <Text style={[styles.postTitle, isDark && styles.textDark]}>{p.title}</Text>
+                        <Text style={[styles.postMeta, isDark && styles.subTextDark]}>
                             {new Date(p.updatedAt).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </Text>
-                        <Text style={styles.postContent} numberOfLines={3}>
+                        <Text style={[styles.postContent, isDark && styles.subTextDark]} numberOfLines={3}>
                             {p.cleanContent || p.rawContent}
                         </Text>
                         <View style={styles.postFooter}>
@@ -493,8 +498,8 @@ export default function FeedScreen() {
 
     const renderWriteTab = () => (
         <>
-            <View style={styles.formCard}>
-                <Text style={styles.formTitle}>Yeni Yazi</Text>
+            <View style={[styles.formCard, isDark && styles.formCardDark]}>
+                <Text style={[styles.formTitle, isDark && styles.textDark]}>Yeni Yazi</Text>
                 <View style={styles.titleInputRow}>
                     <TextInput placeholder="Baslik" value={title} onChangeText={setTitle} style={[styles.input, { flex: 1, marginTop: 0 }]} />
                     {hasNewSuggestions && (
@@ -506,7 +511,7 @@ export default function FeedScreen() {
                     )}
                 </View>
                 <TextInput placeholder="Icerik" value={content} onChangeText={setContent} style={[styles.input, styles.textarea]} multiline />
-                <TextInput placeholder="Etiketler (virgulle)" value={tags} onChangeText={setTags} style={styles.input} />
+                <TextInput placeholder="Etiketler (virgulle)" value={tags} onChangeText={setTags} style={[styles.input, isDark && styles.inputDark]} />
 
                 <Text style={styles.fieldLabel}>Gorunurluk</Text>
                 <View style={styles.optionRow}>
@@ -532,32 +537,32 @@ export default function FeedScreen() {
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionTitle}>Benim Bloglarim</Text>
+            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Benim Bloglarim</Text>
             {loading ? (
                 <View style={styles.centered}>
                     <ActivityIndicator size="small" color={COLOR} />
                 </View>
             ) : myPosts.length === 0 ? (
-                <View style={styles.emptyBox}>
-                    <Text style={styles.emptyTitle}>Kayit yok</Text>
-                    <Text style={styles.emptySub}>Ilk blogunu yukaridan olusturabilirsin.</Text>
+                <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                    <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Kayit yok</Text>
+                    <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Ilk blogunu yukaridan olusturabilirsin.</Text>
                 </View>
             ) : (
                 myPosts.map((p) => (
-                    <View key={p.id} style={styles.postCard}>
+                    <View key={p.id} style={[styles.postCard, isDark && styles.postCardDark]}>
                         <View style={styles.postHeaderRow}>
                             <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push({ pathname: '/(social)/post-detail', params: { id: p.id } })}>
-                                <Text style={styles.postTitle}>{p.title}</Text>
+                                <Text style={[styles.postTitle, isDark && styles.textDark]}>{p.title}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.postDeleteBtn} onPress={() => onDeletePost(p.id)}>
                                 <Ionicons name="trash-outline" size={14} color="#DC2626" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.postMeta}>
+                        <Text style={[styles.postMeta, isDark && styles.subTextDark]}>
                             {statusLabel(p.status)} | {visibilityLabel(p.visibility)} | {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
                         </Text>
                         <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/(social)/post-detail', params: { id: p.id } })}>
-                            <Text style={styles.postContent} numberOfLines={3}>{p.cleanContent || p.rawContent}</Text>
+                            <Text style={[styles.postContent, isDark && styles.subTextDark]} numberOfLines={3}>{p.cleanContent || p.rawContent}</Text>
                         </TouchableOpacity>
                     </View>
                 ))
@@ -566,7 +571,7 @@ export default function FeedScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
@@ -597,7 +602,7 @@ export default function FeedScreen() {
             </View>
 
             {/* ─── Tab Bar ─── */}
-            <View style={styles.tabBar}>
+            <View style={[styles.tabBar, isDark && styles.tabBarDark]}>
                 {TABS.map((tab) => (
                     <TouchableOpacity
                         key={tab.key}
@@ -626,9 +631,9 @@ export default function FeedScreen() {
             {/* AI Suggestions Modal */}
             <Modal visible={showAiModal} transparent animationType="slide" onRequestClose={() => setShowAiModal(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>✨ AI Baslik Onerileri</Text>
+                            <Text style={[styles.modalTitle, isDark && styles.textDark]}>✨ AI Baslik Onerileri</Text>
                             <TouchableOpacity onPress={() => setShowAiModal(false)}>
                                 <Ionicons name="close" size={24} color="#64748B" />
                             </TouchableOpacity>
@@ -978,4 +983,19 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     suggestionText: { fontSize: 14, fontWeight: '600', color: '#1E293B', flex: 1, marginRight: 10 },
-});
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    postCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    userCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    formCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    emptyBoxDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    tabBarDark: { backgroundColor: '#111827' },
+    modalContentDark: { backgroundColor: '#111827' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    sectionTitleDark: { color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
+}
+);

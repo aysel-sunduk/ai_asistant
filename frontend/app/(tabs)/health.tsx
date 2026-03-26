@@ -25,6 +25,8 @@ import apiClient from '../../src/api/client';
 import { healthDeviceService } from '../../services/health-device.service';
 import { healthService } from '../../services/health.service';
 import { useHealth } from '../../src/hooks/useHealth';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 import type {
     ActiveCaloriesData,
     DailySummaryData,
@@ -100,6 +102,9 @@ function inRange(date: Date, start: Date, end: Date): boolean {
 function HealthTabScreen() {
     const router = useRouter();
     const { logs, isLoading, fetchLogs, fetchNutrition, createLog, deleteLog } = useHealth();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const didInitRef = useRef(false);
 
     const [dailyNutrition, setDailyNutrition] = useState({ totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 });
@@ -426,7 +431,7 @@ function HealthTabScreen() {
 
             // Native fetch kullan — Axios, React Native'de multipart boundary'yi dogru ayarlamiyor
             const token = await AsyncStorage.getItem('accessToken');
-            const baseURL = apiClient.defaults.baseURL || 'http://localhost:8080/api';
+            const baseURL = apiClient.defaults.baseURL || 'http://192.168.234.217:8080/api';
             const requestUrl = `${baseURL}/v1/ai/food/analyze`;
             console.log('[FoodAnalysis] Sending to:', requestUrl);
 
@@ -484,20 +489,20 @@ function HealthTabScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={[styles.container, isDark && styles.containerDark]}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#0B1220' : '#fff'} />
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.headerTitle}>Saglik</Text>
-                        <Text style={styles.headerSubtitle}>Durum Ozeti</Text>
+                        <Text style={[styles.headerTitle, isDark && styles.textDark]}>Saglik</Text>
+                        <Text style={[styles.headerSubtitle, isDark && styles.subTextDark]}>Durum Ozeti</Text>
                     </View>
                     <TouchableOpacity style={styles.headerDateBadge} onPress={() => void handleSyncDeviceData()} disabled={isDeviceSyncing}>
                         <Text style={styles.headerDate}>{isDeviceSyncing ? 'Senkron...' : 'Cihazdan Senkronize Et'}</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.periodRow}>
+                <View style={[styles.periodRow, isDark && styles.periodRowDark]}>
                     {([
                         { key: 'daily', label: 'Gunluk' },
                         { key: 'weekly', label: 'Haftalik' },
@@ -509,7 +514,7 @@ function HealthTabScreen() {
                     ))}
                 </View>
 
-                <View style={[styles.mainTabRow, { marginBottom: 16 }]}>
+                <View style={[styles.mainTabRow, isDark && styles.mainTabRowDark, { marginBottom: 16 }]}>
                     <TouchableOpacity
                         style={[styles.mainTabBtn, activeTab === 'goals' && styles.mainTabBtnActive]}
                         onPress={() => setActiveTab('goals')}
@@ -556,14 +561,14 @@ function HealthTabScreen() {
                             </View>
                         </View>
 
-                        <View style={styles.card}>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
                             <View style={styles.cardHeader}>
                                 <View style={[styles.cardIconCircle, { backgroundColor: BLUE + '15' }]}>
                                     <Ionicons name="water" size={20} color={BLUE} />
                                 </View>
                                 <View style={styles.cardHeaderText}>
-                                    <Text style={styles.cardTitle}>Su Hedefi</Text>
-                                    <Text style={styles.cardSubtitle}>{totalWater} / {waterGoalForPeriod} ml</Text>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>Su Hedefi</Text>
+                                    <Text style={[styles.cardSubtitle, isDark && styles.subTextDark]}>{totalWater} / {waterGoalForPeriod} ml</Text>
                                 </View>
                                 <View style={styles.cardHeaderActions}>
                                     <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: BLUE + '15' }]} onPress={() => setGoalEditType('water')}>
@@ -575,17 +580,17 @@ function HealthTabScreen() {
                                 </View>
                             </View>
                             <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${waterPct}%`, backgroundColor: BLUE }]} /></View>
-                            <Text style={styles.progressText}>{waterPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(waterGoalForPeriod - totalWater, 0)} ml`}</Text>
+                            <Text style={[styles.progressText, isDark && styles.subTextDark]}>{waterPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(waterGoalForPeriod - totalWater, 0)} ml`}</Text>
                         </View>
 
-                        <View style={styles.card}>
+                        <View style={[styles.card, isDark && styles.cardDark]}>
                             <View style={styles.cardHeader}>
                                 <View style={[styles.cardIconCircle, { backgroundColor: GREEN + '15' }]}>
                                     <Ionicons name="walk" size={20} color={GREEN} />
                                 </View>
                                 <View style={styles.cardHeaderText}>
-                                    <Text style={styles.cardTitle}>Adim Hedefi</Text>
-                                    <Text style={styles.cardSubtitle}>{totalSteps} / {stepsGoalForPeriod}</Text>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>Adim Hedefi</Text>
+                                    <Text style={[styles.cardSubtitle, isDark && styles.subTextDark]}>{totalSteps} / {stepsGoalForPeriod}</Text>
                                 </View>
                                 <View style={styles.cardHeaderActions}>
                                     <TouchableOpacity style={[styles.addMiniBtn, { backgroundColor: GREEN + '15' }]} onPress={() => setGoalEditType('steps')}>
@@ -594,13 +599,13 @@ function HealthTabScreen() {
                                 </View>
                             </View>
                             <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${stepsPct}%`, backgroundColor: GREEN }]} /></View>
-                            <Text style={styles.progressText}>{stepsPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(stepsGoalForPeriod - totalSteps, 0)} adim`}</Text>
+                            <Text style={[styles.progressText, isDark && styles.subTextDark]}>{stepsPct >= 100 ? 'Hedefe ulastin.' : `Kalan ${Math.max(stepsGoalForPeriod - totalSteps, 0)} adim`}</Text>
                         </View>
 
                         {!isLoading && periodLogs.length === 0 && (
                             <View style={styles.emptyCard}>
                                 <Ionicons name="heart-outline" size={44} color="#E0E0E0" />
-                                <Text style={styles.emptyText}>Kayit yok</Text>
+                                <Text style={[styles.emptyText, isDark && styles.subTextDark]}>Kayit yok</Text>
                                 <Text style={styles.emptySubtext}>Cihazdan senkronize edebilir veya su ekleyebilirsiniz.</Text>
                             </View>
                         )}
@@ -655,7 +660,7 @@ function HealthTabScreen() {
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <Text style={styles.sectionTitle}>Yeni Öğün Ekle</Text>
+                        <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Yeni Öğün Ekle</Text>
                         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                             <TouchableOpacity style={[styles.aiPhotoBtn, { flex: 1 }]} onPress={() => handlePickImage(true)}>
                                 <Ionicons name="camera" size={20} color="#fff" />
@@ -672,7 +677,7 @@ function HealthTabScreen() {
 
                         {mealLogs.length > 0 && (
                             <View style={{ marginTop: 20 }}>
-                                <Text style={styles.sectionTitle}>Öğünler</Text>
+                                <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Öğünler</Text>
                                 {mealLogs.map((log) => {
                                     const d = log.data as MealData;
                                     return (
@@ -701,7 +706,7 @@ function HealthTabScreen() {
 
             <Modal visible={goalEditType !== null} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
-                    <Text style={styles.modalTitle}>{goalEditType === 'steps' ? 'Adim Hedefini Duzenle' : 'Su Hedefini Duzenle'}</Text>
+                    <Text style={[styles.modalTitle, isDark && styles.textDark]}>{goalEditType === 'steps' ? 'Adim Hedefini Duzenle' : 'Su Hedefini Duzenle'}</Text>
                     {goalEditType !== 'steps' ? (
                         <>
                             <Text style={styles.modalFieldLabel}>Gunluk su hedefi (ml)</Text>
@@ -723,7 +728,7 @@ function HealthTabScreen() {
 
             <Modal visible={activeModal === 'water'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
-                    <Text style={styles.modalTitle}><Ionicons name="water" size={20} color={BLUE} /> Su Ekle</Text>
+                    <Text style={[styles.modalTitle, isDark && styles.textDark]}><Ionicons name="water" size={20} color={BLUE} /> Su Ekle</Text>
                     <TextInput style={styles.modalInput} placeholder="Miktar (ml)" keyboardType="numeric" value={waterAmount} onChangeText={setWaterAmount} />
                     <View style={styles.inlineInfoRow}>
                         <Text style={styles.inlineInfoText}>Gunluk su hedefi: {goals.waterMlTarget} ml</Text>
@@ -746,7 +751,7 @@ function HealthTabScreen() {
 
             <Modal visible={activeModal === 'meal'} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
-                    <Text style={styles.modalTitle}><Ionicons name="restaurant" size={20} color={ORANGE} /> Ogun Ekle</Text>
+                    <Text style={[styles.modalTitle, isDark && styles.textDark]}><Ionicons name="restaurant" size={20} color={ORANGE} /> Ogun Ekle</Text>
                     {isAnalyzing ? (
                         <View style={{ alignItems: 'center', marginVertical: 20 }}>
                             <ActivityIndicator size="large" color={ORANGE} />
@@ -813,6 +818,16 @@ function HealthTabScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
+    containerDark: { backgroundColor: '#0B1220' },
+    /* ─── Dark Mode ─── */
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    logItemDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    modalSheetDark: { backgroundColor: '#111827' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    periodRowDark: { backgroundColor: '#111827' },
+    mainTabRowDark: { backgroundColor: '#111827' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
     scroll: { paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingBottom: 30 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A2E' },

@@ -2,7 +2,7 @@
 /**
  * API temel URL'si
  */
-export const API_URL = 'http://localhost:8080/api';
+export const API_URL = 'http://192.168.234.217:8080/api';
 
 /**
  * İşlem tipleri

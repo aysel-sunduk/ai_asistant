@@ -19,6 +19,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#6C63FF';
 
@@ -27,6 +29,10 @@ const STATUS_OPTIONS = ['draft', 'published'] as const;
 const PROFANITY_WARNING = 'Argo kelime kullandiniz, paylasim iptal edildi.';
 
 export default function CreatePostScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -187,20 +193,20 @@ export default function CreatePostScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Blog Paylas</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Blog Paylas</Text>
                     <View style={styles.headerBtn} />
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.formCard}>
+                <View style={[styles.formCard, isDark && styles.cardDark]}>
                     <Text style={styles.formTitle}>Yeni Yazi</Text>
                     <View style={styles.titleContainer}>
                         <TextInput
@@ -231,7 +237,7 @@ export default function CreatePostScreen() {
                         placeholder="Etiketler (virgulle)"
                         value={tags}
                         onChangeText={setTags}
-                        style={styles.input}
+                        style={[styles.input, isDark && styles.inputDark]}
                     />
 
                     <Text style={styles.fieldLabel}>Gorunurluk</Text>
@@ -272,7 +278,7 @@ export default function CreatePostScreen() {
                         <ActivityIndicator size="small" color={COLOR} />
                     </View>
                 ) : posts.length === 0 ? (
-                    <View style={styles.emptyCard}>
+                    <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                         <Text style={styles.emptyTitle}>Kayit yok</Text>
                         <Text style={styles.emptySub}>Ilk blogunu yukaridan olusturabilirsin.</Text>
                     </View>
@@ -311,7 +317,7 @@ export default function CreatePostScreen() {
                 onRequestClose={() => setShowAiModal(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isDark && styles.cardDark]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>✨ AI Başlık Önerileri</Text>
                             <TouchableOpacity onPress={() => setShowAiModal(false)}>
@@ -434,4 +440,11 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     suggestionText: { fontSize: 14, fontWeight: '600', color: '#1E293B', flex: 1, marginRight: 10 },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

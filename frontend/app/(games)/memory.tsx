@@ -13,6 +13,8 @@ import {
     View,
 } from 'react-native';
 import { formatTime, getMemoryCards, saveGameResult, getBestResult } from '../../src/utils/game.utils';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#A78BFA';
 const GREEN = '#4ADE80';
@@ -30,6 +32,10 @@ interface Card {
 }
 
 export default function MemoryScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [cards, setCards] = useState<Card[]>([]);
     const [firstPick, setFirstPick] = useState<number | null>(null);
@@ -161,7 +167,7 @@ export default function MemoryScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
@@ -170,7 +176,7 @@ export default function MemoryScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>🧠 Hafıza Oyunu</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>🧠 Hafıza Oyunu</Text>
                     <View style={styles.headerActions}>
                         <TouchableOpacity onPress={handlePauseToggle} style={styles.backBtn}>
                             <Ionicons name={isPaused ? 'play' : 'pause'} size={20} color="#fff" />
@@ -367,4 +373,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     },
     btnPrimaryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

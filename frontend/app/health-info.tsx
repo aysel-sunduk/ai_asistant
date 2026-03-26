@@ -19,11 +19,17 @@ import { userApi } from '../src/api/user.api';
 import type { UpdateProfileRequest, UserProfile } from '../src/models/user.model';
 import { ACTIVITY_LEVEL_LABELS, GENDER_LABELS } from '../src/models/user.model';
 import { useAuthStore } from '../src/store/auth.store';
+import { resolveTheme, useThemeStore } from '../src/store/theme.store';
+import { useColorScheme } from '../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
 
 export default function HealthInfoScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const setProfile = useAuthStore((s) => s.setProfile);
 
@@ -145,7 +151,7 @@ export default function HealthInfoScreen() {
     const birthDateValue = form.birthDate ? new Date(form.birthDate) : new Date();
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             {/* Header duplicate fix: headerShown: false */}
             <Stack.Screen options={{ headerShown: false }} />
 
@@ -158,7 +164,7 @@ export default function HealthInfoScreen() {
                         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                             <Ionicons name="chevron-back" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Sağlık Bilgilerini Güncelle</Text>
+                        <Text style={[styles.headerTitle, isDark && styles.textDark]}>Sağlık Bilgilerini Güncelle</Text>
                         {!isEditing ? (
                             <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editBtn}>
                                 <Ionicons name="create-outline" size={18} color="#fff" />
@@ -194,7 +200,7 @@ export default function HealthInfoScreen() {
                         </View>
                     )}
 
-                    <View style={styles.card}>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
                         <TouchableOpacity
                             disabled={!isEditing}
                             onPress={() => setShowDatePicker(true)}
@@ -343,4 +349,11 @@ const styles = StyleSheet.create({
     saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
     cancelBtn: { alignItems: 'center', paddingVertical: 12 },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: GRAY },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

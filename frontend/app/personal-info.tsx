@@ -20,6 +20,8 @@ import { userApi } from '../src/api/user.api';
 import type { UpdateProfileRequest, UserProfile } from '../src/models/user.model';
 import { VISIBILITY_LABELS } from '../src/models/user.model';
 import { useAuthStore } from '../src/store/auth.store';
+import { resolveTheme, useThemeStore } from '../src/store/theme.store';
+import { useColorScheme } from '../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -29,6 +31,9 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 export default function PersonalInfoScreen() {
     const router = useRouter();
     const setProfile = useAuthStore((s) => s.setProfile);
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
 
     const [data, setData] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -107,7 +112,7 @@ export default function PersonalInfoScreen() {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={[styles.loadingContainer, isDark && styles.containerDark]}>
                 <ActivityIndicator size="large" color={PURPLE} />
                 <Text style={styles.loadingText}>Profil yükleniyor...</Text>
             </View>
@@ -115,7 +120,7 @@ export default function PersonalInfoScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" backgroundColor={PURPLE} />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -343,6 +348,7 @@ function PickerField({
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
+    containerDark: { backgroundColor: '#0B1220' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' },
     loadingText: { marginTop: 12, color: GRAY, fontSize: 14 },
 

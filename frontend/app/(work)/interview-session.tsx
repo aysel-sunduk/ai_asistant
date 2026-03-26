@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
 import type { InterviewSession } from '../../src/models/interview.model';
 import { Alert as RNAlert } from 'react-native';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PRIMARY = '#4F46E5'; // Indigo
 const SECONDARY = '#EEF2FF';
@@ -26,6 +28,10 @@ const BACKGROUND = '#FBFCFE';
 const CARD_BG = '#FFFFFF';
 
 export default function InterviewSessionScreen() {
+    const sysMode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(sysMode, systemScheme) === 'dark';
+
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -229,7 +235,7 @@ export default function InterviewSessionScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
                     <Ionicons name="close" size={24} color="#1E293B" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>{session?.title}</Text>
+                <Text style={[styles.headerTitle, isDark && styles.textDark]} numberOfLines={1}>{session?.title}</Text>
                 <View style={styles.statusBadge}>
                     <Text style={styles.statusText}>{mode}</Text>
                 </View>
@@ -245,7 +251,7 @@ export default function InterviewSessionScreen() {
                             </TouchableOpacity>
                         )}
                     </View>
-                    <Text style={styles.subtitle}>
+                    <Text style={[styles.subtitle, isDark && styles.subTextDark]}>
                         {questions.length > 0
                             ? 'Seni terletecek ama geliştirecek profesyonel sorular seni bekliyor.'
                             : 'Mülakat detayını görüntülüyorsun. Hazır olduğunda AI ile soruları hazırlatıp direkt başlayabilirsin.'}
@@ -642,4 +648,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     secondaryBtnText: { color: '#475569', fontSize: 16, fontWeight: '800' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

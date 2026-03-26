@@ -5,6 +5,8 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useGoals } from '../../src/hooks/useGoals';
 import { goalsService } from '../../services/goals.service';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#FFD93D';
 const DARK = '#B8860B';
@@ -22,6 +24,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function GoalDetailScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const params = useLocalSearchParams<{ id?: string }>();
     const goalId = typeof params.id === 'string' ? params.id : '';
@@ -110,14 +116,14 @@ export default function GoalDetailScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color={DARK} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Hedef Detayi</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Hedef Detayi</Text>
                     <View style={{ width: 40 }} />
                 </View>
             </View>
@@ -132,8 +138,8 @@ export default function GoalDetailScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                    <View style={styles.card}>
-                        <Text style={styles.title}>{selectedGoal.title}</Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <Text style={[styles.title, isDark && styles.textDark]}>{selectedGoal.title}</Text>
                         <Text style={styles.sub}>{selectedGoal.description || 'Aciklama yok'}</Text>
 
                         <View style={styles.metaRow}>
@@ -338,4 +344,11 @@ const styles = StyleSheet.create({
     completeBtnDone: { backgroundColor: '#FEE2E2' },
     completeBtnText: { color: '#065F46', fontWeight: '800' },
     completeBtnTextDone: { color: '#B91C1C' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

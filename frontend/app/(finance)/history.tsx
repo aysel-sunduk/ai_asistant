@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { familyService } from '../../services/family.service';
 import type { MonthlyFinanceSummaryResponse } from '../../src/models/family.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const DARK = '#1A1A2E';
@@ -22,6 +24,10 @@ const SUCCESS = '#10B981';
 const DANGER = '#EF4444';
 
 export default function FinanceHistoryScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [history, setHistory] = useState<MonthlyFinanceSummaryResponse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -95,14 +101,14 @@ export default function FinanceHistoryScreen() {
     const displayData = currentMonthData || emptySummary;
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color={DARK} />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Finansal Gecmis</Text>
+                    <Text style={[styles.title, isDark && styles.textDark]}>Finansal Gecmis</Text>
                     <TouchableOpacity onPress={loadHistory} style={styles.backBtn}>
                         <Ionicons name="refresh" size={20} color={DARK} />
                     </TouchableOpacity>
@@ -130,7 +136,7 @@ export default function FinanceHistoryScreen() {
                 </View>
             ) : (
                 <View style={styles.content}>
-                    <View style={styles.card}>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
                         <View style={styles.cardHeader}>
                             <View>
                                 <Text style={styles.monthLabel}>{displayData.monthLabel}</Text>
@@ -279,4 +285,11 @@ const styles = StyleSheet.create({
     statDivider: { width: 1, height: 40, backgroundColor: '#E2E8F0' },
     emptyContainer: { alignItems: 'center', marginTop: 40 },
     emptyText: { marginTop: 12, color: GRAY, fontSize: 14 },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

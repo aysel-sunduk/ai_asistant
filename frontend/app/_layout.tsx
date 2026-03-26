@@ -2,16 +2,25 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { resolveTheme, useThemeStore } from '../src/store/theme.store';
 import { ignoreLogs } from '../src/utils/ignoreLogs';
 
 // Initialize log suppression
 ignoreLogs();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const mode = useThemeStore((s) => s.mode);
+  const loadMode = useThemeStore((s) => s.loadMode);
+  const colorScheme = resolveTheme(mode, systemScheme);
+
+  useEffect(() => {
+    void loadMode();
+  }, [loadMode]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -32,7 +41,7 @@ export default function RootLayout() {
         <Stack.Screen name="change-password" options={{ headerShown: false, presentation: 'modal' }} />
 
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }

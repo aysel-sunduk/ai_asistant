@@ -12,6 +12,8 @@ import {
     View,
 } from 'react-native';
 import { useMenuStore } from '../../src/store/menu.store';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -22,6 +24,9 @@ export default function MenuScreen() {
     const router = useRouter();
     const { modules, isLoaded, loadOrder, moveUp, moveDown } = useMenuStore();
     const [isEditing, setIsEditing] = useState(false);
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
 
     useEffect(() => {
         if (!isLoaded) loadOrder();
@@ -33,14 +38,14 @@ export default function MenuScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={[styles.container, isDark && styles.containerDark]}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#111827' : '#fff'} />
 
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, isDark && styles.headerDark]}>
                 <View>
-                    <Text style={styles.headerTitle}>Menü</Text>
-                    <Text style={styles.headerSubtitle}>Tüm modüller</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.headerTitleDark]}>Menü</Text>
+                    <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>Tüm modüller</Text>
                 </View>
                 <TouchableOpacity
                     style={[styles.editButton, isEditing && styles.editButtonActive]}
@@ -67,7 +72,7 @@ export default function MenuScreen() {
                     {modules.map((mod, index) => (
                         <TouchableOpacity
                             key={mod.id}
-                            style={[styles.card, isEditing && styles.cardEditing]}
+                            style={[styles.card, isDark && styles.cardDark, isEditing && styles.cardEditing]}
                             activeOpacity={isEditing ? 1 : 0.7}
                             onPress={() => handlePress(mod.route)}
                         >
@@ -109,12 +114,12 @@ export default function MenuScreen() {
                             </View>
 
                             {/* Title */}
-                            <Text style={styles.cardTitle}>{mod.title}</Text>
+                            <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{mod.title}</Text>
 
                             {/* Arrow */}
                             {!isEditing && (
                                 <View style={styles.cardArrow}>
-                                    <Ionicons name="chevron-forward" size={16} color="#D0D0D0" />
+                                    <Ionicons name="chevron-forward" size={16} color={isDark ? '#6B7280' : '#D0D0D0'} />
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -140,6 +145,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F8F9FA',
     },
+    containerDark: {
+        backgroundColor: '#0B1220',
+    },
 
     /* Header */
     header: {
@@ -153,15 +161,25 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
     },
+    headerDark: {
+        backgroundColor: '#111827',
+        borderBottomColor: '#1F2937',
+    },
     headerTitle: {
         fontSize: 28,
         fontWeight: '800',
         color: '#1A1A2E',
     },
+    headerTitleDark: {
+        color: '#E5E7EB',
+    },
     headerSubtitle: {
         fontSize: 14,
         color: GRAY,
         marginTop: 2,
+    },
+    headerSubtitleDark: {
+        color: '#9CA3AF',
     },
     editButton: {
         flexDirection: 'row',
@@ -211,6 +229,9 @@ const styles = StyleSheet.create({
         elevation: 2,
         position: 'relative',
     },
+    cardDark: {
+        backgroundColor: '#111827',
+    },
     cardEditing: {
         borderWidth: 1.5,
         borderColor: PURPLE + '30',
@@ -228,6 +249,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1A1A2E',
         textAlign: 'center',
+    },
+    cardTitleDark: {
+        color: '#E5E7EB',
     },
     cardArrow: {
         position: 'absolute',

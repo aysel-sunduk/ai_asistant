@@ -13,11 +13,17 @@ import {
     View,
 } from 'react-native';
 import { gamesService } from '../../services/games.service';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const { width } = Dimensions.get('window');
 const COLOR = '#A78BFA';
 
 export default function PerformanceStatsScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [trendData, setTrendData] = useState<any>(null);
@@ -62,14 +68,14 @@ export default function PerformanceStatsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Performans Analizi</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Performans Analizi</Text>
                     <TouchableOpacity onPress={loadData} style={styles.backBtn}>
                         <Ionicons name="refresh" size={20} color="#fff" />
                     </TouchableOpacity>
@@ -251,4 +257,11 @@ const styles = StyleSheet.create({
     motivationEmoji: { fontSize: 32, marginBottom: 10 },
     motivationMessage: { fontSize: 16, fontWeight: '700', color: '#4C1D95', textAlign: 'center', lineHeight: 24 },
     motivationMeta: { marginTop: 10, fontSize: 11, color: '#7C3AED', fontWeight: '600' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

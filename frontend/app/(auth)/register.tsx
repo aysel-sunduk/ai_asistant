@@ -16,6 +16,8 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../../src/hooks/useAuth';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -23,6 +25,10 @@ const GRAY_LIGHT = '#F5F5F5';
 const BORDER = '#E8E8E8';
 
 export default function RegisterScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const { register, error: authError } = useAuth();
     const [firstName, setFirstName] = useState('');
@@ -72,7 +78,7 @@ export default function RegisterScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             <KeyboardAvoidingView
                 style={styles.flex}
@@ -94,7 +100,7 @@ export default function RegisterScreen() {
                             <Ionicons name="person-add" size={28} color="#fff" />
                         </View>
                         <Text style={styles.appName}>Hesap Oluştur</Text>
-                        <Text style={styles.subtitle}>AsistAI'a katılın</Text>
+                        <Text style={[styles.subtitle, isDark && styles.subTextDark]}>AsistAI'a katılın</Text>
                     </View>
 
                     {/* Form */}
@@ -102,11 +108,11 @@ export default function RegisterScreen() {
                         {/* Ad & Soyad */}
                         <View style={styles.nameRow}>
                             <View style={[styles.inputGroup, styles.nameField]}>
-                                <Text style={styles.label}>Ad</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Ad</Text>
                                 <View style={[styles.inputWrapper, errors.firstName && styles.inputError]}>
                                     <Ionicons name="person-outline" size={18} color={errors.firstName ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, isDark && styles.inputDark]}
                                         placeholder="Adınız"
                                         placeholderTextColor="#C4C4C4"
                                         value={firstName}
@@ -119,11 +125,11 @@ export default function RegisterScreen() {
                             </View>
 
                             <View style={[styles.inputGroup, styles.nameField]}>
-                                <Text style={styles.label}>Soyad</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Soyad</Text>
                                 <View style={[styles.inputWrapper, errors.lastName && styles.inputError]}>
                                     <Ionicons name="person-outline" size={18} color={errors.lastName ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, isDark && styles.inputDark]}
                                         placeholder="Soyadınız"
                                         placeholderTextColor="#C4C4C4"
                                         value={lastName}
@@ -138,11 +144,11 @@ export default function RegisterScreen() {
 
                         {/* E-posta */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>E-posta</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>E-posta</Text>
                             <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                                 <Ionicons name="mail-outline" size={20} color={errors.email ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="ornek@email.com"
                                     placeholderTextColor="#C4C4C4"
                                     value={email}
@@ -158,11 +164,11 @@ export default function RegisterScreen() {
 
                         {/* Şifre */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Şifre</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Şifre</Text>
                             <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
                                 <Ionicons name="lock-closed-outline" size={20} color={errors.password ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="En az 6 karakter"
                                     placeholderTextColor="#C4C4C4"
                                     value={password}
@@ -180,11 +186,11 @@ export default function RegisterScreen() {
 
                         {/* Şifre Tekrar */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Şifre Tekrar</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Şifre Tekrar</Text>
                             <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputError]}>
                                 <Ionicons name="shield-checkmark-outline" size={20} color={errors.confirmPassword ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="Şifrenizi tekrar girin"
                                     placeholderTextColor="#C4C4C4"
                                     value={confirmPassword}
@@ -431,4 +437,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: PURPLE,
     },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

@@ -14,6 +14,8 @@ import {
     View,
 } from 'react-native';
 import { authService } from '../services/auth.service';
+import { resolveTheme, useThemeStore } from '../src/store/theme.store';
+import { useColorScheme } from '../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const BORDER = '#E2E8F0';
@@ -21,6 +23,10 @@ const TEXT_MAIN = '#1E293B';
 const TEXT_MUTED = '#64748B';
 
 export default function ChangePasswordScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
 
     const [currentPassword, setCurrentPassword] = useState('');
@@ -69,7 +75,7 @@ export default function ChangePasswordScreen() {
 
     return (
         <KeyboardAvoidingView
-            style={styles.container}
+            style={[styles.container, isDark && styles.containerDark]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             {/* Header */}
@@ -77,7 +83,7 @@ export default function ChangePasswordScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={TEXT_MAIN} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Şifre Değiştir</Text>
+                <Text style={[styles.headerTitle, isDark && styles.textDark]}>Şifre Değiştir</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -94,11 +100,11 @@ export default function ChangePasswordScreen() {
                 <View style={styles.formContainer}>
                     {/* Mevcut Şifre */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Mevcut Şifre</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Mevcut Şifre</Text>
                         <View style={styles.inputWrapper}>
                             <Ionicons name="key-outline" size={20} color={TEXT_MUTED} style={styles.inputIcon} />
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Mevcut şifrenizi girin"
                                 secureTextEntry={!showCurrent}
                                 value={currentPassword}
@@ -113,11 +119,11 @@ export default function ChangePasswordScreen() {
 
                     {/* Yeni Şifre */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Yeni Şifre</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Yeni Şifre</Text>
                         <View style={styles.inputWrapper}>
                             <Ionicons name="lock-closed-outline" size={20} color={TEXT_MUTED} style={styles.inputIcon} />
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Yeni şifre belirleyin"
                                 secureTextEntry={!showNew}
                                 value={newPassword}
@@ -132,11 +138,11 @@ export default function ChangePasswordScreen() {
 
                     {/* Yeni Şifre Tekrar */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Yeni Şifre (Tekrar)</Text>
                         <View style={styles.inputWrapper}>
                             <Ionicons name="checkmark-circle-outline" size={20} color={TEXT_MUTED} style={styles.inputIcon} />
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                                 placeholder="Yeni şifrenizi doğrulayın"
                                 secureTextEntry={!showConfirm}
                                 value={confirmPassword}
@@ -292,4 +298,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

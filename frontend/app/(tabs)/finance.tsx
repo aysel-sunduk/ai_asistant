@@ -20,6 +20,8 @@ import { financeService } from '../../services/finance.service';
 console.log('FinanceService Debug:', financeService);
 import type { CurrencyHoldingResponse, FinanceDashboardResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -30,6 +32,9 @@ import { formatCurrency, getInvestmentDisplayName, getPnlColor, getPnlPrefix } f
 
 export default function FinanceScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [dashboard, setDashboard] = useState<FinanceDashboardResponse | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -113,7 +118,7 @@ export default function FinanceScreen() {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={[styles.loadingContainer, isDark && { backgroundColor: '#0B1220' }]}>
                 <ActivityIndicator size="large" color={PURPLE} />
                 <Text style={styles.loadingText}>Yükleniyor...</Text>
             </View>
@@ -121,7 +126,7 @@ export default function FinanceScreen() {
     }
 
     return (
-        <>
+        <View style={[styles.screenRoot, isDark && styles.screenRootDark]}>
             <FinanceScreenContent
                 dashboard={dashboard}
                 favCurrencies={favCurrencies}
@@ -141,11 +146,14 @@ export default function FinanceScreen() {
                 recommendation={selectedRec}
                 onClose={() => setModalVisible(false)}
             />
-        </>
+        </View>
     );
 }
 
 function RecommendationDetailModal({ visible, recommendation, onClose }: { visible: boolean, recommendation: any, onClose: () => void }) {
+    const modeM = useThemeStore((s) => s.mode);
+    const schemeM = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(modeM, schemeM) === 'dark';
     if (!recommendation) return null;
 
     const actionColor = recommendation.recommendationType === 'BUY' ? '#10B981'
@@ -167,7 +175,7 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
                 activeOpacity={1}
                 onPress={onClose}
             >
-                <View style={styles.modalContent}>
+                <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
                     <View style={styles.modalHeader}>
                         <View style={[styles.recActionBadge, { backgroundColor: actionColor + '18' }]}>
                             <Text style={[styles.recActionText, { color: actionColor, fontSize: 13 }]}>{actionLabel}</Text>
@@ -177,7 +185,7 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.modalSymbol}>{recommendation.symbol}</Text>
+                    <Text style={[styles.modalSymbol, isDark && styles.textDark]}>{recommendation.symbol}</Text>
                     <Text style={styles.modalAssetType}>{recommendation.assetType}</Text>
 
                     <View style={styles.modalStatsRow}>
@@ -193,10 +201,10 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
 
                     <View style={styles.modalDivider} />
 
-                    <View style={styles.modalInfoBox}>
+                    <View style={[styles.modalInfoBox, isDark && styles.modalInfoBoxDark]}>
                         <Ionicons name="chatbubble-ellipses-outline" size={20} color={PURPLE} style={{ marginTop: 2 }} />
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.modalInfoTitle}>AI Analizi</Text>
+                            <Text style={[styles.modalInfoTitle, isDark && styles.textDark]}>AI Analizi</Text>
                             <Text style={styles.modalInfoDetail}>{recommendation.reason}</Text>
                         </View>
                     </View>
@@ -218,6 +226,9 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
 }
 
 function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiRecommendations, refreshing, onRefresh, router, errorMsg, onShowRecDetail }: any) {
+    const mode2 = useThemeStore((s) => s.mode);
+    const systemScheme2 = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode2, systemScheme2) === 'dark';
     const [performance, setPerformance] = useState<any>(null);
 
     useEffect(() => {
@@ -236,17 +247,17 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
     const investmentsToShow = (favInvestments && favInvestments.length > 0) ? favInvestments : (dashboard?.topInvestments ?? []);
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+        <View style={[styles.container, isDark && styles.containerDark]}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#0B1220' : '#F8F9FA'} />
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />}
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* ─── Header ─── */}
-                <View style={styles.header}>
+                <View style={[styles.header, isDark && styles.headerDark]}>
                     <View>
-                        <Text style={styles.headerTitle}>Finans</Text>
+                        <Text style={[styles.headerTitle, isDark && styles.textDark]}>Finans</Text>
                         <TouchableOpacity onPress={() => router.push('/(finance)/history')}>
                             <Text style={[styles.headerSubtitle, { color: PURPLE, fontWeight: '600' }]}>
                                 Geçmişi Gör <Ionicons name="chevron-forward" size={12} />
@@ -254,7 +265,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                         </TouchableOpacity>
                     </View>
                     <View style={styles.headerActions}>
-                        <TouchableOpacity style={styles.iconBtn} onPress={onRefresh}>
+                        <TouchableOpacity style={[styles.iconBtn, isDark && styles.iconBtnDark]} onPress={onRefresh}>
                             <Ionicons name="refresh" size={20} color={GRAY} />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -293,21 +304,21 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
 
                 {/* ─── 3 Stat Kartları ─── */}
                 <View style={styles.statsRow}>
-                    <View style={styles.statCard}>
+                    <View style={[styles.statCard, isDark && styles.cardDark]}>
                         <View style={[styles.statIcon, { backgroundColor: '#EDE9FE' }]}>
                             <Ionicons name="arrow-down-circle" size={18} color={PURPLE} />
                         </View>
-                        <Text style={styles.statLabel}>Maliyet</Text>
-                        <Text style={styles.statValue}>{formatCurrency(totalCost)}</Text>
+                        <Text style={[styles.statLabel, isDark && styles.subDark]}>Maliyet</Text>
+                        <Text style={[styles.statValue, isDark && styles.textDark]}>{formatCurrency(totalCost)}</Text>
                     </View>
-                    <View style={styles.statCard}>
+                    <View style={[styles.statCard, isDark && styles.cardDark]}>
                         <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
                             <Ionicons name="bar-chart" size={18} color="#34D399" />
                         </View>
-                        <Text style={styles.statLabel}>Değer</Text>
-                        <Text style={styles.statValue}>{formatCurrency(totalValue)}</Text>
+                        <Text style={[styles.statLabel, isDark && styles.subDark]}>Değer</Text>
+                        <Text style={[styles.statValue, isDark && styles.textDark]}>{formatCurrency(totalValue)}</Text>
                     </View>
-                    <View style={styles.statCard}>
+                    <View style={[styles.statCard, isDark && styles.cardDark]}>
                         <View style={[styles.statIcon, { backgroundColor: pnl >= 0 ? '#D1FAE5' : '#FEE2E2' }]}>
                             <Ionicons
                                 name={pnl >= 0 ? 'arrow-up' : 'arrow-down'}
@@ -315,7 +326,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                 color={getPnlColor(pnl)}
                             />
                         </View>
-                        <Text style={styles.statLabel}>Kâr/Zarar</Text>
+                        <Text style={[styles.statLabel, isDark && styles.subDark]}>Kâr/Zarar</Text>
                         <Text style={[styles.statValue, { color: getPnlColor(pnl) }]}>
                             {getPnlPrefix(pnl)}{formatCurrency(pnl)}
                         </Text>
@@ -325,8 +336,8 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                 {/* ─── Dağılım ─── */}
                 {Object.keys(allocation).length > 0 && (
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Portföy Dağılımı</Text>
-                        <View style={styles.allocationCard}>
+                        <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Portföy Dağılımı</Text>
+                        <View style={[styles.allocationCard, isDark && styles.cardDark]}>
                             <View style={styles.allocationBar}>
                                 {Object.entries(allocation).map(([type, pct], idx) => (
                                     <View
@@ -354,7 +365,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                                 { backgroundColor: ASSET_TYPE_COLORS[type] || (type === "CURRENCY" ? "#22C55E" : "#9BA1A6") },
                                             ]}
                                         />
-                                        <Text style={styles.legendText}>
+                                        <Text style={[styles.legendText, isDark && styles.subDark]}>
                                             {ASSET_TYPE_LABELS[type] || (type === "CURRENCY" ? "Döviz" : type)} %{Number(pct).toFixed(0)}
                                         </Text>
                                     </View>
@@ -401,7 +412,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                 return (
                                     <TouchableOpacity
                                         key={rec.id || index}
-                                        style={styles.recCard}
+                                        style={[styles.recCard, isDark && styles.recCardDark]}
                                         activeOpacity={0.7}
                                         onPress={() => onShowRecDetail(rec)}
                                     >
@@ -414,13 +425,13 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                                 <Text style={[styles.recRiskText, { color: riskColor }]}>{riskLabel}</Text>
                                             </View>
                                         </View>
-                                        <Text style={styles.recSymbol}>{rec.symbol}</Text>
+                                        <Text style={[styles.recSymbol, isDark && styles.textDark]}>{rec.symbol}</Text>
                                         <Text style={styles.recAssetType}>{rec.assetType}</Text>
                                         <View style={styles.recConfidence}>
                                             <View style={styles.recConfBar}>
                                                 <View style={[styles.recConfFill, { width: `${Math.min(rec.confidenceScore || 0, 100)}%`, backgroundColor: actionColor }]} />
                                             </View>
-                                            <Text style={styles.recConfText}>%{Number(rec.confidenceScore || 0).toFixed(0)}</Text>
+                                            <Text style={[styles.recConfText, isDark && styles.textDark]}>%{Number(rec.confidenceScore || 0).toFixed(0)}</Text>
                                         </View>
                                         <Text style={styles.recReason} numberOfLines={2}>{rec.reason}</Text>
                                         <View style={styles.recTapHint}>
@@ -447,7 +458,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                     </View>
 
                     {investmentsToShow.length === 0 ? (
-                        <View style={styles.emptyCard}>
+                        <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
                             <Ionicons name="trending-up" size={36} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Henüz yatırım yok</Text>
                             <TouchableOpacity
@@ -465,7 +476,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                 return (
                                     <TouchableOpacity
                                         key={inv.id}
-                                        style={styles.investmentCard}
+                                        style={[styles.investmentCard, isDark && styles.cardDark]}
                                         activeOpacity={0.7}
                                         onPress={() => router.push(`/(finance)/investments`)}
                                     >
@@ -483,9 +494,9 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                                 />
                                             </View>
                                         </View>
-                                        <Text style={styles.investmentSymbol}>{getInvestmentDisplayName(inv.symbol, inv.assetType) || inv.symbol}</Text>
+                                        <Text style={[styles.investmentSymbol, isDark && styles.textDark]}>{getInvestmentDisplayName(inv.symbol, inv.assetType) || inv.symbol}</Text>
 
-                                        <Text style={styles.investmentValue}>
+                                        <Text style={[styles.investmentValue, isDark && styles.textDark]}>
                                             {formatCurrency(inv.currentValue)}
                                         </Text>
                                         <View style={styles.investmentPnl}>
@@ -518,7 +529,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                     </View>
 
                     {currenciesToShow.length === 0 ? (
-                        <View style={styles.emptyCard}>
+                        <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
                             <Ionicons name="star-outline" size={36} color="#E0E0E0" />
                             <Text style={styles.emptyText}>Favori kur eklenmedi</Text>
                             <TouchableOpacity
@@ -529,7 +540,7 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                             </TouchableOpacity>
                         </View>
                     ) : (
-                        <View style={styles.currencyCard}>
+                        <View style={[styles.currencyCard, isDark && styles.cardDark]}>
                             {currenciesToShow.map((cur: any, index: number) => (
                                 <View
                                     key={cur.id || index}
@@ -545,14 +556,14 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                             </Text>
                                         </View>
                                         <View>
-                                            <Text style={styles.currencyCode}>{cur.currencyName}</Text>
+                                            <Text style={[styles.currencyCode, isDark && styles.textDark]}>{cur.currencyName}</Text>
                                             <Text style={styles.currencyName}>
                                                 {cur.currencyCode}/{cur.baseCurrency || 'TRY'}
                                             </Text>
                                         </View>
                                     </View>
                                     <View style={styles.currencyRight}>
-                                        <Text style={styles.currencyRate}>
+                                        <Text style={[styles.currencyRate, isDark && styles.textDark]}>
                                             {Number(cur.rate).toFixed(4)}
                                         </Text>
                                         {cur.changeRate != null && (
@@ -584,6 +595,8 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
 }
 
 const styles = StyleSheet.create({
+    screenRoot: { flex: 1, backgroundColor: '#F8F9FA' },
+    screenRootDark: { backgroundColor: '#0B1220' },
     container: { flex: 1, backgroundColor: '#F8F9FA' },
     scrollContent: {
         paddingBottom: 32,
@@ -762,4 +775,16 @@ const styles = StyleSheet.create({
     modalDisclaimerText: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
     modalActionBtn: { height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
     modalActionBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    headerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937', shadowOpacity: 0 },
+    emptyCardDark: { backgroundColor: '#111827', shadowOpacity: 0 },
+    recCardDark: { backgroundColor: '#111827', borderColor: '#1F2937', shadowOpacity: 0 },
+    modalContentDark: { backgroundColor: '#111827' },
+    modalInfoBoxDark: { backgroundColor: '#1E293B' },
+    iconBtnDark: { backgroundColor: '#1E293B' },
+    textDark: { color: '#E5E7EB' },
+    subDark: { color: '#9CA3AF' },
 });

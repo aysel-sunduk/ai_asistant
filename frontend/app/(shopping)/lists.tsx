@@ -18,6 +18,8 @@ import Toast from '../../components/ui/Toast';
 import { shoppingService } from '../../services/shopping.service';
 import { useShopping } from '../../src/hooks/useShopping';
 import type { ShoppingItem, ShoppingRecurrenceType } from '../../src/models/shopping.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#F472B6';
 const DATE_FILTERS: { key: ShoppingRecurrenceType | 'ALL' | 'ARCHIVED'; label: string }[] = [
@@ -50,6 +52,9 @@ const isInCurrentPeriod = (dateStr: string, period: ShoppingRecurrenceType | 'AL
 
 export default function ListsScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const params = useLocalSearchParams<{ addItem?: string }>();
     const { lists, isLoading, fetchLists, createList, deleteList, updateListArchive } = useShopping();
 
@@ -196,7 +201,7 @@ export default function ListsScreen() {
     const overviewItems = overviewTab === 'PENDING' ? allPendingItems : allDoneItems;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
@@ -267,8 +272,8 @@ export default function ListsScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                    <View style={styles.card}>
-                        <Text style={styles.sectionTitle}>Genel Urun Durumu</Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Genel Urun Durumu</Text>
                         <View style={styles.overviewTabs}>
                             <TouchableOpacity
                                 style={[styles.overviewTabBtn, overviewTab === 'PENDING' && styles.overviewTabBtnActive]}
@@ -292,7 +297,7 @@ export default function ListsScreen() {
                                 <ActivityIndicator size="small" color={COLOR} />
                             </View>
                         ) : overviewItems.length === 0 ? (
-                            <Text style={styles.emptySub}>
+                            <Text style={[styles.emptySub, isDark && styles.subTextDark]}>
                                 {overviewTab === 'PENDING' ? 'Bekleyen urun yok.' : 'Alinan urun yok.'}
                             </Text>
                         ) : (
@@ -325,22 +330,22 @@ export default function ListsScreen() {
                     </View>
 
                     {lists.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>Henuz liste yok</Text>
-                            <Text style={styles.emptySub}>Yukaridan yeni bir alisveris listesi olusturabilirsin.</Text>
+                        <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
+                            <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Henuz liste yok</Text>
+                            <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Yukaridan yeni bir alisveris listesi olusturabilirsin.</Text>
                         </View>
                     ) : (
                         <View style={styles.sectionWrap}>
-                            <Text style={styles.sectionTitle}>
+                            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
                                 {dateFilter === 'DAILY' ? 'Bugun' : dateFilter === 'WEEKLY' ? 'Bu Hafta' : dateFilter === 'MONTHLY' ? 'Bu Ay' : 'Tum'} Listeleri
                             </Text>
                             {filteredLists.length === 0 ? (
-                                <Text style={styles.emptySub}>Secili tarih araliginda liste bulunamadi.</Text>
+                                <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Secili tarih araliginda liste bulunamadi.</Text>
                             ) : (
                                 filteredLists.map((list) => (
                                     <TouchableOpacity
                                         key={list.id}
-                                        style={styles.card}
+                                        style={[styles.card, isDark && styles.cardDark]}
                                         activeOpacity={0.75}
                                         onPress={() =>
                                             router.push({
@@ -354,8 +359,8 @@ export default function ListsScreen() {
                                                 <Ionicons name="cart-outline" size={20} color={COLOR} />
                                             </View>
                                             <View style={{ flex: 1 }}>
-                                                <Text style={styles.cardTitle}>{list.name}</Text>
-                                                <Text style={styles.cardSub}>
+                                                <Text style={[styles.cardTitle, isDark && styles.textDark]}>{list.name}</Text>
+                                                <Text style={[styles.cardSub, isDark && styles.subTextDark]}>
                                                     {new Date(list.createdAt).toLocaleString('tr-TR')}
                                                 </Text>
                                             </View>
@@ -642,4 +647,14 @@ const styles = StyleSheet.create({
     archiveToggleTextActive: {
         color: COLOR,
     },
-});
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    emptyCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    sectionTitleDark: { color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
+}
+);

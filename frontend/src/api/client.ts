@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-const DEFAULT_API_URL = 'http://10.166.144.153:8080/api';
+const DEFAULT_API_URL = 'http://192.168.234.217:8080/api';
 
 const resolveApiBaseUrl = (): string => {
     // 1. Try ENV variable
@@ -14,7 +14,7 @@ const resolveApiBaseUrl = (): string => {
     // Android emulator: 10.0.2.2
     // iOS/Web: localhost (or LAN IP if using physical device)
     // Note: If using physical device, change 'localhost' to your computer's IP
-    const host = '10.166.144.153'; // Your current LAN IP
+    const host = '192.168.234.217'; // Your current LAN IP
     
     try {
         const { Platform } = require('react-native');

@@ -18,6 +18,8 @@ import Toast from '../../components/ui/Toast';
 import { shoppingService } from '../../services/shopping.service';
 import { useShopping } from '../../src/hooks/useShopping';
 import type { ShoppingItem, ShoppingListSummary, ShoppingRecommendation } from '../../src/models/shopping.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#F472B6';
 
@@ -37,6 +39,10 @@ const money = (minor?: number | null) => {
 };
 
 export default function ListDetailScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const params = useLocalSearchParams<{ listId?: string; name?: string }>();
     const listId = typeof params.listId === 'string' ? params.listId : '';
@@ -230,7 +236,7 @@ export default function ListDetailScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
             <View style={styles.header}>
@@ -238,7 +244,7 @@ export default function ListDetailScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{listName}</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]} numberOfLines={1}>{listName}</Text>
                     <TouchableOpacity onPress={() => void load()} style={styles.headerBtn}>
                         <Ionicons name="refresh" size={20} color="#fff" />
                     </TouchableOpacity>
@@ -263,13 +269,13 @@ export default function ListDetailScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Yeni urun ekle</Text>
                     <TextInput
                         value={newItemName}
                         onChangeText={setNewItemName}
                         placeholder="Urun adi"
-                        style={styles.input}
+                        style={[styles.input, isDark && styles.inputDark]}
                     />
                     <View style={styles.row}>
                         <TextInput
@@ -308,7 +314,7 @@ export default function ListDetailScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Liste Urunleri</Text>
 
                     {isLoading ? (
@@ -351,7 +357,7 @@ export default function ListDetailScreen() {
                     )}
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Akilli Oneriler</Text>
                     {loadingRecommendations ? (
                         <View style={styles.loadingInline}>
@@ -380,7 +386,7 @@ export default function ListDetailScreen() {
                     )}
                 </View>
 
-                <View style={styles.card}>
+                <View style={[styles.card, isDark && styles.cardDark]}>
                     <Text style={styles.sectionTitle}>Ozet</Text>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Tahmini toplam:</Text>
@@ -519,4 +525,11 @@ const styles = StyleSheet.create({
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
     summaryLabel: { fontSize: 13, color: '#475569' },
     summaryValue: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

@@ -27,6 +27,9 @@ import type { Reminder } from '../../src/models/reminder.model';
 import type { FollowRequestItem } from '../../src/models/social.model';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMenuStore } from '../../src/store/menu.store';
+import { sendTestNotification } from '../../src/hooks/usePushNotifications';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -47,6 +50,9 @@ export default function DashboardScreen() {
     const menuModules = useMenuStore((s) => s.modules);
     const shortcutsIds = useMenuStore((s) => s.shortcuts);
     const toggleShortcut = useMenuStore((s) => s.toggleShortcut);
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
 
     const shortcuts = useMemo(() => {
         const safeShortcutIds = shortcutsIds || [];
@@ -172,8 +178,8 @@ export default function DashboardScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={[styles.container, isDark && styles.containerDark]}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#0B1220' : '#fff'} />
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.welcomeSection}>
                     <TouchableOpacity style={styles.avatarCircle} activeOpacity={0.7} onPress={() => router.push('/(tabs)/profile')}>
@@ -189,11 +195,11 @@ export default function DashboardScreen() {
                         )}
                     </TouchableOpacity>
                     <View style={styles.welcomeText}>
-                        <Text style={styles.greeting}>Hos geldin</Text>
-                        <Text style={styles.userName}>{displayName}</Text>
+                        <Text style={[styles.greeting, isDark && styles.greetingDark]}>Hos geldin</Text>
+                        <Text style={[styles.userName, isDark && styles.userNameDark]}>{displayName}</Text>
                     </View>
                     <View style={styles.topActions}>
-                        <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={styles.notifyButton}>
+                        <TouchableOpacity onPress={() => setNotificationsOpen(true)} style={[styles.notifyButton, isDark && styles.notifyButtonDark]}>
                             <Ionicons name="notifications-outline" size={22} color={PURPLE} />
                             {totalNotificationCount > 0 && (
                                 <View style={styles.notifyBadge}>
@@ -220,37 +226,37 @@ export default function DashboardScreen() {
                 </View>
 
                 {financeReport && (
-                    <View style={styles.financeCard}>
+                    <View style={[styles.financeCard, isDark && styles.financeCardDark]}>
                         <View style={styles.financeHeader}>
-                            <Text style={styles.financeTitle}>Aylik Gelir/Gider</Text>
+                            <Text style={[styles.financeTitle, isDark && styles.financeTitleDark]}>Aylik Gelir/Gider</Text>
                             <TouchableOpacity onPress={() => router.push('/(finance)/transactions')}>
                                 <Text style={styles.financeLink}>Detay</Text>
                             </TouchableOpacity>
                         </View>
                         <View style={styles.financeStatsRow}>
                             <View style={styles.financeStat}>
-                                <Text style={styles.financeLabel}>Gelir</Text>
+                                <Text style={[styles.financeLabel, isDark && styles.financeLabelDark]}>Gelir</Text>
                                 <Text style={styles.financeIncome}>₺{Number(financeReport.totalIncome || 0).toFixed(2)}</Text>
                             </View>
                             <View style={styles.financeStat}>
-                                <Text style={styles.financeLabel}>Gider</Text>
+                                <Text style={[styles.financeLabel, isDark && styles.financeLabelDark]}>Gider</Text>
                                 <Text style={styles.financeExpense}>₺{Number(financeReport.totalExpense || 0).toFixed(2)}</Text>
                             </View>
                             <View style={styles.financeStat}>
-                                <Text style={styles.financeLabel}>Net</Text>
+                                <Text style={[styles.financeLabel, isDark && styles.financeLabelDark]}>Net</Text>
                                 <Text style={[styles.financeNet, Number(financeReport.balance || 0) >= 0 ? styles.financeIncome : styles.financeExpense]}>
                                     ₺{Number(financeReport.balance || 0).toFixed(2)}
                                 </Text>
                             </View>
                         </View>
-                        <Text style={styles.financeCompare}>
+                        <Text style={[styles.financeCompare, isDark && styles.financeCompareDark]}>
                             Onceki aya gore net: %{Number(financeReport.balanceChangePct || 0).toFixed(1)}
                         </Text>
                     </View>
                 )}
 
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Hizli Erisim</Text>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Hizli Erisim</Text>
                     <TouchableOpacity onPress={() => setShortcutsModalOpen(true)}>
                         <Text style={styles.editLink}>Duzenle</Text>
                     </TouchableOpacity>
@@ -260,14 +266,14 @@ export default function DashboardScreen() {
                     {shortcuts.map((item) => (
                         <TouchableOpacity
                             key={item.id}
-                            style={styles.shortcutCard}
+                            style={[styles.shortcutCard, isDark && styles.shortcutCardDark]}
                             activeOpacity={0.7}
                             onPress={() => router.push(item.route as any)}
                         >
                             <View style={[styles.shortcutIcon, { backgroundColor: item.color + '18' }]}>
                                 <Ionicons name={item.icon as any} size={26} color={item.color} />
                             </View>
-                            <Text style={styles.shortcutTitle}>{item.title}</Text>
+                            <Text style={[styles.shortcutTitle, isDark && styles.shortcutTitleDark]}>{item.title}</Text>
                         </TouchableOpacity>
                     ))}
                     {shortcuts.length === 0 && (
@@ -275,19 +281,19 @@ export default function DashboardScreen() {
                     )}
                 </View>
 
-                <Text style={styles.sectionTitle}>Yaklasan Hatirlaticilar</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Yaklasan Hatirlaticilar</Text>
                 {pendingReminders.length === 0 ? (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="time-outline" size={34} color="#E0E0E0" />
-                        <Text style={styles.emptyText}>Planli hatirlatici yok</Text>
+                    <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
+                        <Ionicons name="time-outline" size={34} color={isDark ? '#4B5563' : '#E0E0E0'} />
+                        <Text style={[styles.emptyText, isDark && styles.emptyTextDark]}>Planli hatirlatici yok</Text>
                     </View>
                 ) : (
                     pendingReminders.slice(0, 3).map((r) => (
-                        <TouchableOpacity key={r.id} style={styles.reminderCard} onPress={() => router.push('/(reminders)/reminders')}>
+                        <TouchableOpacity key={r.id} style={[styles.reminderCard, isDark && styles.reminderCardDark]} onPress={() => router.push('/(reminders)/reminders')}>
                             <Ionicons name="alarm-outline" size={18} color={PURPLE} />
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.reminderTitle}>{r.title}</Text>
-                                <Text style={styles.reminderTime}>
+                                <Text style={[styles.reminderTitle, isDark && styles.reminderTitleDark]}>{r.title}</Text>
+                                <Text style={[styles.reminderTime, isDark && styles.reminderTimeDark]}>
                                     {new Date(r.remindAt).toLocaleString('tr-TR', {
                                         day: '2-digit',
                                         month: 'short',
@@ -303,9 +309,9 @@ export default function DashboardScreen() {
 
             <Modal visible={notificationsOpen} transparent animationType="fade" onRequestClose={() => setNotificationsOpen(false)}>
                 <Pressable style={styles.modalBackdrop} onPress={() => setNotificationsOpen(false)}>
-                    <Pressable style={styles.modalCard} onPress={() => undefined}>
+                    <Pressable style={[styles.modalCard, isDark && styles.modalCardDark]} onPress={() => undefined}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Bildirimler</Text>
+                            <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>Bildirimler</Text>
                             <TouchableOpacity onPress={() => setNotificationsOpen(false)}>
                                 <Ionicons name="close" size={20} color="#64748B" />
                             </TouchableOpacity>
@@ -441,6 +447,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
+    containerDark: { backgroundColor: '#0B1220' },
     scroll: {
         paddingHorizontal: 24,
         paddingTop: Platform.OS === 'ios' ? 64 : 44,
@@ -667,4 +674,23 @@ const styles = StyleSheet.create({
         backgroundColor: PURPLE,
         borderColor: PURPLE,
     },
+
+    /* ─── Dark Mode ─── */
+    greetingDark: { color: '#94A3B8' },
+    userNameDark: { color: '#E5E7EB' },
+    notifyButtonDark: { backgroundColor: '#1E293B' },
+    financeCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    financeTitleDark: { color: '#E5E7EB' },
+    financeLabelDark: { color: '#94A3B8' },
+    financeCompareDark: { color: '#94A3B8' },
+    sectionTitleDark: { color: '#E5E7EB' },
+    shortcutCardDark: { backgroundColor: '#111827' },
+    shortcutTitleDark: { color: '#E5E7EB' },
+    emptyCardDark: { backgroundColor: '#111827' },
+    emptyTextDark: { color: '#E5E7EB' },
+    reminderCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    reminderTitleDark: { color: '#E5E7EB' },
+    reminderTimeDark: { color: '#94A3B8' },
+    modalCardDark: { backgroundColor: '#111827' },
+    modalTitleDark: { color: '#E5E7EB' },
 });

@@ -19,11 +19,16 @@ import {
 import Toast from '../../components/ui/Toast';
 import { contactsService } from '../../services/contacts.service';
 import type { Contact } from '../../src/models/contact.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#FF8A65';
 
 export default function ContactsScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [loading, setLoading] = useState(true);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [filter, setFilter] = useState<'all' | 'family'>('all');
@@ -153,7 +158,7 @@ export default function ContactsScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
@@ -201,27 +206,27 @@ export default function ContactsScreen() {
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : contacts.length === 0 ? (
-                    <View style={styles.emptyCard}>
-                        <Text style={styles.emptyTitle}>Henuz kisi yok</Text>
-                        <Text style={styles.emptySub}>Sag ustteki + ile ekleyebilirsin.</Text>
+                    <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
+                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Henuz kisi yok</Text>
+                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Sag ustteki + ile ekleyebilirsin.</Text>
                     </View>
                 ) : (
                     contacts
                         .filter((c) => filter === 'all' || c.relationship === 'Aile')
                         .map((c) => (
-                            <View key={c.id} style={styles.card}>
+                            <View key={c.id} style={[styles.card, isDark && styles.cardDark]}>
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
                                         {(c.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
                                     </Text>
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.name}>{c.name}</Text>
-                                    <Text style={styles.meta}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}{c.bloodType ? ` | 🩸${c.bloodType}` : ''}</Text>
+                                    <Text style={[styles.name, isDark && styles.textDark]}>{c.name}</Text>
+                                    <Text style={[styles.meta, isDark && styles.subTextDark]}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}{c.bloodType ? ` | 🩸${c.bloodType}` : ''}</Text>
                                 </View>
                                 <View style={styles.actions}>
-                                    <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(c)}>
-                                        <Ionicons name="create-outline" size={16} color="#64748B" />
+                                    <TouchableOpacity style={[styles.iconBtn, isDark && styles.iconBtnDark]} onPress={() => openEdit(c)}>
+                                        <Ionicons name="create-outline" size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.iconBtn} onPress={() => remove(c)}>
                                         <Ionicons name="trash-outline" size={16} color="#EF4444" />
@@ -234,10 +239,10 @@ export default function ContactsScreen() {
 
             <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalBackdrop}>
-                    <View style={styles.modalSheet}>
-                        <Text style={styles.modalTitle}>{editing ? 'Kisi Duzenle' : 'Kisi Ekle'}</Text>
-                        <TextInput placeholder="Isim" value={name} onChangeText={setName} style={styles.input} />
-                        <Text style={styles.label}>Yakinlik Derecesi</Text>
+                    <View style={[styles.modalSheet, isDark && styles.modalSheetDark]}>
+                        <Text style={[styles.modalTitle, isDark && styles.textDark]}>{editing ? 'Kisi Duzenle' : 'Kisi Ekle'}</Text>
+                        <TextInput placeholder="Isim" value={name} onChangeText={setName} style={[styles.input, isDark && styles.inputDark]} placeholderTextColor={isDark ? '#6B7280' : undefined} />
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Yakinlik Derecesi</Text>
                         <View style={styles.chipRow}>
                             {['Aile', 'Arkadaş', 'İş'].map((type) => (
                                 <TouchableOpacity
@@ -259,10 +264,10 @@ export default function ContactsScreen() {
                                     : 'Dogum gunu (opsiyonel)'}
                             </Text>
                         </TouchableOpacity>
-                        <TextInput placeholder="Telefon (opsiyonel)" value={phone} onChangeText={setPhone} style={styles.input} />
-                        <TextInput placeholder="E-posta (opsiyonel)" value={email} onChangeText={setEmail} style={styles.input} />
-                        <TextInput placeholder="Not (opsiyonel)" value={notes} onChangeText={setNotes} style={[styles.input, { minHeight: 72, textAlignVertical: 'top' }]} multiline />
-                        <Text style={styles.label}>Kan Grubu</Text>
+                        <TextInput placeholder="Telefon (opsiyonel)" value={phone} onChangeText={setPhone} style={[styles.input, isDark && styles.inputDark]} placeholderTextColor={isDark ? '#6B7280' : undefined} />
+                        <TextInput placeholder="E-posta (opsiyonel)" value={email} onChangeText={setEmail} style={[styles.input, isDark && styles.inputDark]} placeholderTextColor={isDark ? '#6B7280' : undefined} />
+                        <TextInput placeholder="Not (opsiyonel)" value={notes} onChangeText={setNotes} style={[styles.input, isDark && styles.inputDark, { minHeight: 72, textAlignVertical: 'top' }]} multiline placeholderTextColor={isDark ? '#6B7280' : undefined} />
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Kan Grubu</Text>
                         <View style={styles.bloodRow}>
                             {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'].map((bt) => (
                                 <TouchableOpacity
@@ -305,6 +310,7 @@ export default function ContactsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
+    containerDark: { backgroundColor: '#0B1220' },
     header: { backgroundColor: COLOR, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingBottom: 16 },
     headerRow: {
         flexDirection: 'row',
@@ -326,19 +332,24 @@ const styles = StyleSheet.create({
     content: { padding: 16, paddingBottom: 24 },
     centered: { paddingVertical: 40, alignItems: 'center' },
     emptyCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 14 },
+    emptyCardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     emptyTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
     emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
     card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     avatar: { width: 40, height: 40, borderRadius: 999, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
     avatarText: { color: '#B91C1C', fontSize: 12, fontWeight: '800' },
     name: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     meta: { marginTop: 2, fontSize: 12, color: '#64748B' },
     actions: { gap: 8 },
     iconBtn: { width: 30, height: 30, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+    iconBtnDark: { backgroundColor: '#1E293B' },
     modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' },
     modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: Platform.OS === 'ios' ? 28 : 16 },
+    modalSheetDark: { backgroundColor: '#111827' },
     modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 10 },
     input: { marginTop: 8, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     modalActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
     cancelBtn: { flex: 1, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     cancelText: { fontSize: 14, fontWeight: '700', color: '#334155' },
@@ -355,4 +366,7 @@ const styles = StyleSheet.create({
     bloodChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
     bloodChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
     bloodChipTextActive: { color: '#fff' },
+    /* Dark mode shared */
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

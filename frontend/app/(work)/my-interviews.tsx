@@ -22,6 +22,8 @@ import { interviewService } from '../../services/interview.service';
 import type { InterviewSession } from '../../src/models/interview.model';
 import Toast from '../../components/ui/Toast';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 // Constants to match events.tsx
 const COLOR = '#5B8DEF';
@@ -57,6 +59,10 @@ const cardTone = (session: InterviewSession) => {
 };
 
 export default function MyInterviewsScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
@@ -245,7 +251,7 @@ export default function MyInterviewsScreen() {
     }, [sessions]);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
 
                 <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -253,7 +259,7 @@ export default function MyInterviewsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
                         <Ionicons name="chevron-back" size={22} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>İş</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>İş</Text>
                     <TouchableOpacity onPress={() => setAddVisible(true)} style={styles.iconBtn}>
                         <Ionicons name="add" size={22} color="#fff" />
                     </TouchableOpacity>
@@ -321,7 +327,7 @@ export default function MyInterviewsScreen() {
                                 >
                                     <View style={[styles.cardDot, { backgroundColor: tone.dot }]} />
                                     <View style={styles.cardBody}>
-                                        <Text style={styles.cardTitle}>{s.title}</Text>
+                                        <Text style={[styles.cardTitle, isDark && styles.textDark]}>{s.title}</Text>
                                         <Text style={styles.cardTime}>{formatDateVerbose(s.interviewDate)}</Text>
                                         <View style={styles.metaRow}>
                                             <MiniTag text={s.position} />
@@ -367,30 +373,30 @@ export default function MyInterviewsScreen() {
             <Modal visible={addVisible} transparent animationType="slide" onRequestClose={() => setAddVisible(false)}>
                 <Pressable style={styles.modalBackdrop} onPress={() => setAddVisible(false)}>
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                        <Pressable style={styles.modalSheet} onPress={() => undefined}>
+                        <Pressable style={[styles.modalSheet, isDark && styles.cardDark]} onPress={() => undefined}>
                             <View style={styles.modalHandle} />
                             <Text style={styles.modalTitleText}>Yeni Mülakat Ekle</Text>
 
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                                <Text style={styles.label}>Başlık *</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Başlık *</Text>
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="Örn: Google Frontend Developer"
                                     placeholderTextColor="#94A3B8"
                                     value={title}
                                     onChangeText={setTitle}
                                 />
 
-                                <Text style={styles.label}>Pozisyon *</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Pozisyon *</Text>
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="Örn: Senior React Native Developer"
                                     placeholderTextColor="#94A3B8"
                                     value={position}
                                     onChangeText={setPosition}
                                 />
 
-                                <Text style={styles.label}>Mülakat Tarihi</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>Mülakat Tarihi</Text>
                                 <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                                     <Ionicons name="calendar-outline" size={18} color="#64748B" />
                                     <Text style={styles.dateBtnText}>
@@ -411,7 +417,7 @@ export default function MyInterviewsScreen() {
                                     />
                                 )}
 
-                                <Text style={styles.label}>İş Tanımı (opsiyonel)</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>İş Tanımı (opsiyonel)</Text>
                                 <TextInput
                                     style={[styles.input, styles.textArea]}
                                     placeholder="İlan detaylarını buraya ekle..."
@@ -668,4 +674,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLOR, alignItems: 'center', justifyContent: 'center',
     },
     createBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

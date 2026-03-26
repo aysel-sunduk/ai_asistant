@@ -15,6 +15,8 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../../src/hooks/useAuth';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -22,6 +24,10 @@ const GRAY_LIGHT = '#F5F5F5';
 const BORDER = '#E8E8E8';
 
 export default function ForgotPasswordScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const { forgotPassword } = useAuth();
     const [email, setEmail] = useState('');
@@ -50,7 +56,7 @@ export default function ForgotPasswordScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             <KeyboardAvoidingView
                 style={styles.flex}
@@ -71,10 +77,10 @@ export default function ForgotPasswordScreen() {
                         <View style={styles.logoCircle}>
                             <Ionicons name={isSent ? 'checkmark-done' : 'key'} size={28} color="#fff" />
                         </View>
-                        <Text style={styles.title}>
+                        <Text style={[styles.title, isDark && styles.textDark]}>
                             {isSent ? 'E-posta Gönderildi!' : 'Şifremi Unuttum'}
                         </Text>
-                        <Text style={styles.subtitle}>
+                        <Text style={[styles.subtitle, isDark && styles.subTextDark]}>
                             {isSent
                                 ? 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.'
                                 : 'Hesabınıza bağlı e-posta adresini girin, size şifre sıfırlama bağlantısı gönderelim.'}
@@ -109,11 +115,11 @@ export default function ForgotPasswordScreen() {
                         /* Form */
                         <View style={styles.formSection}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>E-posta</Text>
+                                <Text style={[styles.label, isDark && styles.subTextDark]}>E-posta</Text>
                                 <View style={[styles.inputWrapper, error ? styles.inputError : null]}>
                                     <Ionicons name="mail-outline" size={20} color={error ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, isDark && styles.inputDark]}
                                         placeholder="ornek@email.com"
                                         placeholderTextColor="#C4C4C4"
                                         value={email}
@@ -321,4 +327,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: PURPLE,
     },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

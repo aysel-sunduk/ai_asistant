@@ -19,6 +19,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { workService } from '../../services/work.service';
 import type { WorkEvent, WorkEventRequest } from '../../src/models/work.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#5B8DEF';
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
@@ -81,6 +83,10 @@ const toDate = (v?: string) => {
 };
 
 export default function EventDetailScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const params = useLocalSearchParams<{ id?: string }>();
     const eventId = typeof params.id === 'string' ? params.id : '';
@@ -284,14 +290,14 @@ export default function EventDetailScreen() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Toplanti Detayi</Text>
+                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Toplanti Detayi</Text>
                     <TouchableOpacity onPress={removeEvent} style={styles.backBtn}>
                         <Ionicons name="trash-outline" size={18} color="#fff" />
                     </TouchableOpacity>
@@ -299,10 +305,10 @@ export default function EventDetailScreen() {
             </View>
 
             <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 28 }}>
-                <Text style={styles.label}>Baslik</Text>
-                <TextInput value={title} onChangeText={setTitle} style={styles.input} />
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Baslik</Text>
+                <TextInput value={title} onChangeText={setTitle} style={[styles.input, isDark && styles.inputDark]} />
 
-                <Text style={styles.label}>Aciklama</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Aciklama</Text>
                 <TextInput
                     value={description}
                     onChangeText={setDescription}
@@ -310,7 +316,7 @@ export default function EventDetailScreen() {
                     style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
                 />
 
-                <Text style={styles.label}>Durum Akisi</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Durum Akisi</Text>
                 <View style={styles.chipsWrap}>
                     {STATUSES.map((s) => (
                         <Chip
@@ -322,7 +328,7 @@ export default function EventDetailScreen() {
                     ))}
                 </View>
 
-                <Text style={styles.label}>Tarih ve Saat</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Tarih ve Saat</Text>
                 <View style={styles.row2}>
                     <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerTarget('startDate')}>
                         <Ionicons name="calendar-outline" size={16} color={COLOR} />
@@ -344,7 +350,7 @@ export default function EventDetailScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.label}>Toplanti Tipi</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Toplanti Tipi</Text>
                 <View style={styles.chipsWrap}>
                     {EVENT_TYPES.map((item) => (
                         <Chip
@@ -356,7 +362,7 @@ export default function EventDetailScreen() {
                     ))}
                 </View>
 
-                <Text style={styles.label}>Oncelik</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Oncelik</Text>
                 <View style={styles.chipsWrap}>
                     {PRIORITIES.map((item) => (
                         <Chip
@@ -368,7 +374,7 @@ export default function EventDetailScreen() {
                     ))}
                 </View>
 
-                <Text style={styles.label}>Hatirlatma</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Hatirlatma</Text>
                 <View style={styles.chipsWrap}>
                     {REMINDERS.map((m) => (
                         <Chip
@@ -387,7 +393,7 @@ export default function EventDetailScreen() {
 
                 {!isOnline ? (
                     <>
-                        <Text style={styles.label}>Konum</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Konum</Text>
                         <View style={styles.chipsWrap}>
                             {LOCATION_OPTIONS.map((item) => (
                                 <Chip
@@ -403,30 +409,30 @@ export default function EventDetailScreen() {
                                 value={customLocation}
                                 onChangeText={setCustomLocation}
                                 placeholder="Konum yaz"
-                                style={styles.input}
+                                style={[styles.input, isDark && styles.inputDark]}
                             />
                         )}
                     </>
                 ) : (
                     <>
-                        <Text style={styles.label}>Toplanti Linki</Text>
+                        <Text style={[styles.label, isDark && styles.subTextDark]}>Toplanti Linki</Text>
                         <TextInput
                             value={meetingUrl}
                             onChangeText={setMeetingUrl}
                             placeholder="https://meet.google.com/..."
-                            style={styles.input}
+                            style={[styles.input, isDark && styles.inputDark]}
                             autoCapitalize="none"
                         />
                     </>
                 )}
 
-                <Text style={styles.label}>Katilimci Sayisi</Text>
+                <Text style={[styles.label, isDark && styles.subTextDark]}>Katilimci Sayisi</Text>
                 <TextInput
                     value={participantCount}
                     onChangeText={setParticipantCount}
                     placeholder="Orn: 6"
                     keyboardType="number-pad"
-                    style={styles.input}
+                    style={[styles.input, isDark && styles.inputDark]}
                 />
 
                 <TouchableOpacity style={[styles.submitBtn, saving && { opacity: 0.7 }]} onPress={submitUpdate} disabled={saving}>
@@ -546,4 +552,11 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     submitText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

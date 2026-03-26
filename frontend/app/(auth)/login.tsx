@@ -16,6 +16,8 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../../src/hooks/useAuth';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const PURPLE_LIGHT = '#8B83FF';
@@ -25,6 +27,10 @@ const GRAY_LIGHT = '#F5F5F5';
 const BORDER = '#E8E8E8';
 
 export default function LoginScreen() {
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
+
     const router = useRouter();
     const { login } = useAuth();
     const [email, setEmail] = useState('');
@@ -58,7 +64,7 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             <KeyboardAvoidingView
                 style={styles.flex}
@@ -77,18 +83,18 @@ export default function LoginScreen() {
                             </View>
                         </View>
                         <Text style={styles.appName}>AsistAI</Text>
-                        <Text style={styles.subtitle}>Hesabınıza giriş yapın</Text>
+                        <Text style={[styles.subtitle, isDark && styles.subTextDark]}>Hesabınıza giriş yapın</Text>
                     </View>
 
                     {/* Form */}
                     <View style={styles.formSection}>
                         {/* E-posta */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>E-posta</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>E-posta</Text>
                             <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                                 <Ionicons name="mail-outline" size={20} color={errors.email ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="ornek@email.com"
                                     placeholderTextColor="#C4C4C4"
                                     value={email}
@@ -107,11 +113,11 @@ export default function LoginScreen() {
 
                         {/* Şifre */}
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Şifre</Text>
+                            <Text style={[styles.label, isDark && styles.subTextDark]}>Şifre</Text>
                             <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
                                 <Ionicons name="lock-closed-outline" size={20} color={errors.password ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, isDark && styles.inputDark]}
                                     placeholder="••••••••"
                                     placeholderTextColor="#C4C4C4"
                                     value={password}
@@ -364,4 +370,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: PURPLE,
     },
+
+    /* ─── Dark Mode ─── */
+    containerDark: { backgroundColor: '#0B1220' },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    textDark: { color: '#E5E7EB' },
+    subTextDark: { color: '#9CA3AF' },
 });

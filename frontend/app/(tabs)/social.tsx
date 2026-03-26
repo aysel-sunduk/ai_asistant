@@ -16,6 +16,8 @@ import {
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const COLOR = '#6C63FF';
 
@@ -24,6 +26,9 @@ const statusLabel = (s: string) => (s === 'draft' ? 'Taslak' : s === 'archived' 
 
 export default function BlogTabScreen() {
     const router = useRouter();
+    const mode = useThemeStore((s) => s.mode);
+    const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+    const isDark = resolveTheme(mode, systemScheme) === 'dark';
     const [loading, setLoading] = useState(true);
     const [myPosts, setMyPosts] = useState<BlogPost[]>([]);
     const [feedPosts, setFeedPosts] = useState<BlogPost[]>([]);
@@ -95,7 +100,7 @@ export default function BlogTabScreen() {
     const visiblePosts = activeTab === 'MY' ? myPosts : feedPosts;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
                 <View style={styles.headerRow}>
@@ -137,11 +142,11 @@ export default function BlogTabScreen() {
                         </View>
 
                         {visiblePosts.length === 0 ? (
-                            <View style={styles.emptyCard}>
-                                <Text style={styles.emptyTitle}>
+                            <View style={[styles.emptyCard, isDark && styles.cardDark]}>
+                                <Text style={[styles.emptyTitle, isDark && styles.titleDark]}>
                                     {activeTab === 'MY' ? 'Kayit yok' : 'Feed bos'}
                                 </Text>
-                                <Text style={styles.emptySub}>
+                                <Text style={[styles.emptySub, isDark && styles.subDark]}>
                                     {activeTab === 'MY'
                                         ? 'Sag ustteki Olustur ile ilk blogunu yaz.'
                                         : 'Takip ettigin hesaplar yazi paylastiginda burada gorulur.'}
@@ -149,9 +154,9 @@ export default function BlogTabScreen() {
                             </View>
                         ) : (
                             visiblePosts.map((p) => (
-                                <View key={p.id} style={styles.card}>
+                                <View key={p.id} style={[styles.card, isDark && styles.cardDark]}>
                                     <View style={styles.cardHeaderRow}>
-                                        <Text style={styles.cardTitle}>{p.title}</Text>
+                                        <Text style={[styles.cardTitle, isDark && styles.titleDark]}>{p.title}</Text>
                                         {activeTab === 'MY' ? (
                                             <TouchableOpacity
                                                 style={styles.deleteBtn}
@@ -162,7 +167,7 @@ export default function BlogTabScreen() {
                                             </TouchableOpacity>
                                         ) : null}
                                     </View>
-                                    <Text style={styles.cardMeta}>
+                                    <Text style={[styles.cardMeta, isDark && styles.subDark]}>
                                         {statusLabel(p.status)}
                                         {activeTab === 'MY' ? ` | ${visibilityLabel(p.visibility)}` : ''}
                                         {' | '}
@@ -172,7 +177,7 @@ export default function BlogTabScreen() {
                                         activeOpacity={0.85}
                                         onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
                                     >
-                                        <Text numberOfLines={3} style={styles.cardBody}>
+                                        <Text numberOfLines={3} style={[styles.cardBody, isDark && styles.bodyDark]}>
                                             {p.cleanContent || p.rawContent}
                                         </Text>
                                     </TouchableOpacity>
@@ -190,6 +195,7 @@ export default function BlogTabScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
+    containerDark: { backgroundColor: '#0B1220' },
     header: { backgroundColor: COLOR, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16 },
     headerRow: {
         paddingTop: Platform.OS === 'ios' ? 58 : 40,
@@ -232,8 +238,10 @@ const styles = StyleSheet.create({
     emptyTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
     emptySub: { marginTop: 4, fontSize: 12, color: '#64748B' },
     card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 12, marginBottom: 8 },
+    cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
     cardTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
+    titleDark: { color: '#E5E7EB' },
     deleteBtn: {
         width: 26,
         height: 26,
@@ -244,4 +252,6 @@ const styles = StyleSheet.create({
     },
     cardMeta: { marginTop: 4, fontSize: 11, color: '#64748B' },
     cardBody: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
+    subDark: { color: '#94A3B8' },
+    bodyDark: { color: '#CBD5E1' },
 });
