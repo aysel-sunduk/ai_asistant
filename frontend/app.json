@@ -36,7 +36,8 @@
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.aiassistantfrontend"
+      "package": "com.anonymous.aiassistantfrontend",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

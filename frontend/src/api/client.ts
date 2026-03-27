@@ -1,7 +1,6 @@
 // Kisa aciklama: Backend API cagrilarini toplar.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import Constants from 'expo-constants';
 
 const DEFAULT_API_URL = 'http://192.168.234.217:8080/api';
 
@@ -10,11 +9,12 @@ const resolveApiBaseUrl = (): string => {
     const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
     if (envUrl) return envUrl.replace(/\/$/, '');
 
+
     // 2. Local fallback
     // Android emulator: 10.0.2.2
     // iOS/Web: localhost (or LAN IP if using physical device)
     // Note: If using physical device, change 'localhost' to your computer's IP
-    const host = '192.168.234.217'; // Your current LAN IP
+
     
     try {
         const { Platform } = require('react-native');
@@ -24,6 +24,11 @@ const resolveApiBaseUrl = (): string => {
     } catch (e) {
         // Fallback for non-react-native environments if needed
     }
+
+    // 2. Local fallback - Use your computer's LAN IP
+    // This works for both physical devices and emulators on the same network
+    const host = '192.168.234.217'; // Your current LAN IP
+
     
     return `http://${host}:8080/api`;
 };

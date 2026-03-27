@@ -1,6 +1,8 @@
 // Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as Linking from 'expo-linking';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -14,17 +16,19 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { API_BASE_URL } from '../../src/api/client';
+import { googleCalendarService } from '../../services/google-calendar.service';
+import { userService } from '../../services/user.service';
 import { blogApi } from '../../src/api/blog.api';
+import { API_BASE_URL } from '../../src/api/client';
 import { socialApi } from '../../src/api/social.api';
 import { userApi } from '../../src/api/user.api';
-import { userService } from '../../services/user.service';
 import { useAuthStore } from '../../src/store/auth.store';
-import { googleCalendarService } from '../../services/google-calendar.service';
-import * as Linking from 'expo-linking';
-import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+
 import { useColorScheme } from '../../hooks/use-color-scheme';
+import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+
+import { getNotificationPermissionStatus, requestNotificationPermission } from '../../src/hooks/usePushNotifications';
+
 
 const getImageUrl = (path?: string) => {
     if (!path) return null;
@@ -65,6 +69,7 @@ export default function ProfileScreen() {
     const [isUploadingPicture, setIsUploadingPicture] = useState(false);
     const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
     const { code } = useLocalSearchParams<{ code?: string }>();
 
     const fetchStatusAndStats = useCallback(async () => {
@@ -74,17 +79,35 @@ export default function ProfileScreen() {
             setUser(res.data.data);
             if (setProfile) setProfile(profileRes);
 
-            const [socialRes, blogRes, calendarRes] = await Promise.all([
+            const [socialRes, blogRes, calendarRes, permStatus] = await Promise.all([
                 socialApi.getStats(),
                 blogApi.getUserVisiblePosts(res.data.data.id, 0, 1),
-                googleCalendarService.getStatus().catch(() => ({ connected: false }))
+                googleCalendarService.getStatus().catch(() => ({ connected: false })),
+                getNotificationPermissionStatus(),
             ]);
+            
             setStats({
                 followers: socialRes.data?.data?.followersCount || 0,
                 following: socialRes.data?.data?.followingCount || 0,
                 posts: blogRes.data?.data?.totalElements || 0,
             });
             setCalendarStatus(calendarRes);
+            setNotifStatus(permStatus);
+
+            // Eğer izin zaten verilmişse, token'ı sessizce guncelle
+            if (permStatus === 'granted') {
+                try {
+                    const pushUtils = require('../../src/hooks/usePushNotifications');
+                    const func = pushUtils.registerAndSendToken;
+                    if (typeof func === 'function') {
+                        func().catch(() => {});
+                    } else if (pushUtils.default && typeof pushUtils.default.registerAndSendToken === 'function') {
+                        pushUtils.default.registerAndSendToken().catch(() => {});
+                    }
+                } catch (e) {
+                    console.log('[Profile] Notification registration error:', e);
+                }
+            }
         } catch (err) {
             console.log('[Profile] Failed to fetch data:', err);
         }
@@ -218,6 +241,25 @@ export default function ProfileScreen() {
         }
     };
 
+    const handleNotificationToggle = async () => {
+        if (notifStatus === 'granted') {
+            Alert.alert(
+                'Bildirimler Açık',
+                'Bildirimleri kapatmak için uygulama ayarlarına gidin.',
+                [
+                    { text: 'Tamam', style: 'cancel' },
+                    { text: 'Ayarlara Git', onPress: () => Linking.openSettings() },
+                ],
+            );
+        } else {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+                setNotifStatus('granted');
+                // Token gönderimi requestNotificationPermission içinde registerAndSendToken ile yapılıyor
+            }
+        }
+    };
+
     const displayName = profile?.fullName
         ? profile.fullName
         : profile?.firstName
@@ -284,6 +326,13 @@ export default function ProfileScreen() {
     ];
 
     const appItems: MenuItem[] = [
+        {
+            icon: 'notifications-outline',
+            label: 'Bildirimler',
+            subtitle: notifStatus === 'granted' ? 'Açık ✅' : 'Kapalı — Açmak için tıklayın',
+            color: '#FF9500',
+            onPress: handleNotificationToggle,
+        },
         {
             icon: 'logo-google',
             label: 'Google Takvim',
