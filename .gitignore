@@ -84,3 +84,6 @@ ml-service/food-calorie-estimator/.ipynb_checkpoints/
 ml-service/food-calorie-estimator/*.npy
 ml-service/food-calorie-estimator/*.onnx
 ml-service/app.ipynb
+
+frontend/google-services.json
+uploads/profile-pictures/
