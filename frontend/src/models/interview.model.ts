@@ -4,6 +4,7 @@ export interface InterviewQuestionDTO {
     answerText?: string;
     feedback?: string;
     score?: number;
+    difficulty?: string;
     orderNo: number;
 }
 

@@ -22,4 +22,6 @@ export const healthApi = {
         apiClient.post<ApiResponse<any>>('/v1/health/diet/recommend', data),
     mealSwap: (data: { slot: string; calorieTarget?: number; dietGoal?: string; excludedRecipeIds?: number[]; preference?: string }) =>
         apiClient.post<ApiResponse<any>>('/v1/health/diet/meal-swap', data),
+    toggleFavorite: (id: string) => apiClient.post<ApiResponse<HealthLog>>(`/v1/health/logs/${id}/toggle-favorite`),
+    toggleFavoriteMeal: (foodName: string) => apiClient.post<ApiResponse<string[]>>('/v1/health/diet/favorite', { foodName }),
 };

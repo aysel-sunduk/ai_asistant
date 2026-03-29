@@ -2,16 +2,44 @@ package com.aiasistan.dto.interview;
 
 import java.util.List;
 import java.util.UUID;
-import lombok.Data;
-
-@Data
 public class UpdateInterviewQuestionsRequest {
     private List<QuestionUpdateDTO> questions;
 
-    @Data
+    public List<QuestionUpdateDTO> getQuestions() {
+        return questions;
+    }
+
+    public void setQuestions(List<QuestionUpdateDTO> questions) {
+        this.questions = questions;
+    }
+
     public static class QuestionUpdateDTO {
         private UUID id;
         private String questionText;
         private Integer orderNo;
+
+        public UUID getId() {
+            return id;
+        }
+
+        public void setId(UUID id) {
+            this.id = id;
+        }
+
+        public String getQuestionText() {
+            return questionText;
+        }
+
+        public void setQuestionText(String questionText) {
+            this.questionText = questionText;
+        }
+
+        public Integer getOrderNo() {
+            return orderNo;
+        }
+
+        public void setOrderNo(Integer orderNo) {
+            this.orderNo = orderNo;
+        }
     }
 }

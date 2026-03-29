@@ -7,9 +7,12 @@ import { Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { userApi } from '../api/user.api';
 
+import type * as ExpoNotifications from 'expo-notifications';
+import type * as ExpoDevice from 'expo-device';
+
 // Lazy import: native modul yoksa null doner
-let Notifications: typeof import('expo-notifications') | null = null;
-let Device: typeof import('expo-device') | null = null;
+let Notifications: typeof ExpoNotifications | null = null;
+let Device: typeof ExpoDevice | null = null;
 let Constants: typeof import('expo-constants').default | null = null;
 
 try {
@@ -92,10 +95,15 @@ export function usePushNotifications() {
                     const data = response.notification.request.content.data;
                     console.log('[PushNotifications] Bildirime tiklandi:', response.notification.request.content.title, data);
                     
-                    if (data?.type === 'shopping_reminder' && data?.itemName) {
+                    if (data?.screen) {
+                        router.push({
+                            pathname: data.screen as any,
+                            params: (data.params as any) || {}
+                        });
+                    } else if (data?.type === 'shopping_reminder' && data?.itemName) {
                         router.push({ 
-                            pathname: '/(shopping)/lists', 
-                            params: { addItem: String(data.itemName) } 
+                            pathname: '/(tabs)/health', 
+                            params: { openModal: 'meal', itemName: String(data.itemName) } 
                         });
                     }
                 },
@@ -122,13 +130,13 @@ export function usePushNotifications() {
 }
 
 // ─── Bildirim izin durumunu kontrol et (Dışa aktarılmış) ──────────────────
-export async function getNotificationPermissionStatus(): Promise<Notifications.PermissionStatus> {
-    if (!Notifications) return 'undetermined';
+export async function getNotificationPermissionStatus(): Promise<ExpoNotifications.PermissionStatus> {
+    if (!Notifications) return 'undetermined' as any;
     try {
         const { status } = await Notifications.getPermissionsAsync();
-        return status as Notifications.PermissionStatus;
+        return status as ExpoNotifications.PermissionStatus;
     } catch {
-        return 'undetermined';
+        return 'undetermined' as any;
     }
 }
 

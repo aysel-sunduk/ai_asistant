@@ -36,7 +36,7 @@ public class GameAIService {
 
     private static final Logger logger = LoggerFactory.getLogger(GameAIService.class);
 
-    @Value("${ML_SERVICE_URL:http://localhost:8001}")
+    @Value("${ML_SERVICE_URL:http://localhost:8000}")
     private String mlServiceUrl;
 
     private final HttpClient httpClient = HttpClient.newBuilder()

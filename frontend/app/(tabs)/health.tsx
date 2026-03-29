@@ -18,7 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { aiApi } from '../../src/api/ai.api';
 import apiClient from '../../src/api/client';
@@ -63,6 +63,15 @@ const DEFAULT_GOALS: LocalGoals = {
     stepsTarget: 10000,
 };
 
+const DIET_GOALS = [
+    { key: 'LOSE_WEIGHT', label: 'Kilo Ver' },
+    { key: 'MAINTAIN', label: 'Kiloyu Koru' },
+    { key: 'GAIN_WEIGHT', label: 'Kilo Al' },
+    { key: 'MUSCLE_GAIN', label: 'Kas Kazanımı' },
+    { key: 'HEALTHY_LIVING', label: 'Sağlıklı Yaşam' },
+    { key: 'ATHLETIC_PERFORMANCE', label: 'Atletik Performans' },
+];
+
 
 
 const MEAL_LABELS: Record<string, string> = {
@@ -100,6 +109,7 @@ function inRange(date: Date, start: Date, end: Date): boolean {
 }
 
 function HealthTabScreen() {
+    const { openModal, itemName } = useLocalSearchParams<{ openModal?: string; itemName?: string }>();
     const router = useRouter();
     const { logs, isLoading, fetchLogs, fetchNutrition, createLog, deleteLog } = useHealth();
     const mode = useThemeStore((s) => s.mode);
@@ -119,9 +129,20 @@ function HealthTabScreen() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analyzedImageUri, setAnalyzedImageUri] = useState<string | null>(null);
 
-    const [goals, setGoals] = useState<LocalGoals>(DEFAULT_GOALS);
-    const [goalWaterInput, setGoalWaterInput] = useState(String(DEFAULT_GOALS.waterMlTarget));
-    const [goalStepsInput, setGoalStepsInput] = useState(String(DEFAULT_GOALS.stepsTarget));
+    const [goals, setGoals] = useState<HealthGoals | null>(null);
+    const [goalWaterInput, setGoalWaterInput] = useState('2500');
+    const [goalStepsInput, setGoalStepsInput] = useState('10000');
+
+    useEffect(() => {
+        if (openModal === 'meal') {
+            setActiveModal('meal');
+            if (itemName) {
+                setMealDesc(itemName);
+            }
+        } else if (openModal === 'water') {
+            setActiveModal('water');
+        }
+    }, [openModal, itemName]);
 
     useEffect(() => {
         if (didInitRef.current) {
@@ -132,13 +153,9 @@ function HealthTabScreen() {
         const run = async () => {
             try {
                 const backendGoals: HealthGoals = await healthService.getGoals();
-                const mapped = {
-                    waterMlTarget: backendGoals.waterMlTarget,
-                    stepsTarget: backendGoals.stepsTarget,
-                };
-                setGoals(mapped);
-                setGoalWaterInput(String(mapped.waterMlTarget));
-                setGoalStepsInput(String(mapped.stepsTarget));
+                setGoals(backendGoals);
+                setGoalWaterInput(String(backendGoals.waterMlTarget));
+                setGoalStepsInput(String(backendGoals.stepsTarget));
             } catch {
                 // Keep defaults if goals cannot be loaded.
             }
@@ -194,8 +211,8 @@ function HealthTabScreen() {
     const totalCalories = activeCaloriesLogs.reduce((sum, l) => sum + (Number((l.data as ActiveCaloriesData).kcal) || 0), 0);
     const totalSteps = stepsLogs.reduce((sum, l) => sum + (Number((l.data as StepsData).count) || 0), 0);
 
-    const waterGoalForPeriod = goals.waterMlTarget * range.days;
-    const stepsGoalForPeriod = goals.stepsTarget * range.days;
+    const waterGoalForPeriod = (goals?.waterMlTarget || 2500) * range.days;
+    const stepsGoalForPeriod = (goals?.stepsTarget || 10000) * range.days;
 
     const waterPct = Math.min((totalWater / Math.max(waterGoalForPeriod, 1)) * 100, 100);
     const stepsPct = Math.min((totalSteps / Math.max(stepsGoalForPeriod, 1)) * 100, 100);
@@ -219,90 +236,91 @@ function HealthTabScreen() {
             const saved = await healthService.updateGoals({
                 waterMlTarget: nextWater,
                 stepsTarget: nextSteps,
-            });
-            const mapped = {
-                waterMlTarget: saved.waterMlTarget,
-                stepsTarget: saved.stepsTarget,
-            };
-            setGoals(mapped);
-            setGoalWaterInput(String(mapped.waterMlTarget));
-            setGoalStepsInput(String(mapped.stepsTarget));
+            } as any);
+            setGoals(saved);
+            setGoalWaterInput(String(saved.waterMlTarget));
+            setGoalStepsInput(String(saved.stepsTarget));
             setGoalEditType(null);
         } catch {
             Alert.alert('Hata', 'Hedefler kaydedilemedi.');
         }
     };
 
+    const handleToggleFavorite = async (log: any) => {
+        try {
+            const updated = await healthService.toggleFavorite(log.id);
+            // Local state'i güncelle
+            await fetchLogs();
+            if (updated.isFavorite) {
+                // Eğer yeni favori eklendiyse ve yemekse, toast veya alert verilebilir
+                // Backend zaten HealthGoal'u güncelliyor.
+            }
+        } catch (error) {
+            Alert.alert('Hata', 'Favori durumu guncellenemedi.');
+        }
+    };
+
     const handleSyncDeviceData = async () => {
+        Alert.alert('Senkronizasyon Araligi', 'Hangi araliktaki verileri cekmek istersiniz?', [
+            { text: 'Sadece Bugun', onPress: () => void runSync(1) },
+            { text: 'Son 7 Gun', onPress: () => void runSync(7) },
+            { text: 'Son 30 Gun', onPress: () => void runSync(30) },
+            { text: 'Iptal', style: 'cancel' },
+        ]);
+    };
+
+    const runSync = async (days: number) => {
         try {
             setIsDeviceSyncing(true);
-            const snapshot = await healthDeviceService.syncToday();
-            // Debug: cihazdan gelen anlık özet
-            // (geçici) Senkron sırasında hangi veri olduğu burada görülecek
-            // örn: { stepsCount: 1234, distanceKm: 2.3, ... }
-            // Bu log, sunucuya hangi kayıtların gönderildiğini anlamamıza yardımcı olur.
-            // Kısa ve tek satırlık.
-            // eslint-disable-next-line no-console
-            console.log('Device snapshot:', snapshot);
+            const snapshots = await healthDeviceService.syncRange(days);
             let inserted = 0;
 
-            if (snapshot.stepsCount > 0) {
-                const created = await createLog({
-                    logType: 'steps',
-                    logDate: todayStr,
-                    source: snapshot.source,
-                    externalRecordId: `${snapshot.source}-${todayStr}-steps`,
-                    data: { count: snapshot.stepsCount } as StepsData,
-                });
-                // eslint-disable-next-line no-console
-                console.log('createLog(steps) =>', created);
-                if (created && (created as any).id) inserted += 1;
-            }
-
-            if (snapshot.distanceKm > 0) {
-                const created = await createLog({
-                    logType: 'distance',
-                    logDate: todayStr,
-                    source: snapshot.source,
-                    externalRecordId: `${snapshot.source}-${todayStr}-distance`,
-                    data: { kilometers: snapshot.distanceKm } as DistanceData,
-                });
-                // eslint-disable-next-line no-console
-                console.log('createLog(distance) =>', created);
-                if (created && (created as any).id) inserted += 1;
-            }
-
-            if (snapshot.activeKcal > 0) {
-                const created = await createLog({
-                    logType: 'active_calories',
-                    logDate: todayStr,
-                    source: snapshot.source,
-                    externalRecordId: `${snapshot.source}-${todayStr}-active-kcal`,
-                    data: { kcal: snapshot.activeKcal } as ActiveCaloriesData,
-                });
-                // eslint-disable-next-line no-console
-                console.log('createLog(active_calories) =>', created);
-                if (created && (created as any).id) inserted += 1;
-            }
-
-            if (snapshot.avgHeartRate > 0) {
-                const created = await createLog({
-                    logType: 'heart_rate',
-                    logDate: todayStr,
-                    source: snapshot.source,
-                    externalRecordId: `${snapshot.source}-${todayStr}-heart-rate`,
-                    data: { bpm: snapshot.avgHeartRate } as HeartRateData,
-                });
-                // eslint-disable-next-line no-console
-                console.log('createLog(heart_rate) =>', created);
-                if (created && (created as any).id) inserted += 1;
+            for (const snapshot of snapshots) {
+                const dateStr = snapshot.date;
+                if (snapshot.stepsCount > 0) {
+                    await createLog({
+                        logType: 'steps',
+                        logDate: dateStr,
+                        source: snapshot.source,
+                        externalRecordId: `${snapshot.source}-${dateStr}-steps`,
+                        data: { count: snapshot.stepsCount } as StepsData,
+                    });
+                    inserted++;
+                }
+                if (snapshot.distanceKm > 0) {
+                    await createLog({
+                        logType: 'distance',
+                        logDate: dateStr,
+                        source: snapshot.source,
+                        externalRecordId: `${snapshot.source}-${dateStr}-distance`,
+                        data: { kilometers: snapshot.distanceKm } as DistanceData,
+                    });
+                    inserted++;
+                }
+                if (snapshot.activeKcal > 0) {
+                    await createLog({
+                        logType: 'active_calories',
+                        logDate: dateStr,
+                        source: snapshot.source,
+                        externalRecordId: `${snapshot.source}-${dateStr}-active-kcal`,
+                        data: { kcal: snapshot.activeKcal } as ActiveCaloriesData,
+                    });
+                    inserted++;
+                }
+                if (snapshot.avgHeartRate > 0) {
+                    await createLog({
+                        logType: 'heart_rate',
+                        logDate: dateStr,
+                        source: snapshot.source,
+                        externalRecordId: `${snapshot.source}-${dateStr}-heart-rate`,
+                        data: { bpm: snapshot.avgHeartRate } as HeartRateData,
+                    });
+                    inserted++;
+                }
             }
 
             await fetchLogs();
-            // Debug: senkron sonucu
-            // eslint-disable-next-line no-console
-            console.log('Device sync completed, inserted:', inserted);
-            Alert.alert('Senkron tamam', inserted > 0 ? 'Cihaz verileri guncellendi.' : 'Bugun icin yeni veri bulunamadi.');
+            Alert.alert('Senkron tamam', inserted > 0 ? `${days} gunluk veriler guncellendi.` : 'Yeni veri bulunamadi.');
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Cihaz verileri alinamadi.';
             Alert.alert('Senkron hatasi', message);
@@ -685,9 +703,18 @@ function HealthTabScreen() {
                                                     {d.protein_g || d.carbs_g || d.fat_g ? ` • ${d.protein_g || 0}g p, ${d.carbs_g || 0}g k, ${d.fat_g || 0}g y` : ''}
                                                 </Text>
                                             </View>
-                                            <TouchableOpacity onPress={() => void handleDeleteLog(log.id)}>
-                                                <Ionicons name="trash-outline" size={18} color="#D0D0D0" />
-                                            </TouchableOpacity>
+                                            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                                                <TouchableOpacity onPress={() => void handleToggleFavorite(log)}>
+                                                    <Ionicons 
+                                                        name={log.isFavorite === true ? "heart" : "heart-outline"} 
+                                                        size={20} 
+                                                        color={log.isFavorite === true ? "#FF6B6B" : "#D0D0D0"} 
+                                                    />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => void handleDeleteLog(log.id)}>
+                                                    <Ionicons name="trash-outline" size={18} color="#D0D0D0" />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
                                     );
                                 })}
@@ -701,19 +728,34 @@ function HealthTabScreen() {
 
             <Modal visible={goalEditType !== null} transparent animationType="slide">
                 <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHandle} />
-                    <Text style={[styles.modalTitle, isDark && styles.textDark]}>{goalEditType === 'steps' ? 'Adim Hedefini Duzenle' : 'Su Hedefini Duzenle'}</Text>
-                    {goalEditType !== 'steps' ? (
+                    <Text style={[styles.modalTitle, isDark && styles.textDark]}>
+                        {goalEditType === 'steps' ? 'Adim Hedefini Duzenle' : 
+                         goalEditType === 'water' ? 'Su Hedefini Duzenle' : 
+                         'Diyet Hedeflerini Duzenle'}
+                    </Text>
+                    
+                    {goalEditType === 'water' && (
                         <>
                             <Text style={styles.modalFieldLabel}>Gunluk su hedefi (ml)</Text>
                             <TextInput style={styles.modalInput} placeholder="Gunluk su hedefi (ml)" keyboardType="numeric" value={goalWaterInput} onChangeText={setGoalWaterInput} />
                         </>
-                    ) : null}
-                    {goalEditType !== 'water' ? (
+                    )}
+                    
+                    {goalEditType === 'steps' && (
                         <>
                             <Text style={styles.modalFieldLabel}>Gunluk adim hedefi</Text>
                             <TextInput style={styles.modalInput} placeholder="Gunluk adim hedefi" keyboardType="numeric" value={goalStepsInput} onChangeText={setGoalStepsInput} />
                         </>
-                    ) : null}
+                    )}
+
+                    {goalEditType === 'diet' as any && (
+                        <View style={{ paddingVertical: 20 }}>
+                            <Text style={[styles.emptySubtext, { textAlign: 'center' }]}>
+                                Diyet hedeflerinizi Profil {'->'} Sağlık Bilgileri kısmından düzenleyebilirsiniz.
+                            </Text>
+                        </View>
+                    )}
+                    
                     <View style={styles.modalBtnRow}>
                         <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setGoalEditType(null)}><Text style={styles.modalCancelText}>Iptal</Text></TouchableOpacity>
                         <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: PURPLE }]} onPress={() => void saveGoals()}><Text style={styles.modalSaveText}>Kaydet</Text></TouchableOpacity>
@@ -726,7 +768,7 @@ function HealthTabScreen() {
                     <Text style={[styles.modalTitle, isDark && styles.textDark]}><Ionicons name="water" size={20} color={BLUE} /> Su Ekle</Text>
                     <TextInput style={styles.modalInput} placeholder="Miktar (ml)" keyboardType="numeric" value={waterAmount} onChangeText={setWaterAmount} />
                     <View style={styles.inlineInfoRow}>
-                        <Text style={styles.inlineInfoText}>Gunluk su hedefi: {goals.waterMlTarget} ml</Text>
+                        <Text style={styles.inlineInfoText}>Gunluk su hedefi: {goals?.waterMlTarget || 2500} ml</Text>
                         <TouchableOpacity
                             style={styles.inlineLinkBtn}
                             onPress={() => {
@@ -930,6 +972,29 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.8)',
         fontSize: 12,
         marginTop: 2,
+    },
+    favBadge: {
+        backgroundColor: ORANGE + '20',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: ORANGE + '40',
+        marginRight: 6,
+        marginBottom: 6,
+    },
+    favBadgeText: {
+        fontSize: 12,
+        color: ORANGE,
+        fontWeight: '700',
+    },
+    favBadgeEditable: {
+        backgroundColor: ORANGE,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
 });
 

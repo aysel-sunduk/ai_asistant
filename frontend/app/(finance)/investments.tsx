@@ -25,6 +25,7 @@ import type { CurrencyHoldingResponse, InvestmentResponse } from '../../src/mode
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 import { formatCurrency, getInvestmentDisplayName, getPnlColor, getPnlPrefix } from '../../src/utils/finance.utils';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useFinanceStore } from '../../src/store/finance.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
@@ -262,8 +263,12 @@ export default function InvestmentsScreen() {
                     onPress: async () => {
                         try {
                             setLoading(true);
-                            await financeService.deleteInvestment(item.id);
-                            // Refresh list
+                            // Use the global store's delete method which handles the refresh
+                            await useFinanceStore.getState().deleteInvestment(item.id);
+                            
+                            Alert.alert('Başarılı', 'Yatırım silindi');
+                            
+                            // Also refresh this local screen's list
                             loadInvestments(0, true);
                         } catch (err: any) {
                             Alert.alert('Hata', 'Yatırım silinemedi: ' + (err.message || 'Bilinmeyen hata'));
@@ -328,6 +333,16 @@ export default function InvestmentsScreen() {
                                         name={isFavorite ? 'star' : 'star-outline'}
                                         size={18}
                                         color={isFavorite ? '#F7B500' : '#C9CED6'}
+                                    />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleDelete(item)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons
+                                        name="trash-outline"
+                                        size={18}
+                                        color="#EF4444"
                                     />
                                 </TouchableOpacity>
                             </View>

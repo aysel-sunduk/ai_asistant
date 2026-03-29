@@ -57,4 +57,14 @@ export const healthService = {
         const response = await healthApi.mealSwap(data);
         return response.data.data;
     },
+    
+    toggleFavorite: async (id: string): Promise<HealthLog> => {
+        const response = await healthApi.toggleFavorite(id);
+        return response.data.data;
+    },
+
+    toggleFavoriteMeal: async (foodName: string): Promise<string[]> => {
+        const response = await healthApi.toggleFavoriteMeal(foodName);
+        return response.data.data;
+    },
 };

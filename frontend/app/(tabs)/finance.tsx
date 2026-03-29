@@ -1,4 +1,4 @@
-﻿// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
+// Kisa aciklama: Bu dosya ekran/route yapisini tanimlar.
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -17,10 +17,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { financeService } from '../../services/finance.service';
-console.log('FinanceService Debug:', financeService);
 import type { CurrencyHoldingResponse, FinanceDashboardResponse, InvestmentResponse } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useFinanceStore } from '../../src/store/finance.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
@@ -35,71 +35,32 @@ export default function FinanceScreen() {
     const mode = useThemeStore((s) => s.mode);
     const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
     const isDark = resolveTheme(mode, systemScheme) === 'dark';
-    const [dashboard, setDashboard] = useState<FinanceDashboardResponse | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [favCurrencies, setFavCurrencies] = useState<any[]>([]);
-    const [favInvestments, setFavInvestments] = useState<any[]>([]);
-    const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+
+    // Global Store State
+    const { 
+        dashboard, 
+        performance, 
+        favCurrencies, 
+        favInvestments, 
+        aiRecommendations, 
+        isLoading, 
+        error,
+        fetchDashboardData 
+    } = useFinanceStore();
+
     const [selectedRec, setSelectedRec] = useState<any | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
+    // Load data handles both initial and focus-based refreshes
     const loadData = useCallback(async () => {
-        try {
-            console.log('Fetching dashboard and favorites...');
-
-            // Check token validity
-            const token = await AsyncStorage.getItem('accessToken');
-            if (!token) {
-                setErrorMsg("Token bulunamadı! Lütfen tekrar giriş yapın.");
-                setLoading(false);
-                return;
-            }
-
-            // Fetch independently to identify which one fails
-            try {
-                const dashRes = await financeService.getDashboard();
-                setDashboard(dashRes);
-                setErrorMsg(null);
-            } catch (e: any) {
-                console.error("Dashboard fetch failed:", e);
-                // Check for rate limit specific content or status 400 from backend
-                // The backend returns 400 with a message about AlphaVantage
-                if (e.response?.status === 400 || (e.response?.data?.message && e.response.data.message.includes('AlphaVantage'))) {
-                    setErrorMsg("Piyasa verileri şu an güncellenemiyor (Limit Aşıldı). Eski veriler gösteriliyor olabilir.");
-                } else {
-                    setErrorMsg(`Dashboard verisi alınamadı: ${e.response?.status || 'Bağlantı Hatası'}`);
-                }
-            }
-
-            try {
-                const favCurRes = await financeService.getFavorites();
-                setFavCurrencies(Array.isArray(favCurRes) ? favCurRes : []);
-            } catch (e: any) {
-                console.error("Fav Currencies fetch failed:", e);
-                // Don't block UI for this
-            }
-
-            try {
-                const favInvRes = await financeService.getFavoriteInvestments();
-                setFavInvestments(Array.isArray(favInvRes) ? favInvRes : []);
-            } catch (e: any) {
-                console.error("Fav Investments fetch failed:", e);
-            }
-
-            try {
-                const aiRecs = await financeService.getInvestmentRecommendations();
-                setAiRecommendations(Array.isArray(aiRecs) ? aiRecs : []);
-            } catch (e: any) {
-                console.error("AI Recommendations fetch failed:", e);
-            }
-
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) {
+            return;
         }
-    }, []);
+        await fetchDashboardData();
+        setRefreshing(false);
+    }, [fetchDashboardData]);
 
     useEffect(() => {
         loadData();
@@ -108,7 +69,7 @@ export default function FinanceScreen() {
     useFocusEffect(
         useCallback(() => {
             loadData();
-        }, [])
+        }, [loadData])
     );
 
     const onRefresh = () => {
@@ -116,7 +77,7 @@ export default function FinanceScreen() {
         loadData();
     };
 
-    if (loading) {
+    if (isLoading && !dashboard && !performance) {
         return (
             <View style={[styles.loadingContainer, isDark && { backgroundColor: '#0B1220' }]}>
                 <ActivityIndicator size="large" color={PURPLE} />
@@ -132,10 +93,11 @@ export default function FinanceScreen() {
                 favCurrencies={favCurrencies}
                 favInvestments={favInvestments}
                 aiRecommendations={aiRecommendations}
+                performance={performance}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 router={router}
-                errorMsg={errorMsg}
+                errorMsg={error}
                 onShowRecDetail={(rec: any) => {
                     setSelectedRec(rec);
                     setModalVisible(true);
@@ -225,15 +187,21 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
     );
 }
 
-function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiRecommendations, refreshing, onRefresh, router, errorMsg, onShowRecDetail }: any) {
+function FinanceScreenContent({
+    dashboard,
+    favCurrencies,
+    favInvestments,
+    aiRecommendations,
+    performance,
+    refreshing,
+    onRefresh,
+    router,
+    errorMsg,
+    onShowRecDetail
+}: any) {
     const mode2 = useThemeStore((s) => s.mode);
     const systemScheme2 = useColorScheme() === 'dark' ? 'dark' : 'light';
     const isDark = resolveTheme(mode2, systemScheme2) === 'dark';
-    const [performance, setPerformance] = useState<any>(null);
-
-    useEffect(() => {
-        financeService.getPortfolioPerformance().then(setPerformance).catch(() => { });
-    }, [refreshing]);
 
     const totalValue = performance?.estimatedCurrentValue ?? dashboard?.totalPortfolioValue ?? 0;
     const totalCost = performance?.totalCost ?? 0;
@@ -566,20 +534,21 @@ function FinanceScreenContent({ dashboard, favCurrencies, favInvestments, aiReco
                                         <Text style={[styles.currencyRate, isDark && styles.textDark]}>
                                             {Number(cur.rate).toFixed(4)}
                                         </Text>
-                                        {cur.changeRate != null && (
+                                        {(cur.changePercent != null || cur.changeRate != null) && (
                                             <View style={styles.currencyChangeRow}>
                                                 <Ionicons
-                                                    name={Number(cur.changeRate) >= 0 ? 'caret-up' : 'caret-down'}
+                                                    name={Number(cur.changePercent ?? cur.changeRate) >= 0 ? 'caret-up' : 'caret-down'}
                                                     size={10}
-                                                    color={getPnlColor(Number(cur.changeRate))}
+                                                    color={getPnlColor(Number(cur.changePercent ?? cur.changeRate))}
                                                 />
                                                 <Text
                                                     style={[
                                                         styles.currencyChange,
-                                                        { color: getPnlColor(Number(cur.changeRate)) },
+                                                        { color: getPnlColor(Number(cur.changePercent ?? cur.changeRate)) },
                                                     ]}
                                                 >
-                                                    {getPnlPrefix(Number(cur.changeRate))}{Number(cur.changeRate).toFixed(2)}%
+                                                    {getPnlPrefix(Number(cur.changePercent ?? cur.changeRate))}
+                                                    {Number(cur.changePercent ?? (cur.changeRate * 100)).toFixed(2)}%
                                                 </Text>
                                             </View>
                                         )}

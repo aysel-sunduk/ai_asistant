@@ -56,6 +56,9 @@ public class HealthLog {
     @Column(name = "deleted_at", columnDefinition = "timestamptz")
     private OffsetDateTime deletedAt;
 
+    @Column(name = "is_favorite", nullable = false)
+    private boolean isFavorite = false;
+
     @PrePersist
     protected void onCreate() {
         if (loggedAt == null) {
@@ -133,5 +136,13 @@ public class HealthLog {
 
     public void setDeletedAt(OffsetDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public boolean isFavorite() {
+        return isFavorite;
+    }
+
+    public void setFavorite(boolean favorite) {
+        isFavorite = favorite;
     }
 }

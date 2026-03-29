@@ -5,7 +5,10 @@ import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
+    Image,
     Platform,
+    RefreshControl,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -13,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { API_BASE_URL } from '../../src/api/client';
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import type { BlogPost } from '../../src/models/blog.model';
@@ -23,6 +27,13 @@ const COLOR = '#6C63FF';
 
 const visibilityLabel = (v: string) => (v === 'private' ? 'Ozel' : v === 'followers' ? 'Takipciler' : 'Herkese Acik');
 const statusLabel = (s: string) => (s === 'draft' ? 'Taslak' : s === 'archived' ? 'Arsiv' : 'Yayin');
+
+const getImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const base = API_BASE_URL;
+    return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export default function BlogTabScreen() {
     const router = useRouter();
@@ -37,6 +48,10 @@ export default function BlogTabScreen() {
     const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('error');
     const [toastMessage, setToastMessage] = useState('');
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [page, setPage] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
     const showToast = (type: 'success' | 'error' | 'info', message: string) => {
         setToastType(type);
@@ -44,30 +59,50 @@ export default function BlogTabScreen() {
         setToastVisible(true);
     };
 
-    const load = useCallback(async () => {
-        setLoading(true);
+    const load = useCallback(async (pageNum = 0, isRefreshing = false) => {
+        if (pageNum === 0) setLoading(true);
+        else setLoadingMore(true);
+
         try {
             const [myPage, feedPage] = await Promise.allSettled([
-                blogService.getPosts(0, 20),
-                blogService.getFollowingFeed(0, 20),
+                blogService.getPosts(pageNum, 10),
+                blogService.getFollowingFeed(pageNum, 10),
             ]);
+
             if (myPage.status === 'fulfilled') {
-                setMyPosts(myPage.value.content || []);
-            } else {
-                setMyPosts([]);
+                const newPosts = myPage.value.content || [];
+                setMyPosts(prev => pageNum === 0 ? newPosts : [...prev, ...newPosts]);
+                if (activeTab === 'MY') setHasMore(newPosts.length === 10);
             }
             if (feedPage.status === 'fulfilled') {
-                setFeedPosts(feedPage.value.content || []);
-            } else {
-                setFeedPosts([]);
+                const newPosts = feedPage.value.content || [];
+                setFeedPosts(prev => pageNum === 0 ? newPosts : [...prev, ...newPosts]);
+                if (activeTab === 'FOLLOWING') setHasMore(newPosts.length === 10);
             }
+            
             if (myPage.status === 'rejected' && feedPage.status === 'rejected') {
                 showToast('error', 'Blog verileri alinamadi.');
             }
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+            setRefreshing(false);
         }
-    }, []);
+    }, [activeTab]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        setPage(0);
+        void load(0, true);
+    };
+
+    const loadMore = () => {
+        if (!loadingMore && hasMore && !loading) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            void load(nextPage);
+        }
+    };
 
     const onDeletePost = (id: string) => {
         Alert.alert('Blogu sil', 'Bu yaziyi silmek istiyor musun?', [
@@ -115,33 +150,75 @@ export default function BlogTabScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {loading ? (
+            <View style={{ flex: 1 }}>
+                {loading && page === 0 ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : (
-                    <>
-                        <View style={styles.tabRow}>
-                            <TouchableOpacity
-                                style={[styles.tabBtn, activeTab === 'MY' && styles.tabBtnActive]}
-                                onPress={() => setActiveTab('MY')}
-                            >
-                                <Text style={[styles.tabBtnText, activeTab === 'MY' && styles.tabBtnTextActive]}>
-                                    Benim Bloglarım ({myPosts.length})
+                    <FlatList
+                        data={visiblePosts}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.content}
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLOR} />}
+                        ListHeaderComponent={
+                            <View style={styles.tabRow}>
+                                <TouchableOpacity
+                                    style={[styles.tabBtn, activeTab === 'MY' && styles.tabBtnActive]}
+                                    onPress={() => setActiveTab('MY')}
+                                >
+                                    <Text style={[styles.tabBtnText, activeTab === 'MY' && styles.tabBtnTextActive]}>
+                                        Benim Bloglarım ({myPosts.length})
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.tabBtn, activeTab === 'FOLLOWING' && styles.tabBtnActive]}
+                                    onPress={() => setActiveTab('FOLLOWING')}
+                                >
+                                    <Text style={[styles.tabBtnText, activeTab === 'FOLLOWING' && styles.tabBtnTextActive]}>
+                                        Takip Ettiklerim ({feedPosts.length})
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        }
+                        renderItem={({ item: p }) => (
+                            <View style={[styles.card, isDark && styles.cardDark]}>
+                                <View style={styles.cardHeaderRow}>
+                                    <View style={styles.authorRow}>
+                                        <Image
+                                            source={{ uri: getImageUrl(p.authorProfilePictureUrl) || 'https://via.placeholder.com/40' }}
+                                            style={styles.authorAvatar}
+                                        />
+                                        <Text style={[styles.cardTitle, isDark && styles.titleDark]}>{p.title}</Text>
+                                    </View>
+                                    {activeTab === 'MY' ? (
+                                        <TouchableOpacity
+                                            style={styles.deleteBtn}
+                                            onPress={() => onDeletePost(p.id)}
+                                            disabled={deletingId === p.id}
+                                        >
+                                            <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                                        </TouchableOpacity>
+                                    ) : null}
+                                </View>
+                                <Text style={[styles.cardMeta, isDark && styles.subDark]}>
+                                    {statusLabel(p.status)}
+                                    {activeTab === 'MY' ? ` | ${visibilityLabel(p.visibility)}` : ''}
+                                    {' | '}
+                                    {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
                                 </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.tabBtn, activeTab === 'FOLLOWING' && styles.tabBtnActive]}
-                                onPress={() => setActiveTab('FOLLOWING')}
-                            >
-                                <Text style={[styles.tabBtnText, activeTab === 'FOLLOWING' && styles.tabBtnTextActive]}>
-                                    Takip Ettiklerim ({feedPosts.length})
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {visiblePosts.length === 0 ? (
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
+                                >
+                                    <Text numberOfLines={3} style={[styles.cardBody, isDark && styles.bodyDark]}>
+                                        {p.cleanContent || p.rawContent}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        ListEmptyComponent={
                             <View style={[styles.emptyCard, isDark && styles.cardDark]}>
                                 <Text style={[styles.emptyTitle, isDark && styles.titleDark]}>
                                     {activeTab === 'MY' ? 'Kayit yok' : 'Feed bos'}
@@ -152,41 +229,13 @@ export default function BlogTabScreen() {
                                         : 'Takip ettigin hesaplar yazi paylastiginda burada gorulur.'}
                                 </Text>
                             </View>
-                        ) : (
-                            visiblePosts.map((p) => (
-                                <View key={p.id} style={[styles.card, isDark && styles.cardDark]}>
-                                    <View style={styles.cardHeaderRow}>
-                                        <Text style={[styles.cardTitle, isDark && styles.titleDark]}>{p.title}</Text>
-                                        {activeTab === 'MY' ? (
-                                            <TouchableOpacity
-                                                style={styles.deleteBtn}
-                                                onPress={() => onDeletePost(p.id)}
-                                                disabled={deletingId === p.id}
-                                            >
-                                                <Ionicons name="trash-outline" size={14} color="#DC2626" />
-                                            </TouchableOpacity>
-                                        ) : null}
-                                    </View>
-                                    <Text style={[styles.cardMeta, isDark && styles.subDark]}>
-                                        {statusLabel(p.status)}
-                                        {activeTab === 'MY' ? ` | ${visibilityLabel(p.visibility)}` : ''}
-                                        {' | '}
-                                        {new Date(p.updatedAt).toLocaleDateString('tr-TR')}
-                                    </Text>
-                                    <TouchableOpacity
-                                        activeOpacity={0.85}
-                                        onPress={() => router.push({ pathname: '/(blog)/post-detail', params: { id: p.id } })}
-                                    >
-                                        <Text numberOfLines={3} style={[styles.cardBody, isDark && styles.bodyDark]}>
-                                            {p.cleanContent || p.rawContent}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ))
-                        )}
-                    </>
+                        }
+                        onEndReached={loadMore}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={loadingMore ? <ActivityIndicator color={COLOR} style={{ marginVertical: 20 }} /> : null}
+                    />
                 )}
-            </ScrollView>
+            </View>
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
         </View>
@@ -254,4 +303,6 @@ const styles = StyleSheet.create({
     cardBody: { marginTop: 8, fontSize: 13, color: '#334155', lineHeight: 18 },
     subDark: { color: '#94A3B8' },
     bodyDark: { color: '#CBD5E1' },
+    authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    authorAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E2E8F0' },
 });

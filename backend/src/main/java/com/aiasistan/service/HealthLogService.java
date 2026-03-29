@@ -22,7 +22,9 @@ import com.aiasistan.dto.HealthLogDto;
 import com.aiasistan.dto.response.DailyNutritionResponse;
 import com.aiasistan.exception.BadRequestException;
 import com.aiasistan.exception.NotFoundException;
+import com.aiasistan.model.HealthGoal;
 import com.aiasistan.model.HealthLog;
+import com.aiasistan.repository.HealthGoalRepository;
 import com.aiasistan.repository.HealthLogRepository;
 
 @Service
@@ -52,10 +54,12 @@ public class HealthLogService {
 
     private final HealthLogRepository healthLogRepository;
     private final UserService userService;
+    private final HealthGoalRepository healthGoalRepository;
 
-    public HealthLogService(HealthLogRepository healthLogRepository, UserService userService) {
+    public HealthLogService(HealthLogRepository healthLogRepository, UserService userService, HealthGoalRepository healthGoalRepository) {
         this.healthLogRepository = healthLogRepository;
         this.userService = userService;
+        this.healthGoalRepository = healthGoalRepository;
     }
 
     @Transactional
@@ -219,6 +223,69 @@ public class HealthLogService {
         HealthLog healthLog = findOwnedLog(id, userId);
         healthLog.setDeletedAt(java.time.OffsetDateTime.now());
         healthLogRepository.save(healthLog);
+    }
+
+    @Transactional
+    public HealthLogDto.Response toggleFavorite(String userEmail, UUID id) {
+        UUID userId = userService.getUserIdByEmail(userEmail);
+        HealthLog healthLog = findOwnedLog(id, userId);
+        
+        boolean newStatus = !healthLog.isFavorite();
+        healthLog.setFavorite(newStatus);
+        healthLog = healthLogRepository.save(healthLog);
+
+        // Yemek favorileme ise HealthGoal'u da guncelle
+        if ("meal".equals(healthLog.getLogType()) || "food_scan".equals(healthLog.getLogType())) {
+            updateHealthGoalFavorites(userId, healthLog, newStatus);
+        }
+
+        return HealthLogDto.Response.from(healthLog);
+    }
+
+    private void updateHealthGoalFavorites(UUID userId, HealthLog healthLog, boolean isFavorite) {
+        Map<String, Object> data = healthLog.getData();
+        if (data == null) return;
+
+        String foodName = (String) data.getOrDefault("food_name", data.get("foodName"));
+        if (foodName == null || foodName.isBlank()) {
+            foodName = (String) data.getOrDefault("meal_type", data.get("mealType")); // Fallback
+        }
+        if (foodName == null || foodName.isBlank()) return;
+
+        final String finalFoodName = foodName;
+        HealthGoal goal = healthGoalRepository.findById(userId).orElseGet(() -> {
+            HealthGoal newGoal = new HealthGoal();
+            newGoal.setUserId(userId);
+            return newGoal;
+        });
+
+        List<String> favorites = goal.getFavoriteFoods();
+        if (favorites == null) {
+            favorites = new java.util.ArrayList<>();
+            goal.setFavoriteFoods(favorites);
+        }
+
+        if (isFavorite) {
+            if (!favorites.contains(finalFoodName)) {
+                favorites.add(finalFoodName);
+            }
+        } else {
+            // Sadece bu log favoriden cikarildiysa, baska ayni isimli favori log var mi kontrol et
+            boolean hasOtherFav = healthLogRepository.findByUserId(userId, Pageable.unpaged())
+                    .getContent().stream()
+                    .filter(log -> !log.getId().equals(healthLog.getId()) && log.isFavorite())
+                    .anyMatch(log -> {
+                        Map<String, Object> d = log.getData();
+                        if (d == null) return false;
+                        String name = (String) d.getOrDefault("food_name", d.get("foodName"));
+                        return finalFoodName.equalsIgnoreCase(name);
+                    });
+            
+            if (!hasOtherFav) {
+                favorites.remove(finalFoodName);
+            }
+        }
+        healthGoalRepository.save(goal);
     }
 
     private HealthLog findOwnedLog(UUID id, UUID userId) {

@@ -16,6 +16,7 @@ class DietRecommendRequest(BaseModel):
     allergies: Optional[List[str]] = Field(default=[], description="Alerji listesi")
     preference: Optional[str] = Field(default="NORMAL", description="NORMAL / VEGETARIAN / VEGAN / LOW_CARB / HIGH_PROTEIN")
     excluded_foods: Optional[List[str]] = Field(default=[], description="İstenmeyen yiyecekler")
+    favorite_foods: Optional[List[str]] = Field(default=[], description="Favori yemekler (tercih önceliği için)")
 
 
 class MealSwapRequest(BaseModel):
@@ -24,6 +25,7 @@ class MealSwapRequest(BaseModel):
     diet_goal: str = Field(default="MAINTAIN")
     excluded_recipe_ids: Optional[List[int]] = Field(default=[], description="Hariç tutulacak tarif ID'leri")
     preference: Optional[str] = Field(default="NORMAL")
+    favorite_foods: Optional[List[str]] = Field(default=[], description="Favori yemekler")
 
 
 @router.post("/diet/recommend")
@@ -39,6 +41,7 @@ async def recommend_diet_plan(request: DietRecommendRequest):
             allergies=request.allergies,
             preference=request.preference,
             excluded_foods=request.excluded_foods,
+            favorite_foods=request.favorite_foods,
         )
         return result
     except Exception as e:
@@ -58,6 +61,7 @@ async def swap_meal(request: MealSwapRequest):
             diet_goal=request.diet_goal,
             excluded_recipe_ids=request.excluded_recipe_ids,
             preference=request.preference,
+            favorite_foods=request.favorite_foods,
         )
         return result
     except Exception as e:

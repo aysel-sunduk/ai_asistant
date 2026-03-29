@@ -82,6 +82,7 @@ public class HealthLogDto {
         private String externalRecordId;
         private Map<String, Object> data;
         private OffsetDateTime loggedAt;
+        private boolean isFavorite;
 
         public static Response from(HealthLog healthLog) {
             Response response = new Response();
@@ -93,6 +94,7 @@ public class HealthLogDto {
             response.externalRecordId = healthLog.getExternalRecordId();
             response.data = healthLog.getData();
             response.loggedAt = healthLog.getLoggedAt();
+            response.isFavorite = healthLog.isFavorite();
             return response;
         }
 
@@ -158,6 +160,14 @@ public class HealthLogDto {
 
         public void setLoggedAt(OffsetDateTime loggedAt) {
             this.loggedAt = loggedAt;
+        }
+
+        public boolean isFavorite() {
+            return isFavorite;
+        }
+
+        public void setFavorite(boolean favorite) {
+            isFavorite = favorite;
         }
     }
 }

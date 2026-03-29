@@ -15,6 +15,12 @@ target/
 .settings/
 uploads/
 
+
+backend/build_*.txt
+backend/*_utf8.txt
+backend/build_log.txt
+
+
 # ─── OS ───────────────────────────────────────
 .DS_Store
 Thumbs.db

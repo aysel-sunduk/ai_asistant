@@ -169,6 +169,8 @@ public class BlogPostDto {
         private List<Map<String, Object>> likedUsers;
         private Integer commentCount;
         private Boolean likedByMe;
+        private String authorDisplayName;
+        private String authorProfilePictureUrl;
         private OffsetDateTime createdAt;
         private OffsetDateTime updatedAt;
 
@@ -294,6 +296,22 @@ public class BlogPostDto {
 
         public void setLikedByMe(Boolean likedByMe) {
             this.likedByMe = likedByMe;
+        }
+
+        public String getAuthorDisplayName() {
+            return authorDisplayName;
+        }
+
+        public void setAuthorDisplayName(String authorDisplayName) {
+            this.authorDisplayName = authorDisplayName;
+        }
+
+        public String getAuthorProfilePictureUrl() {
+            return authorProfilePictureUrl;
+        }
+
+        public void setAuthorProfilePictureUrl(String authorProfilePictureUrl) {
+            this.authorProfilePictureUrl = authorProfilePictureUrl;
         }
 
         public OffsetDateTime getCreatedAt() {

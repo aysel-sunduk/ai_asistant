@@ -41,6 +41,8 @@ export interface BlogPost {
     likedUsers?: LikedUser[];
     createdAt: string;
     updatedAt: string;
+    authorDisplayName?: string;
+    authorProfilePictureUrl?: string;
 }
 
 export interface BlogPage {

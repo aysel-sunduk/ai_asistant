@@ -5,6 +5,7 @@
 package com.aiasistan.dto;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import com.aiasistan.model.HealthGoal;
@@ -28,6 +29,7 @@ public class HealthGoalDto {
 
         private Integer calorieTarget;
         private String dietGoal;
+        private List<String> favoriteFoods;
 
         public Integer getWaterMlTarget() {
             return waterMlTarget;
@@ -60,6 +62,14 @@ public class HealthGoalDto {
         public void setDietGoal(String dietGoal) {
             this.dietGoal = dietGoal;
         }
+
+        public List<String> getFavoriteFoods() {
+            return favoriteFoods;
+        }
+
+        public void setFavoriteFoods(List<String> favoriteFoods) {
+            this.favoriteFoods = favoriteFoods;
+        }
     }
 
     public static class Response {
@@ -68,6 +78,7 @@ public class HealthGoalDto {
         private Integer stepsTarget;
         private Integer calorieTarget;
         private String dietGoal;
+        private List<String> favoriteFoods;
         private OffsetDateTime createdAt;
         private OffsetDateTime updatedAt;
 
@@ -78,6 +89,7 @@ public class HealthGoalDto {
             response.stepsTarget = goal.getStepsTarget();
             response.calorieTarget = goal.getCalorieTarget();
             response.dietGoal = goal.getDietGoal();
+            response.favoriteFoods = goal.getFavoriteFoods();
             response.createdAt = goal.getCreatedAt();
             response.updatedAt = goal.getUpdatedAt();
             return response;
@@ -121,6 +133,14 @@ public class HealthGoalDto {
 
         public void setDietGoal(String dietGoal) {
             this.dietGoal = dietGoal;
+        }
+
+        public List<String> getFavoriteFoods() {
+            return favoriteFoods;
+        }
+
+        public void setFavoriteFoods(List<String> favoriteFoods) {
+            this.favoriteFoods = favoriteFoods;
         }
 
         public OffsetDateTime getCreatedAt() {

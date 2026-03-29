@@ -68,6 +68,7 @@ export interface HealthLog {
     source?: string;
     externalRecordId?: string;
     loggedAt: string;
+    isFavorite?: boolean;
 }
 
 export interface HealthGoals {
@@ -75,6 +76,7 @@ export interface HealthGoals {
     waterMlTarget: number;
     stepsTarget: number;
     dietGoal?: 'LOSE_WEIGHT' | 'MAINTAIN' | 'GAIN_WEIGHT';
+    favoriteFoods?: string[];
     calorieTarget?: number;
     createdAt: string;
     updatedAt: string;
@@ -102,6 +104,7 @@ export interface DietPlan {
         total_fat: number;
         diet_goal: string;
         meals: DietMeal[];
+        favorite_foods?: string[];
     };
     macro_summary: {
         protein_pct: number;

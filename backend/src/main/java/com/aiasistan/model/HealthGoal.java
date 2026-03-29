@@ -14,6 +14,11 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+import java.util.List;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.JoinColumn;
+
 @Entity
 @Table(name = "health_goals")
 public class HealthGoal {
@@ -33,6 +38,11 @@ public class HealthGoal {
 
     @Column(name = "diet_goal")
     private String dietGoal = "MAINTAIN"; // LOSE_WEIGHT, MAINTAIN, GAIN_WEIGHT
+
+    @ElementCollection(fetch = jakarta.persistence.FetchType.EAGER)
+    @CollectionTable(name = "health_goal_favorites", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "food_name")
+    private List<String> favoriteFoods;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime createdAt;
@@ -94,6 +104,14 @@ public class HealthGoal {
 
     public void setDietGoal(String dietGoal) {
         this.dietGoal = dietGoal;
+    }
+
+    public List<String> getFavoriteFoods() {
+        return favoriteFoods;
+    }
+
+    public void setFavoriteFoods(List<String> favoriteFoods) {
+        this.favoriteFoods = favoriteFoods;
     }
 
     public OffsetDateTime getCreatedAt() {

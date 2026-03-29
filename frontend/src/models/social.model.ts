@@ -4,6 +4,7 @@ export interface SocialUserSummary {
     email: string;
     firstName: string;
     lastName: string;
+    profilePictureUrl?: string;
 }
 
 export interface FollowState {
@@ -49,6 +50,7 @@ export interface PublicProfileResponse {
     followingCount: number;
     followersCount: number;
     profileVisibility: 'public' | 'private' | string;
+    profilePictureUrl?: string;
 }
 
 export interface PublicProfileResponse {

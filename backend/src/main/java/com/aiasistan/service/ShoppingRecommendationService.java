@@ -43,7 +43,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ShoppingRecommendationService {
     private static final Logger logger = LoggerFactory.getLogger(ShoppingRecommendationService.class);
 
-    @Value("${ML_SERVICE_URL:http://localhost:8001}")
+    @Value("${ML_SERVICE_URL:http://localhost:8000}")
     private String mlServiceUrl;
 
     private final HttpClient httpClient = HttpClient.newBuilder()

@@ -80,7 +80,7 @@ app:
     openai-key: ${OPENAI_API_KEY:}
     gemini-key: ${GEMINI_API_KEY:}
     openrouter-key: ${OPENROUTER_API_KEY:}
-    openrouter-model: ${OPENROUTER_MODEL:mistralai/mistral-small-3.1-24b-instruct:free,google/gemma-3-27b-it:free,minimax/minimax-m2.5:free,qwen/qwen3-coder:free,arcee-ai/trinity-mini:free}
+    openrouter-model: ${OPENROUTER_MODEL:google/gemini-2.0-flash:free,qwen/qwen-2.5-72b-instruct:free,google/gemma-2-9b-it:free,mistralai/mistral-7b-instruct:free,deepseek/deepseek-chat:free}
     ml-service-url: ${ML_SERVICE_URL:http://localhost:8000}
 
   push:

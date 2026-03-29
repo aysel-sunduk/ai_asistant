@@ -52,6 +52,10 @@ public class HealthGoalService {
             goals.setDietGoal(request.getDietGoal());
         }
 
+        if (request.getFavoriteFoods() != null) {
+            goals.setFavoriteFoods(request.getFavoriteFoods());
+        }
+
         // Eğer kalori hedefi gönderilmemişse, profil verilerinden hesapla
         if (request.getCalorieTarget() == null || request.getCalorieTarget() <= 0) {
             UserProfile profile = userProfileRepository.findById(userId).orElse(null);

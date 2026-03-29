@@ -98,7 +98,8 @@ class DietRecommender:
         diet_goal: str = "MAINTAIN",
         allergies: list = None,
         preference: str = "NORMAL",
-        excluded_foods: list = None
+        excluded_foods: list = None,
+        favorite_foods: list = None
     ) -> dict:
         """Kişiselleştirilmiş günlük öğün planı oluştur."""
 
@@ -135,6 +136,7 @@ class DietRecommender:
                 meal_type=filter_type,
                 preference=preference,
                 excluded_foods=excluded_foods,
+                favorite_foods=favorite_foods,
                 used_ids=used_recipe_ids
             )
 
@@ -199,7 +201,8 @@ class DietRecommender:
         calorie_target: int,
         diet_goal: str = "MAINTAIN",
         excluded_recipe_ids: list = None,
-        preference: str = "NORMAL"
+        preference: str = "NORMAL",
+        favorite_foods: list = None
     ) -> dict:
         """Belirli bir slot için alternatif yemek öner."""
 
@@ -224,6 +227,7 @@ class DietRecommender:
             meal_type=slot_info['filter_type'],
             preference=preference,
             excluded_foods=[],
+            favorite_foods=favorite_foods,
             used_ids=set(excluded_recipe_ids)
         )
 
@@ -250,8 +254,8 @@ class DietRecommender:
                 'prep_minutes': 0, 'similarity_score': 0,
             }
 
-    def _select_recipe(self, slot_cal, ratios, meal_type, preference, excluded_foods, used_ids):
-        """Cosine similarity ile en uygun tarifi seç."""
+    def _select_recipe(self, slot_cal, ratios, meal_type, preference, excluded_foods, favorite_foods, used_ids):
+        """Cosine similarity ile en uygun tarifi seç. Favori yemeklere boost uygular."""
 
         # Öğün tipine göre filtrele
         candidates = self.recipe_db[self.recipe_db['meal_type'] == meal_type].copy()
@@ -293,6 +297,17 @@ class DietRecommender:
         similarities = cosine_similarity(target_norm, candidate_vecs)[0]
         candidates = candidates.copy()
         candidates['similarity'] = similarities
+
+        # Favori Boost: Eğer yemek ismi favorilerde varsa skoru artır
+        if favorite_foods:
+            def apply_fav_boost(row):
+                # Orijinal veya çevrilmiş isim favorilerde mevcut mu?
+                translated = translate_food_name(row['name'])
+                if any(fav.lower() in translated.lower() or fav.lower() in row['name'].lower() for fav in favorite_foods):
+                    return row['similarity'] + 0.25 # %25 boost
+                return row['similarity']
+
+            candidates['similarity'] = candidates.apply(apply_fav_boost, axis=1)
 
         # Top-10'dan rastgele seç (çeşitlilik için)
         top_n = min(10, len(candidates))

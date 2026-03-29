@@ -294,9 +294,9 @@ export default function ProfileScreen() {
 
     const handleThemeSelect = () => {
         Alert.alert('Görünüm', 'Tema seçin', [
-            { text: 'Açık', onPress: () => { void setThemeMode('light'); } },
-            { text: 'Koyu', onPress: () => { void setThemeMode('dark'); } },
-            { text: 'Sistem', onPress: () => { void setThemeMode('system'); } },
+            { text: `Açık ${themeMode === 'light' ? '✅' : ''}`, onPress: () => { void setThemeMode('light'); } },
+            { text: `Koyu ${themeMode === 'dark' ? '✅' : ''}`, onPress: () => { void setThemeMode('dark'); } },
+            { text: `Sistem ${themeMode === 'system' ? '✅' : ''}`, onPress: () => { void setThemeMode('system'); } },
             { text: 'İptal', style: 'cancel' },
         ]);
     };

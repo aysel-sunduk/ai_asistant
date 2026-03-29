@@ -30,7 +30,7 @@ public class ContentFilterService {
     private static final Logger logger = LoggerFactory.getLogger(ContentFilterService.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    // ML Service URL — application.yml'den okunacak, varsayılan localhost:8001
+    // ML Service URL — application.yml'den okunacak, varsayılan localhost:8000
     private final String mlServiceUrl;
     private final HttpClient httpClient;
 
@@ -46,7 +46,7 @@ public class ContentFilterService {
         this.mlServiceUrl = System.getProperty("ML_SERVICE_URL",
                 System.getenv("ML_SERVICE_URL") != null
                         ? System.getenv("ML_SERVICE_URL")
-                        : "http://localhost:8001");
+                        : "http://localhost:8000");
 
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(3))

@@ -70,18 +70,55 @@ export default function DietPlanScreen() {
                 m.slot === slot ? newMeal : m
             );
 
-            // Planı güncelle
+            // Toplamları ve makroları yeniden hesapla
+            const total_protein = updatedMeals.reduce((acc: number, m: DietMeal) => acc + m.protein, 0);
+            const total_carbs = updatedMeals.reduce((acc: number, m: DietMeal) => acc + m.carbs, 0);
+            const total_fat = updatedMeals.reduce((acc: number, m: DietMeal) => acc + m.fat, 0);
+            const total_calories = updatedMeals.reduce((acc: number, m: DietMeal) => acc + m.calories, 0);
+
+            const p_kcal = total_protein * 4;
+            const c_kcal = total_carbs * 4;
+            const f_kcal = total_fat * 9;
+            const t_kcal = p_kcal + c_kcal + f_kcal;
+
+            const macro_summary = {
+                protein_pct: t_kcal > 0 ? Number(((p_kcal / t_kcal) * 100).toFixed(1)) : 0,
+                carbs_pct: t_kcal > 0 ? Number(((c_kcal / t_kcal) * 100).toFixed(1)) : 0,
+                fat_pct: t_kcal > 0 ? Number(((f_kcal / t_kcal) * 100).toFixed(1)) : 0,
+            };
+
             setPlan({
                 ...plan,
                 daily_plan: {
                     ...plan.daily_plan,
-                    meals: updatedMeals
-                }
+                    total_calories,
+                    total_protein,
+                    total_carbs,
+                    total_fat,
+                    meals: updatedMeals,
+                },
+                macro_summary
             });
             
             Alert.alert('Başarılı', `${newMeal.slot_label} öğünü değiştirildi.`);
         } catch (err: any) {
             Alert.alert('Hata', 'Yemek değiştirilemedi.');
+        }
+    };
+
+    const handleToggleFavorite = async (foodName: string) => {
+        if (!plan) return;
+        try {
+            const updatedFavs = await healthService.toggleFavoriteMeal(foodName);
+            setPlan({
+                ...plan,
+                daily_plan: {
+                    ...plan.daily_plan,
+                    favorite_foods: updatedFavs
+                }
+            });
+        } catch (err: any) {
+            Alert.alert('Hata', 'Favori işlemi başarısız oldu.');
         }
     };
 
@@ -126,14 +163,14 @@ export default function DietPlanScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadDietPlan(true); }} />}
         >
             <View style={[styles.header, { backgroundColor: '#4CAF50' }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={26} color="#ffffff" />
-                </TouchableOpacity>
                 <View style={styles.headerContent}>
                     <Text style={styles.headerSubtitle}>Kişisel Diyet Planın</Text>
                     <Text style={[styles.headerTitle, isDark && styles.textDark]}>
                         {daily_plan.diet_goal === 'LOSE_WEIGHT' ? 'Kilo Verme' : 
-                         daily_plan.diet_goal === 'GAIN_WEIGHT' ? 'Kilo Alma' : 'Formu Koruma'}
+                         daily_plan.diet_goal === 'GAIN_WEIGHT' ? 'Kilo Alma' : 
+                         daily_plan.diet_goal === 'MUSCLE_GAIN' ? 'Kas Kazanımı' :
+                         daily_plan.diet_goal === 'HEALTHY_LIVING' ? 'Sağlıklı Yaşam' :
+                         daily_plan.diet_goal === 'ATHLETIC_PERFORMANCE' ? 'Atletik Performans' : 'Formu Koruma'}
                     </Text>
                     <View style={styles.calorieBadge}>
                         <Ionicons name="flame" size={20} color="#FFEB3B" />
@@ -175,7 +212,16 @@ export default function DietPlanScreen() {
                             </TouchableOpacity>
                         </View>
                         
-                        <Text style={styles.mealName}>{meal.name}</Text>
+                        <View style={styles.mealTitleRow}>
+                            <Text style={[styles.mealName, isDark && styles.textDark]}>{meal.name}</Text>
+                            <TouchableOpacity onPress={() => handleToggleFavorite(meal.name)}>
+                                <Ionicons 
+                                    name={daily_plan.favorite_foods?.includes(meal.name) ? 'heart' : 'heart-outline'} 
+                                    size={24} 
+                                    color={daily_plan.favorite_foods?.includes(meal.name) ? '#E91E63' : '#999'} 
+                                />
+                            </TouchableOpacity>
+                        </View>
                         
                         <View style={styles.mealDetails}>
                             <View style={styles.detailItem}>
@@ -243,7 +289,8 @@ const styles = StyleSheet.create({
     mealSlotLabel: { marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#4CAF50', textTransform: 'uppercase' },
     swapBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
     swapText: { marginLeft: 4, fontSize: 13, color: '#4CAF50', fontWeight: '600' },
-    mealName: { fontSize: 17, fontWeight: '700', color: '#333', marginBottom: 10 },
+    mealName: { fontSize: 17, fontWeight: '700', color: '#333', flex: 1 },
+    mealTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     mealDetails: { flexDirection: 'row', marginBottom: 10 },
     detailItem: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
     detailText: { marginLeft: 4, fontSize: 13, color: '#666' },

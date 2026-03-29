@@ -163,8 +163,6 @@ public class BlogPostService {
     public BlogPostDto.Response toggleLike(String userEmail, UUID id) {
         ensureBlogSchemaForReactions();
         UUID viewerId = userService.getUserIdByEmail(userEmail);
-        BlogPost post = findAccessiblePost(id, viewerId);
-
         if (!hasLikedUserIdsColumn()) {
             throw new BadRequestException("Begeni ozelligi hazirlanirken kolon eksik. Backend'i yeniden baslatin.");
         }
@@ -411,6 +409,20 @@ public class BlogPostService {
         response.setLikedByMe(likedByMe);
         response.setLikeCount(post.getLikeCount() != null ? post.getLikeCount() : 0);
         response.setCommentCount(post.getComments() != null ? post.getComments().size() : 0);
+
+        // Populate author info
+        try {
+            User author = userRepository.findById(post.getUserId()).orElse(null);
+            if (author != null) {
+                response.setAuthorDisplayName(buildDisplayName(author));
+                if (author.getProfile() != null && author.getProfile().getProfilePictureUrl() != null) {
+                    response.setAuthorProfilePictureUrl(author.getProfile().getProfilePictureUrl());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to populate author info for blog post: {}", e.getMessage());
+        }
+
         return response;
     }
 

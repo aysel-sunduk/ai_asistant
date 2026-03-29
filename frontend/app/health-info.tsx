@@ -21,6 +21,8 @@ import { ACTIVITY_LEVEL_LABELS, GENDER_LABELS } from '../src/models/user.model';
 import { useAuthStore } from '../src/store/auth.store';
 import { resolveTheme, useThemeStore } from '../src/store/theme.store';
 import { useColorScheme } from '../hooks/use-color-scheme';
+import { healthService } from '../services/health.service';
+import type { HealthGoals } from '../src/models/health.model';
 
 const PURPLE = '#6C63FF';
 const GRAY = '#9BA1A6';
@@ -40,12 +42,27 @@ export default function HealthInfoScreen() {
     const [form, setForm] = useState<Partial<UserProfile>>({});
     const [showDatePicker, setShowDatePicker] = useState(false);
 
+    // Health Goals state
+    const [goals, setGoals] = useState<HealthGoals | null>(null);
+    const [goalDietGoal, setGoalDietGoal] = useState<string>('MAINTAIN');
+    const [favoriteFoods, setFavoriteFoods] = useState<string[]>([]);
+    const [favoriteFoodInput, setFavoriteFoodInput] = useState('');
+
     const loadProfile = useCallback(async () => {
         try {
-            const res = await userApi.getProfile();
-            const profile = res.data.data;
+            const [profileRes, goalsRes] = await Promise.all([
+                userApi.getProfile(),
+                healthService.getGoals()
+            ]);
+            
+            const profile = profileRes.data.data;
             setData(profile);
             setForm(profile);
+
+            const g = goalsRes;
+            setGoals(g);
+            setGoalDietGoal(g.dietGoal || 'MAINTAIN');
+            setFavoriteFoods(g.favoriteFoods || []);
         } catch (err: any) {
             console.error('[HealthInfo] Load error:', err?.response?.data || err?.message);
             const storeProfile = useAuthStore.getState().profile;
@@ -67,8 +84,8 @@ export default function HealthInfoScreen() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Sadece gerekli alanları gönderiyoruz
-            const body: UpdateProfileRequest = {
+            // Profil güncelleme
+            const profileBody: UpdateProfileRequest = {
                 birthDate: form.birthDate || undefined,
                 gender: form.gender || undefined,
                 heightCm: form.heightCm ?? undefined,
@@ -76,24 +93,39 @@ export default function HealthInfoScreen() {
                 activityLevel: form.activityLevel || undefined,
             };
 
-            console.log('[HealthInfo] Saving profile with body:', body);
+            // Health Goals güncelleme
+            const goalsUpdate = {
+                waterMlTarget: goals?.waterMlTarget || 2500,
+                stepsTarget: goals?.stepsTarget || 10000,
+                dietGoal: goalDietGoal,
+                favoriteFoods: favoriteFoods,
+            };
 
-            const res = await userApi.updateProfile(body);
-            const updated = res.data.data;
-            if (updated) {
-                setData(updated);
-                setForm(updated);
-                setProfile(updated);
-            }
+            await Promise.all([
+                userApi.updateProfile(profileBody),
+                healthService.updateGoals(goalsUpdate as any)
+            ]);
+
+            await loadProfile();
             setIsEditing(false);
-            Alert.alert('Başarılı', 'Sağlık bilgileriniz güncellendi');
+            Alert.alert('Başarılı', 'Sağlık bilgileriniz ve hedefleriniz güncellendi');
         } catch (err: any) {
-            console.error('[HealthInfo] Save error detailed:', JSON.stringify(err?.response?.data || err?.message, null, 2));
-            const msg = err?.response?.data?.message || err?.message || 'Güncellenemedi';
-            Alert.alert('Hata', msg);
+            console.error('[HealthInfo] Save error:', err?.response?.data || err?.message);
+            Alert.alert('Hata', 'Bilgiler kaydedilemedi.');
         } finally {
             setSaving(false);
         }
+    };
+
+    const addFavoriteFood = () => {
+        if (!favoriteFoodInput.trim()) return;
+        if (favoriteFoods.includes(favoriteFoodInput.trim())) return;
+        setFavoriteFoods([...favoriteFoods, favoriteFoodInput.trim()]);
+        setFavoriteFoodInput('');
+    };
+
+    const removeFavoriteFood = (food: string) => {
+        setFavoriteFoods(favoriteFoods.filter((f) => f !== food));
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -241,6 +273,66 @@ export default function HealthInfoScreen() {
                             editing={isEditing} onChange={(v: string) => updateField('activityLevel', v)} last color="#FF6B6B" />
                     </View>
 
+                    <Text style={styles.sectionTitle}>Diyet ve Hedefler</Text>
+                    <View style={[styles.card, isDark && styles.cardDark, { marginBottom: 20 }]}>
+                        <PickerField
+                            label="Diyet Hedefi" icon="restaurant-outline" value={goalDietGoal}
+                            options={[
+                                ['LOSE_WEIGHT', 'Kilo Ver'],
+                                ['MAINTAIN', 'Kiloyu Koru'],
+                                ['GAIN_WEIGHT', 'Kilo Al'],
+                                ['MUSCLE_GAIN', 'Kas Kazanımı'],
+                                ['HEALTHY_LIVING', 'Sağlıklı Yaşam'],
+                                ['ATHLETIC_PERFORMANCE', 'Atletik Performans']
+                            ]}
+                            editing={isEditing} onChange={(v: string) => setGoalDietGoal(v)} color="#FFB347" />
+
+                        <View style={styles.fieldRow}>
+                            <View style={styles.fieldLabelRow}>
+                                <View style={[styles.fieldIcon, { backgroundColor: '#FFB34715' }]}>
+                                    <Ionicons name="heart-outline" size={16} color="#FFB347" />
+                                </View>
+                                <Text style={styles.fieldLabel}>Favori Yemekler</Text>
+                            </View>
+                            
+                            {isEditing ? (
+                                <>
+                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, marginLeft: 36 }}>
+                                        <TextInput 
+                                            style={[styles.fieldInput, { flex: 1, marginLeft: 0 }]} 
+                                            placeholder="Yemek ekle..." 
+                                            value={favoriteFoodInput} 
+                                            onChangeText={setFavoriteFoodInput}
+                                            onSubmitEditing={addFavoriteFood}
+                                        />
+                                        <TouchableOpacity 
+                                            style={{ backgroundColor: '#FFB347', borderRadius: 12, paddingHorizontal: 12, justifyContent: 'center' }} 
+                                            onPress={addFavoriteFood}
+                                        >
+                                            <Ionicons name="add" size={24} color="#fff" />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginLeft: 36 }}>
+                                        {favoriteFoods.map((food, idx) => (
+                                            <TouchableOpacity key={idx} style={styles.favChip} onPress={() => removeFavoriteFood(food)}>
+                                                <Text style={styles.favChipText}>{food}</Text>
+                                                <Ionicons name="close-circle" size={14} color="#fff" />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </>
+                            ) : (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginLeft: 36 }}>
+                                    {favoriteFoods.length > 0 ? favoriteFoods.map((food, idx) => (
+                                        <View key={idx} style={[styles.favChip, { backgroundColor: '#FFB34720' }]}>
+                                            <Text style={[styles.favChipText, { color: '#FFB347' }]}>{food}</Text>
+                                        </View>
+                                    )) : <Text style={styles.fieldValue}>Favori yemek yok</Text>}
+                                </View>
+                            )}
+                        </View>
+                    </View>
+
                     {isEditing && (
                         <View style={styles.actions}>
                             <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
@@ -356,4 +448,7 @@ const styles = StyleSheet.create({
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: GRAY, textTransform: 'uppercase', marginTop: 24, marginBottom: 8, marginLeft: 4 },
+    favChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFB347', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+    favChipText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 });

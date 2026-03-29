@@ -18,8 +18,6 @@ import com.aiasistan.model.User;
 import com.aiasistan.repository.InterviewQuestionRepository;
 import com.aiasistan.repository.InterviewSessionRepository;
 import com.aiasistan.repository.UserRepository;
-import com.aiasistan.service.SttService;
-import com.aiasistan.service.OpenRouterAiService;
 
 @Service
 @Transactional
@@ -99,22 +97,24 @@ public class InterviewService {
         InterviewSession savedSession = sessionRepository.save(session);
 
         // AI ile soruları üret
-        List<String> questionsText = aiService.generateInterviewQuestions(
+        List<OpenRouterAiService.QuestionDraft> drafts = aiService.generateInterviewQuestions(
                 request.getTitle(),
                 request.getPosition(),
                 request.getJobDescription(),
                 5 // Varsayılan 5 soru
         );
 
-        if (questionsText == null || questionsText.isEmpty()) {
+        if (drafts == null || drafts.isEmpty()) {
             throw new RuntimeException("Mülakat soruları üretilemedi. Lütfen daha sonra tekrar deneyin.");
         }
 
         List<InterviewQuestion> questions = new ArrayList<>();
-        for (int i = 0; i < questionsText.size(); i++) {
+        for (int i = 0; i < drafts.size(); i++) {
+            OpenRouterAiService.QuestionDraft draft = drafts.get(i);
             InterviewQuestion q = new InterviewQuestion();
             q.setSession(savedSession);
-            q.setQuestionText(questionsText.get(i));
+            q.setQuestionText(draft.getText());
+            q.setDifficulty(draft.getDifficulty());
             q.setOrderNo(i + 1);
             questions.add(questionRepository.save(q));
         }
@@ -158,14 +158,14 @@ public class InterviewService {
             throw new RuntimeException("Sadece SETUP aşamasında soruları yeniden üretebilirsiniz.");
         }
 
-        List<String> questionsText = aiService.generateInterviewQuestions(
+        List<OpenRouterAiService.QuestionDraft> drafts = aiService.generateInterviewQuestions(
                 session.getTitle(),
                 session.getPosition(),
                 session.getJobDescription(),
                 5 // Varsayılan numara
         );
 
-        if (questionsText == null || questionsText.isEmpty()) {
+        if (drafts == null || drafts.isEmpty()) {
             throw new RuntimeException("Mülakat soruları üretilemedi. Lütfen daha sonra tekrar deneyin.");
         }
 
@@ -174,10 +174,12 @@ public class InterviewService {
         sessionRepository.saveAndFlush(session); // Silme işlemini hemen yansıt
 
         // 2. Yeni soruları ekle
-        for (int i = 0; i < questionsText.size(); i++) {
+        for (int i = 0; i < drafts.size(); i++) {
+            OpenRouterAiService.QuestionDraft draft = drafts.get(i);
             InterviewQuestion q = new InterviewQuestion();
             q.setSession(session);
-            q.setQuestionText(questionsText.get(i));
+            q.setQuestionText(draft.getText());
+            q.setDifficulty(draft.getDifficulty());
             q.setOrderNo(i + 1);
             session.getQuestions().add(q);
         }
@@ -524,6 +526,7 @@ public class InterviewService {
                 .map(q -> {
                     Map<String, String> map = new HashMap<>();
                     map.put("question", q.getQuestionText());
+                    map.put("difficulty", q.getDifficulty() != null ? q.getDifficulty() : "MEDIUM");
                     map.put("answer", q.getAnswerText() != null ? q.getAnswerText() : "Cevaplanmadı");
                     return map;
                 })
@@ -533,19 +536,60 @@ public class InterviewService {
 
         session.setOverallFeedback(analysis);
         session.setStatus("COMPLETED");
-        session.setOverallScore(extractScore(analysis));
+        session.setOverallScore(extractScore(analysis, "TOTAL_SKOR"));
+
+        // Her soru için geri bildirim ve skoru da ayrıştırıp kaydet
+        for (InterviewQuestion q : session.getQuestions()) {
+            q.setScore(extractQuestionScore(analysis, q.getQuestionText()));
+            q.setFeedback(extractQuestionFeedback(analysis, q.getQuestionText()));
+            questionRepository.save(q);
+        }
 
         return mapToResponse(sessionRepository.save(session));
+    }
+
+    private Integer extractQuestionScore(String analysis, String questionText) {
+        try {
+            // Soru metninin geçtiği yerden sonrasını al
+            int qIndex = analysis.indexOf(questionText);
+            if (qIndex == -1) return 0;
+            
+            String sub = analysis.substring(qIndex);
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[SORU_SKOR:\\s*(\\d+)\\]");
+            java.util.regex.Matcher matcher = pattern.matcher(sub);
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+        } catch (Exception e) {
+            logger.warn("Soru skoru ayıklanırken hata: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+    private String extractQuestionFeedback(String analysis, String questionText) {
+        try {
+            int qIndex = analysis.indexOf(questionText);
+            if (qIndex == -1) return null;
+            
+            String sub = analysis.substring(qIndex);
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[SORU_FEEDBACK:\\s*(.*?)\\]", java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher matcher = pattern.matcher(sub);
+            if (matcher.find()) {
+                return matcher.group(1).trim();
+            }
+        } catch (Exception e) {
+            logger.warn("Soru geri bildirimi ayıklanırken hata: {}", e.getMessage());
+        }
+        return null;
     }
 
     /**
      * Skoru analiz metninden çıkarır
      */
-    private Integer extractScore(String analysis) {
+    private Integer extractScore(String analysis, String tag) {
         if (analysis == null || analysis.isBlank()) return 0;
         try {
-            // Case-insensitive regex to find [SKOR: 85] or [SKOR: 85/100]
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[SKOR\\s*:\\s*(\\d+)[^\\]]*\\]");
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[" + tag + "\\s*:\\s*(\\d+)[^\\]]*\\]");
             java.util.regex.Matcher matcher = pattern.matcher(analysis);
             if (matcher.find()) {
                 return Integer.parseInt(matcher.group(1));
@@ -612,6 +656,7 @@ public class InterviewService {
                     qDto.setAnswerText(q.getAnswerText());
                     qDto.setFeedback(q.getFeedback());
                     qDto.setScore(q.getScore());
+                    qDto.setDifficulty(q.getDifficulty());
                     qDto.setOrderNo(q.getOrderNo());
                     return qDto;
                 })

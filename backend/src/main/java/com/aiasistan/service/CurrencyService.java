@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -552,17 +553,29 @@ public class CurrencyService {
             .orElseGet(CurrencyRateLatest::new);
 
         BigDecimal previousRate = latest.getRate();
-        if (previousRate == null) {
-            previousRate = currencyRateRepository
-                .findTopByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
-                    currencyCode,
-                    baseCurrency,
-                    market
-                )
-                .map(CurrencyRate::getRate)
-                .orElse(null);
+        
+        // Advanced Anchor Logic:
+        // 1. Try to find the last rate from a PREVIOUS day (Yesterday's Close)
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        Optional<CurrencyRate> yesterdayClose = currencyRateRepository
+            .findTopByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateBeforeOrderByRateDateDesc(
+                currencyCode, baseCurrency, market, startOfToday);
+        
+        if (yesterdayClose.isPresent()) {
+            previousRate = yesterdayClose.get().getRate();
+        } else {
+            // 2. If no yesterday, try to find the FIRST rate of TODAY (Today's Open)
+            Optional<CurrencyRate> todayOpen = currencyRateRepository
+                .findFirstByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateAfterOrderByRateDateAsc(
+                    currencyCode, baseCurrency, market, startOfToday);
+            
+            if (todayOpen.isPresent()) {
+                previousRate = todayOpen.get().getRate();
+            }
         }
-        if (previousRate != null && previousRate.compareTo(rate) == 0) {
+        
+        // 3. Fallback: If still same, search much deeper in history for ANY change
+        if (previousRate == null || previousRate.compareTo(rate) == 0) {
             previousRate = findMostRecentDifferentRate(currencyCode, baseCurrency, market, rate);
         }
         BigDecimal changeRate = resolveChangeRate(previousRate, rate);
@@ -622,19 +635,50 @@ public class CurrencyService {
         String market,
         BigDecimal currentRate
     ) {
-        List<CurrencyRate> recent = currencyRateRepository
-            .findTop20ByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
-                currencyCode,
-                baseCurrency,
-                market
-            );
-        for (CurrencyRate row : recent) {
-            BigDecimal candidate = row.getRate();
-            if (candidate != null && candidate.compareTo(currentRate) != 0) {
-                return candidate;
+        // Günlük Çapa (Daily Anchor) Mantığı:
+        // Yüzdelik değişimi hesaplamak için dünün kapanışını veya bugünün ilk kaydını buluruz.
+        BigDecimal anchorRate = null;
+
+        // 1. Dünün son kaydını ara
+        LocalDateTime startOfToday = LocalDate.now(ZoneOffset.UTC).atStartOfDay();
+        Optional<CurrencyRate> yesterdayClose = currencyRateRepository
+            .findTopByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateBeforeOrderByRateDateDesc(
+                currencyCode, baseCurrency, market, startOfToday);
+
+        if (yesterdayClose.isPresent()) {
+            anchorRate = yesterdayClose.get().getRate();
+        } else {
+            // 2. Eğer dün veri yoksa, bugünün ilk kaydını al
+            Optional<CurrencyRate> todayOpen = currencyRateRepository
+                .findFirstByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateAfterOrderByRateDateAsc(
+                    currencyCode, baseCurrency, market, startOfToday);
+            if (todayOpen.isPresent()) {
+                anchorRate = todayOpen.get().getRate();
             }
         }
-        return null;
+
+        // 3. Hala bulunamadıysa geçmiş 100 kayda bakarak bir fark bulmaya çalış
+        if (anchorRate == null || anchorRate.compareTo(currentRate) == 0) {
+            List<CurrencyRate> history = currencyRateRepository
+                .findTop100ByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
+                    currencyCode, baseCurrency, market);
+            for (CurrencyRate r : history) {
+                if (r.getRate().compareTo(currentRate) != 0) {
+                    anchorRate = r.getRate();
+                    break;
+                }
+            }
+        }
+
+        BigDecimal changePercent = BigDecimal.ZERO;
+        if (anchorRate != null && anchorRate.compareTo(BigDecimal.ZERO) != 0) {
+            changePercent = currentRate.subtract(anchorRate)
+                .divide(anchorRate, 8, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return anchorRate;
     }
 
     private CurrencyRateResponse toResponseFromHistory(CurrencyRate rate) {
@@ -769,11 +813,32 @@ public class CurrencyService {
         if (rateNode == null || !rateNode.isNumber()) {
             return null;
         }
-        BigDecimal quotePerBase = rateNode.decimalValue();
-        if (quotePerBase.compareTo(BigDecimal.ZERO) == 0) {
+        BigDecimal quotePerApiBase = rateNode.decimalValue();
+        if (quotePerApiBase.compareTo(BigDecimal.ZERO) == 0) {
             return null;
         }
-        return BigDecimal.ONE.divide(quotePerBase, 8, RoundingMode.HALF_UP).setScale(4, RoundingMode.HALF_UP);
+
+        // Cross-rate calculation:
+        // If API base is USD, and user base is TRY:
+        // USD per TRY = (1.0 USD/USD) / (XX TRY/USD)
+        // EUR per TRY = (YY EUR/USD) / (XX TRY/USD)
+        
+        BigDecimal tryPerApiBase = tryPerBase;
+        if (tryPerApiBase == null || tryPerApiBase.compareTo(BigDecimal.ZERO) == 0) {
+            JsonNode tryNode = ratesNode.get("TRY");
+            if (tryNode != null && tryNode.isNumber()) {
+                tryPerApiBase = tryNode.decimalValue();
+            }
+        }
+
+        if ("TRY".equals(base) && tryPerApiBase != null && tryPerApiBase.compareTo(BigDecimal.ZERO) != 0) {
+            // For TR market, we usually want "TRY per UNIT" (e.g. 32.50 TRY/USD)
+            // Rate = (TRY/API_BASE) / (UNIT/API_BASE)
+            // Example for USD: (32.50 TRY/USD) / (1.0 USD/USD) = 32.50
+            return tryPerApiBase.divide(quotePerApiBase, 8, RoundingMode.HALF_UP).setScale(4, RoundingMode.HALF_UP);
+        }
+
+        return quotePerApiBase.setScale(4, RoundingMode.HALF_UP);
     }
 
     private BigDecimal resolveTryPerBase(String base, JsonNode ratesNode) {
@@ -1046,6 +1111,12 @@ public class CurrencyService {
             case "AED" -> "BAE Dirhemi";
             case "QAR" -> "Katar Riyali";
             case "KWD" -> "Kuveyt Dinari";
+            case "GOLD_CUMHURIYET" -> "Cumhuriyet Altini";
+            case "GOLD_CEYREK" -> "Ceyrek Altin";
+            case "GOLD_YARIM" -> "Yarim Altin";
+            case "GOLD_TAM" -> "Tam Altin";
+            case "GOLD_ONS" -> "Altin (Ons)";
+            case "GOLD_GRAM" -> "Gram Altin";
             default -> null;
         };
         if (fxName != null) {

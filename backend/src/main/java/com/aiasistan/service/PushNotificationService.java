@@ -105,10 +105,15 @@ public class PushNotificationService {
         sendToUser(
                 userId,
                 "Alisveris Hatirlaticisi",
-                itemName + " bitmis olabilir, listenize eklemek ister misiniz?",
+                itemName + " bitmis olabilir, gida kayitlariniza eklemek ister misiniz?",
                 Map.of(
                         "type", "shopping_reminder",
-                        "itemName", itemName));
+                        "itemName", itemName,
+                        "screen", "/(tabs)/health",
+                        "params", Map.of(
+                                "openModal", "meal",
+                                "itemName", itemName
+                        )));
     }
 
     @Transactional

@@ -29,7 +29,7 @@ public class TitleSuggestionService {
 
     private static final Logger logger = LoggerFactory.getLogger(TitleSuggestionService.class);
 
-    @Value("${ML_SERVICE_URL:http://localhost:8001}")
+    @Value("${ML_SERVICE_URL:http://localhost:8000}")
     private String mlServiceUrl;
 
     // ML service icin kisa timeout (hizli fail-over)

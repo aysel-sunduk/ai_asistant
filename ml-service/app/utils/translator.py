@@ -5,7 +5,7 @@ FOOD_TRANSLATIONS = {
     # Proteins
     'chicken': 'tavuk',
     'beef': 'dana eti',
-    'pork': 'domuz eti',  # Genelde veri setinde var
+    'pork': 'domuz eti',
     'fish': 'balık',
     'salmon': 'somon',
     'tuna': 'ton balığı',
@@ -19,6 +19,10 @@ FOOD_TRANSLATIONS = {
     'beans': 'fasulye',
     'chickpea': 'nohut',
     'steak': 'antrikot/bonfile',
+    'meatball': 'köfte',
+    'meatballs': 'köfte',
+    'mince': 'kıyma',
+    'liver': 'ciğer',
     
     # Vegetables
     'tomato': 'domates',
@@ -47,6 +51,9 @@ FOOD_TRANSLATIONS = {
     'arugula': 'roka',
     'basil': 'fesleğen',
     'parsley': 'maydanoz',
+    'dill': 'dereotu',
+    'mint': 'nane',
+    'thyme': 'kekik',
     
     # Fruits
     'apple': 'elma',
@@ -57,6 +64,8 @@ FOOD_TRANSLATIONS = {
     'lemon': 'limon',
     'grape': 'üzüm',
     'avocado': 'avokado',
+    'peach': 'şeftali',
+    'cherry': 'kiraz',
     
     # Grains/Carbs
     'rice': 'pirinç',
@@ -70,23 +79,26 @@ FOOD_TRANSLATIONS = {
     'noodles': 'erişte',
     'spaghetti': 'spagetti',
     'macaroni': 'makarna',
+    'bulgur': 'bulgur',
+    'barley': 'arpa',
     
     # Dairy
     'milk': 'süt',
     'cheese': 'peynir',
     'yogurt': 'yoğurt',
-    'butter': 'tereyağı',
+    'butter': 'tereyeğı',
     'cream': 'krema',
     'creamy': 'kremalı',
     'ricotta': 'rikotta peyniri',
     'mozzarella': 'mozzarella',
     'parmesan': 'parmesan',
+    'cheddar': 'çedar',
     
     # Meats / Deli
     'prosciutto': 'füme et/prosciutto',
     'bacon': 'pastırma/füme et',
     'ham': 'jambon',
-    'sausage': 'sosis',
+    'sausage': 'sosis/sucuk',
     'salami': 'selam',
     
     # Cooking Methods / Prep
@@ -106,6 +118,9 @@ FOOD_TRANSLATIONS = {
     'marinated': 'marine edilmiş',
     'raw': 'çiğ',
     'fresh': 'taze',
+    'sautéed': 'sotelenmiş',
+    'poached': 'çılbır/haşlanmış',
+    'mashed': 'ezilmiş/püre',
     
     # Common Meal Names
     'soup': 'çorbası',
@@ -133,6 +148,8 @@ FOOD_TRANSLATIONS = {
     'dhal': 'mercimek yemeği (dhal)',
     'dal': 'mercimek yemeği (dal)',
     'curries': 'köriler',
+    'omelette': 'omlet',
+    'scrambled': 'çırpılmış',
     
     # Connection words
     'with': 'ile',

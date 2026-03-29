@@ -1,0 +1,110 @@
+﻿.\mvnw.cmd : Environment v
+ariable __MVNW_PSMODULEP_S
+AVE__ not defined
+At line:1 char:1
++ .\mvnw.cmd compile > bui
+ld_errors.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (E  
+  nvironment var...E__    
+ not defined:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+
+D:\Downloads\Ai_asistan\backend>"C:\Program Files\Eclipse Adoptium\jdk-21.0.4.7-hotspot\bin\java"      "-Dmaven.multiModuleProjectDirectory=D:\Downloads\Ai_asistan\backend"   -cp "D:\Downloads\Ai_asistan\backend\.mvn\wrapper\maven-wrapper.jar"   org.apache.maven.wrapper.MavenWrapperMain compile 
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.aiasistan:ai-asistan-backend >------------------
+[INFO] Building AI Asistan Backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ai-asistan-backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 65 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ ai-asistan-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 209 source files with javac [debug parameters release 21] to target\classes
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/model/UserPushToken.java: Some input files use or override a deprecated API.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/model/UserPushToken.java: Recompile with -Xlint:deprecation for details.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/ShoppingRecommendationService.java: D:\Downloads\Ai_asistan\backend\src\main\java\com\aiasistan\service\ShoppingRecommendationService.java uses unchecked or unsafe operations.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/ShoppingRecommendationService.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/BlogPostService.java:[420,27] cannot find symbol
+  symbol:   method getProfilePictureUrl()
+  location: variable author of type com.aiasistan.model.User
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/BlogPostService.java:[421,63] cannot find symbol
+  symbol:   method getProfilePictureUrl()
+  location: variable author of type com.aiasistan.model.User
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[196,37] cannot find symbol
+  symbol:   method findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(java.lang.String,java.time.LocalDateTime,java.time.LocalDateTime)
+  location: variable currencyRateRepository of type com.aiasistan.repository.CurrencyRateRepository
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[197,37] cannot find symbol
+  symbol:   method findByCurrencyCodeAndBaseCurrencyAndRateDateBetweenOrderByRateDateDesc(java.lang.String,java.lang.String,java.time.LocalDateTime,java.time.LocalDateTime)
+  location: variable currencyRateRepository of type com.aiasistan.repository.CurrencyRateRepository
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[559,9] cannot find symbol
+  symbol:   class Optional
+  location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[567,13] cannot find symbol
+  symbol:   class Optional
+  location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[643,9] cannot find symbol
+  symbol:   class Optional
+  location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[651,13] cannot find symbol
+  symbol:   class Optional
+  location: class com.aiasistan.service.CurrencyService
+[INFO] 8 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.095 s
+[INFO] Finished at: 2026-03-28T13:26:47+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project ai-asistan-backend: Compilation failure: Compilation failure: 
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/BlogPostService.java:[420,27] cannot find symbol
+[ERROR]   symbol:   method getProfilePictureUrl()
+[ERROR]   location: variable author of type com.aiasistan.model.User
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/BlogPostService.java:[421,63] cannot find symbol
+[ERROR]   symbol:   method getProfilePictureUrl()
+[ERROR]   location: variable author of type com.aiasistan.model.User
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[196,37] cannot find symbol
+[ERROR]   symbol:   method findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(java.lang.String,java.time.LocalDateTime,java.time.LocalDateTime)
+[ERROR]   location: variable currencyRateRepository of type com.aiasistan.repository.CurrencyRateRepository
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[197,37] cannot find symbol
+[ERROR]   symbol:   method findByCurrencyCodeAndBaseCurrencyAndRateDateBetweenOrderByRateDateDesc(java.lang.String,java.lang.String,java.time.LocalDateTime,java.time.LocalDateTime)
+[ERROR]   location: variable currencyRateRepository of type com.aiasistan.repository.CurrencyRateRepository
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[559,9] cannot find symbol
+[ERROR]   symbol:   class Optional
+[ERROR]   location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[567,13] cannot find symbol
+[ERROR]   symbol:   class Optional
+[ERROR]   location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[643,9] cannot find symbol
+[ERROR]   symbol:   class Optional
+[ERROR]   location: class com.aiasistan.service.CurrencyService
+[ERROR] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/CurrencyService.java:[651,13] cannot find symbol
+[ERROR]   symbol:   class Optional
+[ERROR]   location: class com.aiasistan.service.CurrencyService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+D:\Downloads\Ai_asistan\backend>IF ERRORLEVEL 1 goto error 
+
+D:\Downloads\Ai_asistan\backend>set ERROR_CODE=1 
+
+D:\Downloads\Ai_asistan\backend>EXIT /B 1 

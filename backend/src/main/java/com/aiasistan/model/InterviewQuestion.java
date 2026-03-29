@@ -29,6 +29,9 @@ public class InterviewQuestion {
 
     private Integer score;
 
+    @Column(length = 20)
+    private String difficulty; // EASY, MEDIUM, HARD
+
     @Column(name = "order_no", nullable = false)
     private Integer orderNo;
 
@@ -89,6 +92,14 @@ public class InterviewQuestion {
 
     public void setScore(Integer score) {
         this.score = score;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
     }
 
     public Integer getOrderNo() {

@@ -17,7 +17,8 @@ import {
 import { financeService } from '../../services/finance.service';
 import type { CurrencyHoldingRequest, InvestmentRequest } from '../../src/models/finance.model';
 import { ASSET_TYPE_COLORS, ASSET_TYPE_ICONS, ASSET_TYPE_LABELS } from '../../src/models/finance.model';
-import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
+import { useThemeStore, resolveTheme } from '../../src/store/theme.store';
+import { useFinanceStore } from '../../src/store/finance.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
@@ -125,7 +126,17 @@ export default function AddTransactionScreen() {
             }
 
             console.log('[AddTransaction] Investment Payload:', JSON.stringify(data, null, 2));
+            
+            // 1. Add the investment (synchronous backend call)
             await financeService.addInvestment(data);
+
+            // 2. Refresh the global finance store immediately to reflect changes
+            // We AWAIT this so the data is ready before we go back
+            try {
+                await useFinanceStore.getState().fetchDashboardData();
+            } catch (e) {
+                console.error('Store refresh failed', e);
+            }
 
             Alert.alert('Başarılı', isCurrency ? 'Döviz varlığı eklendi' : 'Yatırım başarıyla eklendi', [
                 { text: 'Tamam', onPress: () => router.back() },

@@ -1,6 +1,7 @@
 package com.aiasistan.controller;
 
 import java.util.Map;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,7 @@ public class DietRecommendationController {
         try {
             var userId = userService.getUserIdByEmail(authentication.getName());
             UserProfile profile = userProfileService.getOrCreateProfile(userId);
+            HealthGoal healthGoal = healthGoalRepository.findById(userId).orElse(null);
 
             // Diyet hedefini belirle
             String dietGoal = request.dietGoal != null ? request.dietGoal : "MAINTAIN";
@@ -67,8 +69,6 @@ public class DietRecommendationController {
             if (request.calorieTarget != null && request.calorieTarget > 0) {
                 calorieTarget = request.calorieTarget;
             } else {
-                // HealthGoal varsa oradan al, yoksa profildən hesapla
-                HealthGoal healthGoal = healthGoalRepository.findById(userId).orElse(null);
                 if (healthGoal != null && healthGoal.getCalorieTarget() != null && healthGoal.getCalorieTarget() > 0) {
                     calorieTarget = healthGoal.getCalorieTarget();
                     if (healthGoal.getDietGoal() != null && request.dietGoal == null) {
@@ -81,16 +81,29 @@ public class DietRecommendationController {
 
             // ML servise gönder
             String url = mlServiceUrl + "/api/diet/recommend";
+            
+            List<String> favFoods = request.favoriteFoods;
+            if (favFoods == null && healthGoal != null) {
+                favFoods = healthGoal.getFavoriteFoods();
+            }
+
             Map<String, Object> mlRequest = Map.of(
                     "calorie_target", calorieTarget,
                     "diet_goal", dietGoal,
-                    "allergies", request.allergies != null ? request.allergies : java.util.List.of(),
+                    "allergies", request.allergies != null ? request.allergies : List.of(),
                     "preference", request.preference != null ? request.preference : "NORMAL",
-                    "excluded_foods", request.excludedFoods != null ? request.excludedFoods : java.util.List.of());
+                    "excluded_foods", request.excludedFoods != null ? request.excludedFoods : List.of(),
+                    "favorite_foods", favFoods != null ? favFoods : List.of());
 
             ResponseEntity<Object> response = restTemplate.postForEntity(url, mlRequest, Object.class);
 
-            return ResponseEntity.ok(ApiResponse.ok(response.getBody(), "Diyet planı oluşturuldu"));
+            // Favori yiyecekleri yanıta ekle
+            Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+            if (responseBody != null) {
+                responseBody.put("favorite_foods", favFoods != null ? favFoods : List.of());
+            }
+
+            return ResponseEntity.ok(ApiResponse.ok(responseBody, "Diyet planı oluşturuldu"));
 
         } catch (Exception e) {
             log.error("Diet recommendation failed: {}", e.getMessage());
@@ -109,6 +122,7 @@ public class DietRecommendationController {
         try {
             var userId = userService.getUserIdByEmail(authentication.getName());
             UserProfile profile = userProfileService.getOrCreateProfile(userId);
+            HealthGoal healthGoal = healthGoalRepository.findById(userId).orElse(null);
 
             // Diyet hedefini belirle
             String dietGoal = request.dietGoal != null ? request.dietGoal : "MAINTAIN";
@@ -118,8 +132,6 @@ public class DietRecommendationController {
             if (request.calorieTarget != null && request.calorieTarget > 0) {
                 calorieTarget = request.calorieTarget;
             } else {
-                // HealthGoal varsa oradan al, yoksa profilden hesapla
-                HealthGoal healthGoal = healthGoalRepository.findById(userId).orElse(null);
                 if (healthGoal != null && healthGoal.getCalorieTarget() != null && healthGoal.getCalorieTarget() > 0) {
                     calorieTarget = healthGoal.getCalorieTarget();
                     if (healthGoal.getDietGoal() != null && request.dietGoal == null) {
@@ -136,12 +148,18 @@ public class DietRecommendationController {
                     "calorie_target", calorieTarget,
                     "diet_goal", dietGoal,
                     "excluded_recipe_ids",
-                    request.excludedRecipeIds != null ? request.excludedRecipeIds : java.util.List.of(),
+                    request.excludedRecipeIds != null ? request.excludedRecipeIds : List.of(),
                     "preference", request.preference != null ? request.preference : "NORMAL");
 
             ResponseEntity<Object> response = restTemplate.postForEntity(url, mlRequest, Object.class);
 
-            return ResponseEntity.ok(ApiResponse.ok(response.getBody(), "Alternatif yemek önerildi"));
+            // Favorileri yanıta ekle (meal swap için de faydalı olabilir)
+            Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+            if (responseBody != null && healthGoal != null) {
+                responseBody.put("favorite_foods", healthGoal.getFavoriteFoods());
+            }
+
+            return ResponseEntity.ok(ApiResponse.ok(responseBody, "Alternatif yemek önerildi"));
 
         } catch (Exception e) {
             log.error("Meal swap failed: {}", e.getMessage());
@@ -150,21 +168,64 @@ public class DietRecommendationController {
         }
     }
 
+    @PostMapping("/favorite")
+    @Operation(summary = "Yemeği favorilere ekle veya çıkar")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ApiResponse<List<String>>> toggleFavoriteMeal(
+            Authentication authentication,
+            @RequestBody Map<String, String> request) {
+        String foodName = request.get("foodName");
+        if (foodName == null || foodName.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Yemek ismi boş olamaz"));
+        }
+
+        try {
+            var userId = userService.getUserIdByEmail(authentication.getName());
+            HealthGoal healthGoal = healthGoalRepository.findById(userId)
+                    .orElseGet(() -> {
+                        HealthGoal newGoal = new HealthGoal();
+                        newGoal.setUserId(userId);
+                        return newGoal;
+                    });
+
+            List<String> favs = healthGoal.getFavoriteFoods();
+            if (favs == null) {
+                favs = new java.util.ArrayList<>();
+            } else {
+                favs = new java.util.ArrayList<>(favs); // mutable copy
+            }
+
+            if (favs.contains(foodName)) {
+                favs.remove(foodName);
+            } else {
+                favs.add(foodName);
+            }
+
+            healthGoal.setFavoriteFoods(favs);
+            healthGoalRepository.save(healthGoal);
+
+            return ResponseEntity.ok(ApiResponse.ok(favs, "Favoriler güncellendi"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Favori işlemi başarısız: " + e.getMessage()));
+        }
+    }
+
     // --- Inner DTO classes ---
 
     public static class DietRecommendRequest {
         public Integer calorieTarget;
         public String dietGoal;
-        public java.util.List<String> allergies;
+        public List<String> allergies;
         public String preference;
-        public java.util.List<String> excludedFoods;
+        public List<String> excludedFoods;
+        public List<String> favoriteFoods;
     }
 
     public static class MealSwapRequest {
         public String slot;
         public Integer calorieTarget;
         public String dietGoal;
-        public java.util.List<Integer> excludedRecipeIds;
+        public List<Integer> excludedRecipeIds;
         public String preference;
     }
 }

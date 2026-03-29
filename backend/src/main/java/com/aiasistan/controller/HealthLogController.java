@@ -130,4 +130,13 @@ public class HealthLogController {
     healthLogService.deleteLog(authentication.getName(), id);
     return ResponseEntity.ok(ApiResponse.ok(null, "Saglik kaydi silindi"));
   }
+
+  @PostMapping("/{id}/toggle-favorite")
+  @Operation(summary = "Saglik kaydini favorilere ekle/cikar")
+  public ResponseEntity<ApiResponse<HealthLogDto.Response>> toggleFavorite(
+      Authentication authentication,
+      @PathVariable UUID id) {
+    HealthLogDto.Response response = healthLogService.toggleFavorite(authentication.getName(), id);
+    return ResponseEntity.ok(ApiResponse.ok(response, "Favori durumu guncellendi"));
+  }
 }

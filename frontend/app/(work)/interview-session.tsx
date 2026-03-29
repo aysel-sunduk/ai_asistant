@@ -269,7 +269,16 @@ export default function InterviewSessionScreen() {
                                     <View style={styles.questionNumCircle}>
                                         <Text style={styles.questionNum}>{i + 1}</Text>
                                     </View>
-                                    <Text style={[styles.questionTxt, { flex: 1 }]}>{q.questionText}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.questionTxt}>{q.questionText}</Text>
+                                        {q.difficulty && (
+                                            <View style={[styles.diffBadge, (styles as any)[`diff${q.difficulty}`]]}>
+                                                <Text style={styles.diffText}>
+                                                    {q.difficulty === 'HARD' ? 'ZOR' : q.difficulty === 'MEDIUM' ? 'ORTA' : 'KOLAY'}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
                                     <View style={styles.questionActions}>
                                         <TouchableOpacity
                                             onPress={() => handleMoveQuestion(i, 'up')}
@@ -330,6 +339,13 @@ export default function InterviewSessionScreen() {
 
                     <View style={styles.questionCard}>
                         <Ionicons name="chatbubble-ellipses" size={32} color="#fff" style={styles.cardIcon} />
+                        {currentQuestion.difficulty && (
+                            <View style={[styles.activeDiffBadge, (styles as any)[`diff${currentQuestion.difficulty}`]]}>
+                                <Text style={styles.activeDiffText}>
+                                    {currentQuestion.difficulty === 'HARD' ? 'ZOR' : currentQuestion.difficulty === 'MEDIUM' ? 'ORTA' : 'KOLAY'}
+                                </Text>
+                            </View>
+                        )}
                         <Text style={styles.activeQuestion}>{currentQuestion.questionText}</Text>
                     </View>
 
@@ -402,6 +418,34 @@ export default function InterviewSessionScreen() {
                         <View style={styles.feedbackCard}>
                             <Text style={styles.feedbackText}>{session?.overallFeedback}</Text>
                         </View>
+                    </View>
+
+                    <View style={styles.feedbackSection}>
+                        <View style={styles.sectionHeader}>
+                            <Ionicons name="list" size={24} color={PRIMARY} />
+                            <Text style={styles.sectionTitle}>Soru Bazlı Detaylar</Text>
+                        </View>
+                        {questions.map((q, i) => (
+                            <View key={q.id} style={styles.detailCard}>
+                                <View style={styles.detailHeader}>
+                                    <Text style={styles.detailNum}>{i + 1}. Soru</Text>
+                                    {q.score !== undefined && (
+                                        <View style={[styles.scoreBadge, q.score >= 70 ? styles.scoreHigh : q.score >= 40 ? styles.scoreMed : styles.scoreLow]}>
+                                            <Text style={styles.scoreText}>{q.score}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.detailQuestion}>{q.questionText}</Text>
+                                <Text style={styles.detailAnswerTitle}>Cevabın:</Text>
+                                <Text style={styles.detailAnswer}>{q.answerText || 'Cevaplanmadı'}</Text>
+                                {q.feedback && (
+                                    <>
+                                        <Text style={styles.detailFeedbackTitle}>AI Geri Bildirimi:</Text>
+                                        <Text style={styles.detailFeedback}>{q.feedback}</Text>
+                                    </>
+                                )}
+                            </View>
+                        ))}
                     </View>
 
                     <TouchableOpacity
@@ -648,6 +692,49 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     secondaryBtnText: { color: '#475569', fontSize: 16, fontWeight: '800' },
+
+    /* ─── Difficulty Badges ─── */
+    diffBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+    },
+    diffEASY: { backgroundColor: '#BBF7D0', borderColor: '#22C55E', borderWidth: 1 },
+    diffMEDIUM: { backgroundColor: '#FEF08A', borderColor: '#EAB308', borderWidth: 1 },
+    diffHARD: { backgroundColor: '#FECACA', borderColor: '#EF4444', borderWidth: 1 },
+    diffText: { fontSize: 10, fontWeight: '900', color: '#1E293B' },
+    
+    activeDiffBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    activeDiffText: { fontSize: 12, fontWeight: '900', color: '#1E293B' },
+
+    /* ─── Detail Result Cards ─── */
+    detailCard: {
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    detailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    detailNum: { fontSize: 14, fontWeight: '800', color: '#64748B' },
+    scoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    scoreHigh: { backgroundColor: '#10B981' },
+    scoreMed: { backgroundColor: '#F59E0B' },
+    scoreLow: { backgroundColor: '#EF4444' },
+    scoreText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+    detailQuestion: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 12 },
+    detailAnswerTitle: { fontSize: 12, fontWeight: '800', color: '#64748B', marginBottom: 4 },
+    detailAnswer: { fontSize: 14, color: '#334155', marginBottom: 16, fontStyle: 'italic' },
+    detailFeedbackTitle: { fontSize: 12, fontWeight: '800', color: PRIMARY, marginBottom: 4 },
+    detailFeedback: { fontSize: 14, color: '#334155', lineHeight: 22 },
 
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },

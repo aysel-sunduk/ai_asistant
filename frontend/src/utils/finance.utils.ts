@@ -15,8 +15,9 @@ export const getInvestmentDisplayName = (symbol: string, assetType: string): str
     if (!symbol) return '';
 
     // Gold/Silver specific mappings
-    if (symbol === 'GOLD_GRAM') return 'Gram Altın';
-    if (symbol === 'SILVER_GRAM') return 'Gram Gümüş';
+    if (symbol === 'GOLD_GRAM' || symbol === 'ALTIN') return 'Gram Altın';
+    if (symbol === 'GOLD_CUMHURIYET') return 'Cumhuriyet Altını';
+    if (symbol === 'SILVER_GRAM' || symbol === 'GUMUS') return 'Gram Gümüş';
     if (symbol === 'XAU/USD') return 'Ons Altın';
     if (symbol === 'XAG/USD') return 'Ons Gümüş';
     if (symbol === 'BTC') return 'Bitcoin';

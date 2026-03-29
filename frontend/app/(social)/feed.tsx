@@ -6,6 +6,8 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    FlatList,
+    Image,
     Modal,
     Platform,
     RefreshControl,
@@ -153,10 +155,19 @@ export default function FeedScreen() {
         ]);
         if (statsRes.status === 'fulfilled') setStats(statsRes.value);
         if (discoverRes.status === 'fulfilled') {
-            setDiscoverUsers(discoverRes.value.content || []);
+            const newUsers = discoverRes.value.content || [];
+            if (discoverPage === 0) {
+                setDiscoverUsers(newUsers);
+            } else {
+                setDiscoverUsers(prev => {
+                    const existingIds = new Set(prev.map(u => u.user.userId));
+                    const uniqueNew = newUsers.filter(u => !existingIds.has(u.user.userId));
+                    return [...prev, ...uniqueNew];
+                });
+            }
             setDiscoverTotalPages(discoverRes.value.totalPages || 1);
         } else {
-            setDiscoverUsers([]);
+            if (discoverPage === 0) setDiscoverUsers([]);
             setDiscoverTotalPages(1);
         }
         if (incomingRes.status === 'fulfilled') {
@@ -206,6 +217,7 @@ export default function FeedScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
+        setDiscoverPage(0); // Reset page on refresh
         await loadAll();
         setRefreshing(false);
     };
@@ -322,139 +334,146 @@ export default function FeedScreen() {
 
     // ═══════════════════════════════ RENDER ═══════════════════════════════
 
-    const renderDiscoverTab = () => (
-        <>
-            <View style={styles.searchWrap}>
-                <TextInput
-                    style={[styles.searchInput, isDark && styles.inputDark]}
-                    placeholder="Kullanici ara (ad veya email)"
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    returnKeyType="search"
-                    onSubmitEditing={onSearchApply}
-                />
-                <TouchableOpacity style={styles.searchBtn} onPress={onSearchApply}>
-                    <Ionicons name="search" size={16} color={COLOR} />
+    const renderDiscoverUser = ({ item }: { item: DiscoverUserItem }) => {
+        const name = fullName(item.user.firstName, item.user.lastName);
+        const isBusy = busyUserId === item.user.userId;
+        const isFollowing = item.relationStatus === 'following';
+        const isPending = item.relationStatus === 'pending_outgoing';
+        const actionLabel = isFollowing
+            ? 'Birak'
+            : isPending
+                ? 'Geri cek'
+                : item.privateProfile
+                    ? 'Istek Gonder'
+                    : 'Takip Et';
+        return (
+            <View key={item.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
+                <TouchableOpacity onPress={() => openProfile(item.user.userId)}>
+                    <View style={styles.avatar}>
+                        {item.user.profilePictureUrl ? (
+                            <Image source={{ uri: item.user.profilePictureUrl }} style={styles.avatarImg} />
+                        ) : (
+                            <Text style={styles.avatarText}>{initials(name)}</Text>
+                        )}
+                    </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(item.user.userId)}>
+                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
+                    <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{item.user.email}</Text>
+                    <Text style={styles.stateText}>
+                        {relationLabel[item.relationStatus] || item.relationStatus}
+                    </Text>
+                    <Text style={styles.visibilityText}>
+                        {item.privateProfile ? 'Hesap tipi: Ozel' : 'Hesap tipi: Herkese acik'}
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    disabled={isBusy}
+                    style={[
+                        styles.followBtn,
+                        isFollowing && styles.followBtnMuted,
+                        isPending && styles.followBtnPending,
+                    ]}
+                    onPress={() => handleFollowAction(item)}
+                >
+                    <Text style={[styles.followBtnText, (isFollowing || isPending) && styles.followBtnTextMuted]}>
+                        {actionLabel}
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.profileBtn}
+                    onPress={() => router.push({ pathname: '/(social)/user-profile', params: { userId: item.user.userId, name } })}
+                >
+                    <Ionicons name="person-outline" size={16} color="#475569" />
                 </TouchableOpacity>
             </View>
+        );
+    };
 
-            {incomingRequests.length > 0 && (
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Gelen Takip Istekleri</Text>
-                    {incomingRequests.map((r) => {
-                        const name = fullName(r.user.firstName, r.user.lastName);
-                        const isBusy = busyUserId === r.user.userId;
-                        return (
-                            <View key={r.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
-                                <TouchableOpacity onPress={() => openProfile(r.user.userId)}>
-                                    <View style={styles.avatar}>
-                                        <Text style={styles.avatarText}>{initials(name)}</Text>
+    const handleLoadMoreDiscover = () => {
+        if (!loading && discoverPage < discoverTotalPages - 1) {
+            setDiscoverPage(p => p + 1);
+        }
+    };
+
+    const renderDiscoverTab = () => (
+        <FlatList
+            data={discoverUsers}
+            keyExtractor={(item) => item.user.userId}
+            renderItem={renderDiscoverUser}
+            contentContainerStyle={styles.scroll}
+            onEndReached={handleLoadMoreDiscover}
+            onEndReachedThreshold={0.5}
+            ListHeaderComponent={
+                <>
+                    <View style={styles.searchWrap}>
+                        <TextInput
+                            style={[styles.searchInput, isDark && styles.inputDark]}
+                            placeholder="Kullanici ara (ad veya email)"
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            returnKeyType="search"
+                            onSubmitEditing={onSearchApply}
+                        />
+                        <TouchableOpacity style={styles.searchBtn} onPress={onSearchApply}>
+                            <Ionicons name="search" size={16} color={COLOR} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {incomingRequests.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Gelen Takip Istekleri</Text>
+                            {incomingRequests.map((r) => {
+                                const name = fullName(r.user.firstName, r.user.lastName);
+                                const isBusy = busyUserId === r.user.userId;
+                                return (
+                                    <View key={r.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
+                                        <TouchableOpacity onPress={() => openProfile(r.user.userId)}>
+                                            <View style={styles.avatar}>
+                                                {r.user.profilePictureUrl ? (
+                                                    <Image source={{ uri: r.user.profilePictureUrl }} style={styles.avatarImg} />
+                                                ) : (
+                                                    <Text style={styles.avatarText}>{initials(name)}</Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(r.user.userId)}>
+                                            <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
+                                            <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{r.user.email}</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity disabled={isBusy} style={styles.acceptBtn} onPress={() => handleIncomingRequest(r.user.userId, 'accept')}>
+                                            <Text style={styles.acceptBtnText}>Kabul</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity disabled={isBusy} style={styles.rejectBtn} onPress={() => handleIncomingRequest(r.user.userId, 'reject')}>
+                                            <Text style={styles.rejectBtnText}>Reddet</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(r.user.userId)}>
-                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
-                                    <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{r.user.email}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity disabled={isBusy} style={styles.acceptBtn} onPress={() => handleIncomingRequest(r.user.userId, 'accept')}>
-                                    <Text style={styles.acceptBtnText}>Kabul</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity disabled={isBusy} style={styles.rejectBtn} onPress={() => handleIncomingRequest(r.user.userId, 'reject')}>
-                                    <Text style={styles.rejectBtnText}>Reddet</Text>
-                                </TouchableOpacity>
-                            </View>
-                        );
-                    })}
-                </View>
-            )}
-
-            <View style={styles.section}>
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>{discoverTitle}</Text>
-                {loading ? (
+                                );
+                            })}
+                        </View>
+                    )}
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark, { marginBottom: 12 }]}>{discoverTitle}</Text>
+                </>
+            }
+            ListEmptyComponent={
+                loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="small" color={COLOR} />
                     </View>
-                ) : discoverUsers.length === 0 ? (
+                ) : (
                     <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
                         <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Kullanici bulunamadi</Text>
                         <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Arama filtresini degistirebilirsin.</Text>
                     </View>
-                ) : (
-                    discoverUsers.map((item) => {
-                        const name = fullName(item.user.firstName, item.user.lastName);
-                        const isBusy = busyUserId === item.user.userId;
-                        const isFollowing = item.relationStatus === 'following';
-                        const isPending = item.relationStatus === 'pending_outgoing';
-                        const actionLabel = isFollowing
-                            ? 'Birak'
-                            : isPending
-                                ? 'Geri cek'
-                                : item.privateProfile
-                                    ? 'Istek Gonder'
-                                    : 'Takip Et';
-                        return (
-                            <View key={item.user.userId} style={[styles.userCard, isDark && styles.userCardDark]}>
-                                <TouchableOpacity onPress={() => openProfile(item.user.userId)}>
-                                    <View style={styles.avatar}>
-                                        <Text style={styles.avatarText}>{initials(name)}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={{ flex: 1 }} onPress={() => openProfile(item.user.userId)}>
-                                    <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
-                                    <Text style={[styles.cardSub, isDark && styles.subTextDark]}>{item.user.email}</Text>
-                                    <Text style={styles.stateText}>
-                                        {relationLabel[item.relationStatus] || item.relationStatus}
-                                    </Text>
-                                    <Text style={styles.visibilityText}>
-                                        {item.privateProfile ? 'Hesap tipi: Ozel' : 'Hesap tipi: Herkese acik'}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    disabled={isBusy}
-                                    style={[
-                                        styles.followBtn,
-                                        isFollowing && styles.followBtnMuted,
-                                        isPending && styles.followBtnPending,
-                                    ]}
-                                    onPress={() => handleFollowAction(item)}
-                                >
-                                    <Text style={[styles.followBtnText, (isFollowing || isPending) && styles.followBtnTextMuted]}>
-                                        {actionLabel}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.profileBtn}
-                                    onPress={() => router.push({ pathname: '/(social)/user-profile', params: { userId: item.user.userId, name } })}
-                                >
-                                    <Ionicons name="person-outline" size={16} color="#475569" />
-                                </TouchableOpacity>
-                            </View>
-                        );
-                    })
-                )}
-
-                {discoverTotalPages > 1 && discoverUsers.length > 0 && (
-                    <View style={styles.paginationRow}>
-                        <TouchableOpacity
-                            style={[styles.pageBtn, discoverPage === 0 && styles.pageBtnDisabled]}
-                            onPress={() => setDiscoverPage((p) => Math.max(0, p - 1))}
-                            disabled={discoverPage === 0 || loading}
-                        >
-                            <Ionicons name="chevron-back" size={16} color={discoverPage === 0 ? '#94A3B8' : COLOR} />
-                            <Text style={[styles.pageBtnText, discoverPage === 0 && styles.pageBtnTextDisabled]}>Geri</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.pageIndicator}>{discoverPage + 1} / {discoverTotalPages}</Text>
-                        <TouchableOpacity
-                            style={[styles.pageBtn, discoverPage >= discoverTotalPages - 1 && styles.pageBtnDisabled]}
-                            onPress={() => setDiscoverPage((p) => Math.min(discoverTotalPages - 1, p + 1))}
-                            disabled={discoverPage >= discoverTotalPages - 1 || loading}
-                        >
-                            <Text style={[styles.pageBtnText, discoverPage >= discoverTotalPages - 1 && styles.pageBtnTextDisabled]}>Ileri</Text>
-                            <Ionicons name="chevron-forward" size={16} color={discoverPage >= discoverTotalPages - 1 ? '#94A3B8' : COLOR} />
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
-        </>
+                )
+            }
+            ListFooterComponent={
+                loading && discoverUsers.length > 0 ? (
+                    <ActivityIndicator size="small" color={COLOR} style={{ marginVertical: 10 }} />
+                ) : null
+            }
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        />
     );
 
     const renderBlogsTab = () => (
@@ -615,15 +634,21 @@ export default function FeedScreen() {
                 ))}
             </View>
 
-            <ScrollView
-                contentContainerStyle={styles.scroll}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                showsVerticalScrollIndicator={false}
-            >
-                {activeTab === 'discover' && renderDiscoverTab()}
-                {activeTab === 'blogs' && renderBlogsTab()}
-                {activeTab === 'write' && renderWriteTab()}
-            </ScrollView>
+                {activeTab === 'discover' && (
+                    <View style={{ flex: 1 }}>
+                        {renderDiscoverTab()}
+                    </View>
+                )}
+                {(activeTab === 'blogs' || activeTab === 'write') && (
+                    <ScrollView
+                        contentContainerStyle={styles.scroll}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {activeTab === 'blogs' && renderBlogsTab()}
+                        {activeTab === 'write' && renderWriteTab()}
+                    </ScrollView>
+                )}
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
             <UserProfileModal visible={profileModalVisible} userId={selectedUserId} onClose={() => setProfileModalVisible(false)} />
@@ -802,10 +827,15 @@ const styles = StyleSheet.create({
     avatar: {
         width: 46,
         height: 46,
-        borderRadius: 99,
+        borderRadius: 23,
         backgroundColor: '#EDE9FE',
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    avatarImg: {
+        width: '100%',
+        height: '100%',
     },
     avatarText: { fontSize: 14, fontWeight: '800', color: '#6C63FF' },
     cardTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', letterSpacing: -0.2 },

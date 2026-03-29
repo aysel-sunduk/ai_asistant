@@ -72,7 +72,7 @@ export const financeService = {
     },
 
     getPortfolioPerformance: async (): Promise<InvestmentPerformanceResponse> => {
-        const response = await financeApi.getPortfolioPerformance();
+        const response = await financeApi.getPortfolioPerformance(); // Now handled by interceptor or manual param
         return response.data.data;
     },
 

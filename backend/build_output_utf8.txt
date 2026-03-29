@@ -1,0 +1,54 @@
+﻿.\mvnw.cmd : Environment v
+ariable __MVNW_PSMODULEP_S
+AVE__ not defined
+At line:1 char:1
++ .\mvnw.cmd clean compile
+ -DskipTests > build_outpu
+t.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (E  
+  nvironment var...E__    
+ not defined:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+
+D:\Downloads\Ai_asistan\backend>"C:\Program Files\Eclipse Adoptium\jdk-21.0.4.7-hotspot\bin\java"      "-Dmaven.multiModuleProjectDirectory=D:\Downloads\Ai_asistan\backend"   -cp "D:\Downloads\Ai_asistan\backend\.mvn\wrapper\maven-wrapper.jar"   org.apache.maven.wrapper.MavenWrapperMain clean compile -DskipTests 
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.aiasistan:ai-asistan-backend >------------------
+[INFO] Building AI Asistan Backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.4.0:clean (default-clean) @ ai-asistan-backend ---
+[INFO] Deleting D:\Downloads\Ai_asistan\backend\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ai-asistan-backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 65 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ ai-asistan-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 209 source files with javac [debug parameters release 21] to target\classes
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/model/UserPushToken.java: Some input files use or override a deprecated API.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/model/UserPushToken.java: Recompile with -Xlint:deprecation for details.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/ShoppingRecommendationService.java: D:\Downloads\Ai_asistan\backend\src\main\java\com\aiasistan\service\ShoppingRecommendationService.java uses unchecked or unsafe operations.
+[INFO] /D:/Downloads/Ai_asistan/backend/src/main/java/com/aiasistan/service/ShoppingRecommendationService.java: Recompile with -Xlint:unchecked for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.425 s
+[INFO] Finished at: 2026-03-28T22:26:38+03:00
+[INFO] ------------------------------------------------------------------------
+
+D:\Downloads\Ai_asistan\backend>IF ERRORLEVEL 1 goto error 
+
+D:\Downloads\Ai_asistan\backend>goto end 
+
+D:\Downloads\Ai_asistan\backend>EXIT /B  

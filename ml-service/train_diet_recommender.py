@@ -15,7 +15,7 @@ diyet öneri sistemi için gerekli veri tabanını oluşturur.
      food-com-recipes-and-user-interactions
   4. shuyangli94 kullanıcısının dataset'ini seç
   
-  Doğrudan link:
+  Doğrudan li32nk:
   https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions
 
 ═══════════════════════════════════════════════════════════

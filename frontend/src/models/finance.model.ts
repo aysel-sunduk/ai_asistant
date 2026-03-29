@@ -45,6 +45,7 @@ export interface CurrencyRateResponse {
     currencyName: string;
     rate: number;
     changeRate: number;
+    changePercent: number;
     baseCurrency: string;
     providerTimestamp: string;
     rateDate: string;
@@ -71,6 +72,7 @@ export interface FavoriteCurrencyResponse {
     currencyName: string;
     rate: number;
     changeRate: number;
+    changePercent: number;
     baseCurrency: string;
     rateDate: string;
     lastUpdatedAt?: string;

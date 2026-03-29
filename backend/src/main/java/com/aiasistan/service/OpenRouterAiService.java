@@ -26,6 +26,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class OpenRouterAiService {
 
+    public static class QuestionDraft {
+        private String text;
+        private String difficulty;
+
+        public QuestionDraft() {}
+        public QuestionDraft(String text, String difficulty) {
+            this.text = text;
+            this.difficulty = difficulty;
+        }
+        public String getText() { return text; }
+        public void setText(String text) { this.text = text; }
+        public String getDifficulty() { return difficulty; }
+        public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(OpenRouterAiService.class);
     private static final String OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -38,9 +53,9 @@ public class OpenRouterAiService {
     private List<String> getModels() {
         List<String> stableModels = List.of(
             "google/gemini-2.0-flash:free",
-            "google/gemma-3-27b-it:free",
             "qwen/qwen-2.5-72b-instruct:free",
-            "mistralai/mistral-small-3.1-24b-instruct:free",
+            "google/gemma-2-9b-it:free",
+            "mistralai/mistral-7b-instruct:free",
             "deepseek/deepseek-chat:free"
         );
 
@@ -141,33 +156,36 @@ public class OpenRouterAiService {
 
     /**
      * Mülakat başlığı ve iş tanımına göre mülakat soruları üretir.
+     * 1 zor, 2 orta, 2 kolay olmak üzere toplam 5 soru üretir.
      */
-    public List<String> generateInterviewQuestions(String title, String position, String jobDescription, int count) {
+    public List<QuestionDraft> generateInterviewQuestions(String title, String position, String jobDescription, int count) {
         if (!isConfigured()) {
             logger.error("OpenRouter API anahtarı (apiKey) tanımlı değil veya boş! Lütfen çevresel değişkenleri (OPENROUTER_API_KEY) kontrol edin.");
             return List.of();
         }
 
         try {
-            int safeCount = Math.min(Math.max(count, 3), 10);
-
             StringBuilder promptBuilder = new StringBuilder();
             promptBuilder.append("Sen profesyonel bir İnsan Kaynakları (İK) uzmanı ve teknik mülakatçısın. ")
-                    .append("Lütfen aşağıdaki iş başvurusuna özel, adayın bu role uygunluğunu test edecek ").append(safeCount)
-                    .append(" adet mantıklı ve pratik mülakat sorusu üret.\n\n")
+                    .append("Lütfen aşağıdaki iş başvurusuna özel, adayın bu role uygunluğunu test edecek mülakat soruları üret.\n\n")
                     .append("Mülakat Başlığı: ").append(title).append("\n")
                     .append("Pozisyon: ").append(position).append("\n");
 
             if (jobDescription != null && !jobDescription.isBlank()) {
-                promptBuilder.append("İş Tanımı ve Gereksinimler: ").append(jobDescription).append("\n\nÖNEMLİ: Soruları kalıplaşmış sorulardan ziyade, doğrudan bu iş tanımındaki görevlere, beklenen yetkinliklere ve olası zorlu senaryolara göre özel olarak hazırla.\n");
+                promptBuilder.append("İş Tanımı ve Gereksinimler: ").append(jobDescription).append("\n\nÖNEMLİ: Soruları kalıplaşmış sorulardan ziyade, doğrudan bu iş tanımındaki görevlere, beklenen yetkinliklere ve olası zorlu senaryolara göre özel olarak hazırlala.\n");
             }
 
-            promptBuilder.append("\n\nLütfen bu mülakat için teknik ve yetkinlik bazlı ").append(safeCount).append(" adet profesyonel soru hazırla.\n")
-                    .append("ÖNEMLİ: SADECE bir JSON array döndür (Örn: [\"Soru 1\", \"Soru 2\"]). Giriş metni, açıklama veya 'İşte sorularınız' gibi ifadeler ASLA ekleme. Sadece saf JSON array döndür.");
+            promptBuilder.append("\n\nLütfen bu mülakat için tam olarak 5 adet soru hazırla:\n")
+                    .append("- 1 adet ZOR (HARD) teknik/senaryo sorusu\n")
+                    .append("- 2 adet ORTA (MEDIUM) teknik soru\n")
+                    .append("- 2 adet KOLAY (EASY) genel yetkinlik/başlangıç teknik sorusu\n\n")
+                    .append("ÖNEMLİ: Sorular ve yanıtın TAMAMEN TÜRKÇE olsun.\n")
+                    .append("ÖNEMLİ: SADECE bir JSON array döndür. Giriş metni, açıklama ASLA ekleme.\n")
+                    .append("Format şuna tıpatıp uymalıdır: [{\"text\": \"Soru metni...\", \"difficulty\": \"HARD\"}, ...]");
 
             String response = callOpenRouter(promptBuilder.toString());
             if (response != null && !response.startsWith("API_ERROR:")) {
-                return parseQuestions(response, safeCount);
+                return parseDraftQuestions(response);
             } else if (response != null && response.startsWith("API_ERROR:")) {
                 throw new RuntimeException("Yapay zeka servisi reddetti: " + response.substring(10));
             }
@@ -178,6 +196,42 @@ public class OpenRouterAiService {
         }
 
         throw new RuntimeException("Geçerli bir API anahtarı veya kota bulunamadı. Lütfen backend çevresel değişkenlerini (OPENROUTER_API_KEY) kontrol edin.");
+    }
+
+    private List<QuestionDraft> parseDraftQuestions(String response) {
+        List<QuestionDraft> drafts = new ArrayList<>();
+        String content = response.trim();
+
+        int startIndex = content.indexOf("[");
+        int endIndex = content.lastIndexOf("]");
+        
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            String jsonPart = content.substring(startIndex, endIndex + 1);
+            try {
+                JsonNode node = objectMapper.readTree(jsonPart);
+                if (node.isArray()) {
+                    for (JsonNode item : node) {
+                        String text = item.path("text").asText().trim();
+                        String diff = item.path("difficulty").asText("MEDIUM").trim().toUpperCase();
+                        if (!text.isEmpty()) {
+                            drafts.add(new QuestionDraft(text, diff));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("JSON ayrıştırma hatası: {}", e.getMessage());
+            }
+        }
+        
+        if (drafts.isEmpty()) {
+            // Fallback for non-JSON or malformed
+            List<String> plain = parseQuestions(response, 5);
+            for (int i = 0; i < plain.size(); i++) {
+                String diff = (i == 0) ? "HARD" : (i < 3 ? "MEDIUM" : "EASY");
+                drafts.add(new QuestionDraft(plain.get(i), diff));
+            }
+        }
+        return drafts;
     }
 
 
@@ -202,14 +256,14 @@ public class OpenRouterAiService {
             }
 
             promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI** değerlendirmeyi yap:\n")
-                    .append("1. **Genel Değerlendirme**: Adayın profilini, iletişim becerilerini ve genel teknik seviyesini en az 2 paragraf halinde, çok detaylı analiz et.\n")
-                    .append("2. **Soru Bazlı Derin Teknik Analiz**: Her bir soru ve cevap çifti için:\n")
-                    .append("   - Cevabın doğruluğunu ve eksiklerini teknik terimlerle açıkla.\n")
-                    .append("   - Bu cevabın 'Senior' seviyesine taşınması için gereken ek bilgileri ve örnek kod yapılarını/mimari yaklaşımları anlat.\n")
-                    .append("   - Her soru için en az 1-2 uzun paragraf geri bildirim ver.\n")
-                    .append("3. **Stratejik İyileştirme Yol Haritası**: Adayın eksik olduğu teknolojiler ve konularda çalışması için detaylı bir öğrenme planı sun.\n")
-                    .append("4. **Başarı Skoru**: 100 üzerinden bir toplam puan (Format: [SKOR: 85])\n\n")
-                    .append("ÖNEMLİ: Yanıtın kesinlikle kısa olmasın, teknik detaylara doygun ve profesyonel olsun. Yanıtın tamamen Türkçe olsun.");
+                    .append("1. **Soru Bazlı Analiz ve Puanlama**: Her bir soru için (sorunun Zorluk seviyesini de dikkate alarak):\n")
+                    .append("   - Cevabın doğruluğunu, teknik derinliğini ve eksiklerini açıkla.\n")
+                    .append("   - Bu cevaba 100 üzerinden bir puan ver.\n")
+                    .append("   - Zor soruların puanlanmasında daha toleranslı olabilirsin, ancak teknik derinlik beklemelisin.\n")
+                    .append("   - Format: [SORU_SKOR: 80], [SORU_FEEDBACK: ...]\n")
+                    .append("2. **Genel Değerlendirme**: Adayın profilini ve iletişim becerilerini özetle.\n")
+                    .append("3. **Başarı Skoru**: Tüm mülakat için 100 üzerinden bir toplam puan (Format: [TOTAL_SKOR: 85])\n\n")
+                    .append("ÖNEMLİ: Her soru için teknik detaylara doygun geri bildirim ver. Yanıtın tamamen Türkçe olsun.");
 
             return callOpenRouter(promptBuilder.toString());
 
@@ -292,8 +346,8 @@ public class OpenRouterAiService {
                 logger.error("OpenRouter isteği kesintiye uğradı");
                 break;
             } catch (Exception e) {
-                logger.error("OpenRouter API hatası (model: {}): {}", sanitizedModel, e.getMessage());
-                lastError = e.getMessage();
+                logger.error("OpenRouter API hatası (model: {}): {}", sanitizedModel, e.getMessage(), e);
+                lastError = (e.getMessage() != null) ? e.getMessage() : e.toString();
             }
             
             logger.warn("Model {} başarısız oldu, bir sonraki deneniyor...", sanitizedModel);

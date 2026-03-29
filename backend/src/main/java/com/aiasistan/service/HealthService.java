@@ -40,13 +40,15 @@ public class HealthService {
         double multiplier = getActivityMultiplier(profile.getActivityLevel());
         double tdee = bmr * multiplier;
 
-        if ("LOSE_WEIGHT".equalsIgnoreCase(dietGoal)) {
-            return (int) (tdee - 500);
-        } else if ("GAIN_WEIGHT".equalsIgnoreCase(dietGoal)) {
-            return (int) (tdee + 300);
-        } else {
-            return (int) tdee;
-        }
+        if (dietGoal == null) return (int) tdee;
+
+        return switch (dietGoal.toUpperCase()) {
+            case "LOSE_WEIGHT" -> (int) (tdee - 500);
+            case "GAIN_WEIGHT", "MUSCLE_GAIN" -> (int) (tdee + 300);
+            case "ATHLETIC_PERFORMANCE" -> (int) (tdee + 150);
+            case "HEALTHY_LIVING", "MAINTAIN" -> (int) tdee;
+            default -> (int) tdee;
+        };
     }
 
     private double getActivityMultiplier(String level) {

@@ -30,21 +30,25 @@ public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, UUID
     Optional<CurrencyRate> findTopByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
         String currencyCode, String baseCurrency, String market);
 
-    List<CurrencyRate> findTop20ByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
+    List<CurrencyRate> findTop100ByCurrencyCodeAndBaseCurrencyAndMarketOrderByRateDateDesc(
         String currencyCode, String baseCurrency, String market);
-    
-    List<CurrencyRate> findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(
-        String currencyCode, LocalDateTime startDate, LocalDateTime endDate);
 
-    List<CurrencyRate> findByCurrencyCodeAndBaseCurrencyAndRateDateBetweenOrderByRateDateDesc(
-        String currencyCode, String baseCurrency, LocalDateTime startDate, LocalDateTime endDate);
+    Optional<CurrencyRate> findTopByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateBeforeOrderByRateDateDesc(
+        String currencyCode, String baseCurrency, String market, LocalDateTime date);
 
-    List<CurrencyRate> findByBaseCurrencyOrderByRateDateDesc(String baseCurrency);
+    Optional<CurrencyRate> findFirstByCurrencyCodeAndBaseCurrencyAndMarketAndRateDateAfterOrderByRateDateAsc(
+        String currencyCode, String baseCurrency, String market, LocalDateTime date);
     
     @Query("SELECT cr FROM CurrencyRate cr WHERE cr.rateDate >= :date")
     List<CurrencyRate> findRatesFromLast24Hours(@Param("date") LocalDateTime date);
     
     Page<CurrencyRate> findAllByOrderByRateDateDesc(Pageable pageable);
+
+    List<CurrencyRate> findByCurrencyCodeAndRateDateBetweenOrderByRateDateDesc(
+        String currencyCode, LocalDateTime startDate, LocalDateTime endDate);
+
+    List<CurrencyRate> findByCurrencyCodeAndBaseCurrencyAndRateDateBetweenOrderByRateDateDesc(
+        String currencyCode, String baseCurrency, LocalDateTime startDate, LocalDateTime endDate);
 
     long deleteByRateDateBefore(LocalDateTime cutoffDate);
 }
