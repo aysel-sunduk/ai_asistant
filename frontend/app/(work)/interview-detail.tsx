@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
+    Platform,
+    Pressable,
     RefreshControl,
     ScrollView,
     StatusBar,
@@ -14,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { interviewService } from '../../services/interview.service';
-import type { InterviewSession } from '../../src/models/interview.model';
+import type { InterviewSession, InterviewQuestionDTO } from '../../src/models/interview.model';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
@@ -47,6 +50,9 @@ export default function InterviewDetailScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [preparing, setPreparing] = useState(false);
     const [session, setSession] = useState<InterviewSession | null>(null);
+    const [selectedQuestion, setSelectedQuestion] = useState<InterviewQuestionDTO | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
 
     const loadSession = useCallback(async (pull = false) => {
         if (!sessionId) return;
@@ -84,6 +90,21 @@ export default function InterviewDetailScreen() {
             Alert.alert('Hata', 'Bu mülakat için soru hazırlığı yapılamadı.');
         } finally {
             setPreparing(false);
+        }
+    };
+
+    const handleReanalyze = async () => {
+        if (!sessionId) return;
+        try {
+            setAnalyzing(true);
+            const updated = await interviewService.analyzeInterview(sessionId);
+            setSession(updated);
+            Alert.alert('Başarılı', 'Analiz raporu güncellendi.');
+        } catch (error: any) {
+            console.error('Re-analyze error:', error);
+            Alert.alert('Hata', 'Analiz güncellenemedi: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setAnalyzing(false);
         }
     };
 
@@ -130,28 +151,182 @@ export default function InterviewDetailScreen() {
                         <Meta label="Soru" value={`${session.questions?.length || 0}`} />
                     </View>
 
-                    <Text style={styles.sectionTitle}>İş Tanımı</Text>
-                    <Text style={styles.description}>
-                        {session.jobDescription?.trim() || 'Bu mülakat için henüz iş tanımı eklenmemiş.'}
+                    {session.status === 'COMPLETED' && session.overallScore != null && (
+                        <View style={styles.scoreCard}>
+                            <Text style={styles.scoreLabel}>Genel Başarı Skoru</Text>
+                            <Text style={styles.scoreValue}>{session.overallScore}/100</Text>
+                            <TouchableOpacity 
+                                style={styles.reanalyzeBtn} 
+                                onPress={handleReanalyze}
+                                disabled={analyzing}
+                            >
+                                {analyzing ? (
+                                    <ActivityIndicator size="small" color={COLOR} />
+                                ) : (
+                                    <>
+                                        <Ionicons name="refresh-outline" size={14} color={COLOR} />
+                                        <Text style={styles.reanalyzeBtnText}>Analizi Güncelle</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <View style={styles.sectionHeader}>
+                        <Ionicons name="document-text-outline" size={18} color={COLOR} />
+                        <Text style={[styles.sectionTitle, { marginTop: 0 }]}>
+                            {session.status === 'COMPLETED' ? 'Genel Özet' : 'İş Tanımı'}
+                        </Text>
+                    </View>
+                    <Text style={[styles.description, isDark && styles.textDark]}>
+                        {session.status === 'COMPLETED' 
+                            ? (session.overallFeedback || 'Değerlendirme hazırlanıyor...')
+                            : (session.jobDescription?.trim() || 'Bu mülakat için henüz iş tanımı eklenmemiş.')}
                     </Text>
                 </View>
 
-                <TouchableOpacity
-                    style={[styles.prepareBtn, preparing && { opacity: 0.7 }]}
-                    onPress={handlePrepare}
-                    disabled={preparing}
-                >
-                    {preparing ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <>
-                            <Ionicons name="logo-electron" size={18} color="#fff" />
-                            <Text style={styles.prepareBtnText}>Mülakata Hazırlan</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                {session.status === 'COMPLETED' && session.questions && session.questions.length > 0 && (
+                    <View style={styles.questionSection}>
+                        <View style={styles.sectionHeader}>
+                            <Ionicons name="list" size={20} color={COLOR} />
+                            <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Soru Bazlı Analiz</Text>
+                        </View>
+                        <Text style={styles.helperText}>Detaylar için karta dokunun</Text>
+                        
+                        {session.questions.map((q, idx) => (
+                            <QuestionCard 
+                                key={q.id || idx} 
+                                question={q} 
+                                index={idx + 1} 
+                                isDark={isDark}
+                                onPress={() => {
+                                    setSelectedQuestion(q);
+                                    setModalVisible(true);
+                                }}
+                            />
+                        ))}
+                    </View>
+                )}
+
+                {session.status !== 'COMPLETED' && (
+                    <TouchableOpacity
+                        style={[styles.prepareBtn, preparing && { opacity: 0.7 }]}
+                        onPress={handlePrepare}
+                        disabled={preparing}
+                    >
+                        {preparing ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <>
+                                <Ionicons name="logo-electron" size={18} color="#fff" />
+                                <Text style={styles.prepareBtnText}>Mülakata Hazırlan</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </ScrollView>
+
+            <QuestionDetailModal 
+                visible={modalVisible}
+                question={selectedQuestion}
+                onClose={() => setModalVisible(false)}
+                isDark={isDark}
+            />
         </View>
+    );
+}
+
+function QuestionCard({ question, index, isDark, onPress }: { 
+    question: InterviewQuestionDTO, 
+    index: number, 
+    isDark: boolean,
+    onPress: () => void 
+}) {
+    const diff = question.difficulty?.toUpperCase() || 'MEDIUM';
+    const colors = {
+        EASY: { bg: '#F0FDF4', border: '#BBF7D0', text: '#166534', badge: '#22C55E' },
+        MEDIUM: { bg: '#FFFBEB', border: '#FEF3C7', text: '#92400E', badge: '#F59E0B' },
+        HARD: { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B', badge: '#EF4444' },
+    }[diff as 'EASY' | 'MEDIUM' | 'HARD'] || { bg: '#F8FAFC', border: '#E2E8F0', text: '#475569', badge: '#64748B' };
+
+    return (
+        <TouchableOpacity 
+            style={[
+                styles.questionCard, 
+                { backgroundColor: colors.bg, borderColor: colors.border },
+                isDark && { backgroundColor: '#111827', borderColor: '#374151' }
+            ]}
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            <View style={styles.questionCardHeader}>
+                <Text style={[styles.questionNumber, { color: colors.text }]}>{index}. Soru</Text>
+                <View style={[styles.scoreBadge, { backgroundColor: colors.badge }]}>
+                    <Text style={styles.scoreBadgeText}>{question.score || 0}</Text>
+                </View>
+            </View>
+            <Text style={[styles.questionText, isDark && styles.textDark]} numberOfLines={3}>
+                {question.questionText}
+            </Text>
+            <View style={styles.cardFooter}>
+                <Text style={styles.tapToSee}>Detaylar ve Geri Bildirim için Dokunun</Text>
+                <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+            </View>
+        </TouchableOpacity>
+    );
+}
+
+function QuestionDetailModal({ visible, question, onClose, isDark }: { 
+    visible: boolean, 
+    question: InterviewQuestionDTO | null, 
+    onClose: () => void,
+    isDark: boolean
+}) {
+    if (!question) return null;
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <Pressable style={styles.modalBackdrop} onPress={onClose}>
+                <View style={[styles.modalContent, isDark && styles.cardDark]}>
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, isDark && styles.textDark]}>Soru Detayı</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <Ionicons name="close" size={24} color={isDark ? '#fff' : '#000'} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+                        <View style={styles.modalSection}>
+                            <Text style={styles.modalLabel}>Soru</Text>
+                            <Text style={[styles.modalValue, isDark && styles.textDark]}>{question.questionText}</Text>
+                        </View>
+
+                        <View style={styles.modalSection}>
+                            <Text style={styles.modalLabel}>Cevabınız</Text>
+                            <View style={[styles.answerBox, isDark && { backgroundColor: '#1E293B' }]}>
+                                <Text style={[styles.answerText, isDark && styles.textDark]}>
+                                    {question.answerText || 'Cevap verilmedi'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.modalSection}>
+                            <View style={styles.feedbackHeader}>
+                                <Text style={styles.modalLabel}>Yapay Zeka Analizi</Text>
+                                <View style={styles.modalScoreBox}>
+                                    <Text style={styles.modalScoreText}>{question.score || 0}/100</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.feedbackCard, isDark && { backgroundColor: '#1E293B' }]}>
+                                <Text style={[styles.feedbackText, isDark && styles.textDark]}>
+                                    {question.feedback || 'Bu soru için henüz detaylı geri bildirim hazır değil.'}
+                                </Text>
+                            </View>
+                        </View>
+                    </ScrollView>
+                </View>
+            </Pressable>
+        </Modal>
     );
 }
 
@@ -224,6 +399,86 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     prepareBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+
+    /* ─── Results Styles ─── */
+    scoreCard: {
+        backgroundColor: '#F0F9FF',
+        borderRadius: 16,
+        padding: 20,
+        marginVertical: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    scoreLabel: { fontSize: 13, fontWeight: '700', color: '#0369A1', marginBottom: 4 },
+    scoreValue: { fontSize: 32, fontWeight: '900', color: '#0284C7' },
+    reanalyzeBtn: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+    },
+    reanalyzeBtnText: { fontSize: 12, fontWeight: '700', color: COLOR },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+    feedbackCard: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    feedbackText: { fontSize: 14, color: '#334155', lineHeight: 22 },
+
+    /* ─── Question List Styles ─── */
+    questionSection: { marginTop: 12, paddingHorizontal: 14, gap: 10 },
+    helperText: { fontSize: 12, color: '#94A3B8', marginBottom: 4, marginLeft: 2 },
+    questionCard: {
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1.5,
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    questionCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    questionNumber: { fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+    scoreBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+        minWidth: 36,
+        alignItems: 'center',
+    },
+    scoreBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+    questionText: { fontSize: 15, fontWeight: '700', color: '#1E293B', lineHeight: 22 },
+    cardFooter: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 8 },
+    tapToSee: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+
+    /* ─── Modal Styles ─── */
+    modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalContent: { backgroundColor: '#fff', borderRadius: 24, width: '100%', maxHeight: '80%', padding: 20 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    modalTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+    closeBtn: { padding: 4 },
+    modalScroll: { gap: 20 },
+    modalSection: { gap: 8 },
+    modalLabel: { fontSize: 13, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
+    modalValue: { fontSize: 16, fontWeight: '700', color: '#1E293B', lineHeight: 24 },
+    answerBox: { backgroundColor: '#F8FAFC', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+    answerText: { fontSize: 14, color: '#475569', lineHeight: 22 },
+    feedbackHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    modalScoreBox: { backgroundColor: '#F0F9FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' },
+    modalScoreText: { fontSize: 13, fontWeight: '800', color: '#0284C7' },
 
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },

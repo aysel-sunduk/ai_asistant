@@ -113,29 +113,35 @@ export default function InterviewSessionScreen() {
     const handleSubmitAnswer = async () => {
         if (!session || !answerText.trim()) return;
         const currentQuestion = session.questions[currentIndex];
+        
+        let submitSuccess = false;
         try {
-            // Yerel state'i güncelle (Geri gelince cevabı görebilmek için)
-            if (session) {
-                const updatedQuestions = [...session.questions];
-                updatedQuestions[currentIndex].answerText = answerText.trim();
-                setSession({ ...session, questions: updatedQuestions });
-            }
+            setSubmitting(true);
+            // Yerel state'i güncelle
+            const updatedQuestions = [...session.questions];
+            updatedQuestions[currentIndex].answerText = answerText.trim();
+            setSession({ ...session, questions: updatedQuestions });
 
             await interviewService.submitAnswer({
                 questionId: currentQuestion.id,
                 answerText: answerText.trim()
             });
+            submitSuccess = true;
+        } catch (error) {
+            console.error('Submit answer error:', error);
+            Alert.alert('Hata', 'Cevabınız iletilemedi. Lütfen internetinizi kontrol edip tekrar deneyin.');
+            setSubmitting(false);
+        }
 
+        if (submitSuccess) {
             if (currentIndex < session.questions.length - 1) {
                 setCurrentIndex(prev => prev + 1);
                 setAnswerText('');
+                setSubmitting(false);
             } else {
+                // Son soru ise bitirme ve analiz aşamasına geç
                 await handleFinish();
             }
-        } catch (error) {
-            Alert.alert('Hata', 'Cevap gönderilemedi.');
-        } finally {
-            setSubmitting(false);
         }
     };
 
@@ -153,14 +159,18 @@ export default function InterviewSessionScreen() {
     };
 
     const handleFinish = async () => {
-        if (!sessionId) return;
+        if (!sessionId || !session) return;
+        setSubmitting(true);
         try {
-            setSubmitting(true);
-            const analyzed = await interviewService.analyzeInterview(sessionId);
-            setSession(analyzed);
-            setMode('COMPLETED');
-        } catch (error) {
-            Alert.alert('Hata', 'Analiz yapılamadı.');
+            const updatedSession = await interviewService.analyzeInterview(session.id);
+            router.push({
+                pathname: '/(work)/interview-detail',
+                params: { sessionId: updatedSession.id }
+            });
+        } catch (error: any) {
+            console.error('Analysis error details:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Bilinmeyen bir hata oluştu.';
+            Alert.alert('Hata', `Analiz yapılamadı: ${errorMessage}`);
         } finally {
             setSubmitting(false);
         }

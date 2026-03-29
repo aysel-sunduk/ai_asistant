@@ -103,7 +103,14 @@ public class LoggingFilter extends OncePerRequestFilter {
                 response.getOutputStream().write(content);
                 response.getOutputStream().flush();
             } catch (IOException e) {
-                logger.error("Error writing response to client", e);
+                String errorMsg = e.getMessage();
+                if (e.getClass().getSimpleName().equals("ClientAbortException") || 
+                    (errorMsg != null && (errorMsg.contains("Broken pipe") || errorMsg.contains("connection was aborted")))) {
+                    logger.warn("Client disconnected before response could be sent: {} {} (User: {})", 
+                            request.getMethod(), request.getRequestURI(), userEmail);
+                } else {
+                    logger.error("Error writing response to client: {}", errorMsg, e);
+                }
             }
         }
     }

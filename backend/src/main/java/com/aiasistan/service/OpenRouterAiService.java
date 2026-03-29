@@ -47,16 +47,16 @@ public class OpenRouterAiService {
     @Value("${app.ai.openrouter-key:}")
     private String apiKey;
 
-    @Value("${app.ai.openrouter-model:google/gemini-2.0-flash-exp:free,meta-llama/llama-3.3-70b-instruct:free,mistralai/mistral-7b-instruct:free}")
+    @Value("${app.ai.openrouter-model:google/gemma-3-4b-it:free,google/gemma-3n-e4b-it:free,google/gemma-3n-e2b-it:free,google/gemma-3-12b-it:free,openrouter/free}")
     private String modelConfig;
 
     private List<String> getModels() {
         List<String> stableModels = List.of(
-            "google/gemini-2.0-flash:free",
-            "qwen/qwen-2.5-72b-instruct:free",
-            "google/gemma-2-9b-it:free",
-            "mistralai/mistral-7b-instruct:free",
-            "deepseek/deepseek-chat:free"
+            "google/gemma-3-4b-it:free",
+            "google/gemma-3n-e4b-it:free",
+            "google/gemma-3n-e2b-it:free",
+            "google/gemma-3-12b-it:free",
+            "openrouter/free"
         );
 
         if (modelConfig == null || modelConfig.isBlank()) {
@@ -256,14 +256,15 @@ public class OpenRouterAiService {
             }
 
             promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI** değerlendirmeyi yap:\n")
-                    .append("1. **Soru Bazlı Analiz ve Puanlama**: Her bir soru için (sorunun Zorluk seviyesini de dikkate alarak):\n")
-                    .append("   - Cevabın doğruluğunu, teknik derinliğini ve eksiklerini açıkla.\n")
-                    .append("   - Bu cevaba 100 üzerinden bir puan ver.\n")
-                    .append("   - Zor soruların puanlanmasında daha toleranslı olabilirsin, ancak teknik derinlik beklemelisin.\n")
-                    .append("   - Format: [SORU_SKOR: 80], [SORU_FEEDBACK: ...]\n")
-                    .append("2. **Genel Değerlendirme**: Adayın profilini ve iletişim becerilerini özetle.\n")
-                    .append("3. **Başarı Skoru**: Tüm mülakat için 100 üzerinden bir toplam puan (Format: [TOTAL_SKOR: 85])\n\n")
-                    .append("ÖNEMLİ: Her soru için teknik detaylara doygun geri bildirim ver. Yanıtın tamamen Türkçe olsun.");
+                    .append("Giriş metni, 'Tamamdır', 'Analiz ediyorum' gibi cümleler ASLA ekleme. Doğrudan analize baş.\n\n")
+                    .append("1. **GENEL ÖZET**: Mülakatın genel bir değerlendirmesini (adayın güçlü/zayıf yanları) 2-3 paragraf halinde buraya yaz. Başına [GENEL_OZET] etiketi koy.\n\n")
+                    .append("2. **SORU BAZLI ANALİZLER**: Her soru için şu bilgileri eksiksiz ver (Her soru bölümünün başına [S1], [S2] gibi etiketler koy):\n")
+                    .append("   [S1] Soru: (Soruyu buraya yaz)\n")
+                    .append("   Skor: (100 üzerinden bir puan, örn: 85/100)\n")
+                    .append("   Feedback: (Bu soruya özel detaylı teknik geri bildirim)\n\n")
+                    .append("3. **TOPLAM PUAN**: Tüm mülakatın toplam puanını buraya [TOTAL_SKOR: 85] formatında yaz.\n\n")
+                    .append("ÖNEMLİ: Puanlama yaparken katı ol. Teknik derinlik yoksa yüksek puan verme.\n")
+                    .append("Yanıtın tamamen Türkçe olsun.");
 
             return callOpenRouter(promptBuilder.toString());
 

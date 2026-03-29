@@ -23,6 +23,7 @@ import UserProfileModal from '../../components/social/UserProfileModal';
 import Toast from '../../components/ui/Toast';
 import { blogService } from '../../services/blog.service';
 import { socialService } from '../../services/social.service';
+import { API_BASE_URL } from '../../src/api/client';
 import type { BlogPost } from '../../src/models/blog.model';
 import type { DiscoverUserItem, FollowRequestItem, FollowStats } from '../../src/models/social.model';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
@@ -55,6 +56,12 @@ const initials = (name: string) =>
         .join('')
         .slice(0, 2)
         .toUpperCase();
+
+const getImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const relationLabel: Record<string, string> = {
     following: 'Takiptesin',
@@ -351,7 +358,7 @@ export default function FeedScreen() {
                 <TouchableOpacity onPress={() => openProfile(item.user.userId)}>
                     <View style={styles.avatar}>
                         {item.user.profilePictureUrl ? (
-                            <Image source={{ uri: item.user.profilePictureUrl }} style={styles.avatarImg} />
+                            <Image source={{ uri: getImageUrl(item.user.profilePictureUrl) as string }} style={styles.avatarImg} />
                         ) : (
                             <Text style={styles.avatarText}>{initials(name)}</Text>
                         )}
@@ -431,7 +438,7 @@ export default function FeedScreen() {
                                         <TouchableOpacity onPress={() => openProfile(r.user.userId)}>
                                             <View style={styles.avatar}>
                                                 {r.user.profilePictureUrl ? (
-                                                    <Image source={{ uri: r.user.profilePictureUrl }} style={styles.avatarImg} />
+                                                    <Image source={{ uri: getImageUrl(r.user.profilePictureUrl) as string }} style={styles.avatarImg} />
                                                 ) : (
                                                     <Text style={styles.avatarText}>{initials(name)}</Text>
                                                 )}

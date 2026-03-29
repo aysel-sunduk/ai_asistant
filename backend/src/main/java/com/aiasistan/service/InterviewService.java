@@ -515,37 +515,133 @@ public class InterviewService {
         return transcription;
     }
 
-    /**
-     * Adım 4: Mülakatı bitirir ve toplu analiz yapar (iç metod)
-     */
     public InterviewSessionResponse finishAndAnalyze(UUID sessionId) {
-        InterviewSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
+        try {
+            InterviewSession session = sessionRepository.findById(sessionId)
+                    .orElseThrow(() -> new RuntimeException("Oturum bulunamadı"));
 
-        List<Map<String, String>> qaPairs = session.getQuestions().stream()
-                .map(q -> {
-                    Map<String, String> map = new HashMap<>();
-                    map.put("question", q.getQuestionText());
-                    map.put("difficulty", q.getDifficulty() != null ? q.getDifficulty() : "MEDIUM");
-                    map.put("answer", q.getAnswerText() != null ? q.getAnswerText() : "Cevaplanmadı");
-                    return map;
-                })
-                .collect(Collectors.toList());
+            List<Map<String, String>> qaPairs = session.getQuestions().stream()
+                    .map(q -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("question", q.getQuestionText());
+                        map.put("difficulty", q.getDifficulty() != null ? q.getDifficulty() : "MEDIUM");
+                        map.put("answer", q.getAnswerText() != null ? q.getAnswerText() : "Cevaplanmadı");
+                        return map;
+                    })
+                    .collect(Collectors.toList());
 
-        String analysis = aiService.analyzeInterviewPerformance(session.getPosition(), qaPairs);
+            String analysis;
+            try {
+                analysis = aiService.analyzeInterviewPerformance(session.getPosition(), qaPairs);
+            } catch (Exception e) {
+                logger.error("AI Analiz hatası: {}", e.getMessage());
+                analysis = "Yapay zeka analiz servisi şu an yanıt veremedi. Cevaplarınız kaydedildi.";
+            }
 
-        session.setOverallFeedback(analysis);
-        session.setStatus("COMPLETED");
-        session.setOverallScore(extractScore(analysis, "TOTAL_SKOR"));
+            String analysisCleaned = analysis;
+            if (analysis != null) {
+                // Gereksiz AI girişlerini temizle
+                analysisCleaned = analysis.replaceAll("(?i)^(Tamamdır|Pekala|Mülakatı değerlendirelim|Analiz ediyorum).*?\\n+", "");
+                
+                // [GENEL_OZET] etiketini bul ve sadece o kısmı al
+                if (analysisCleaned.contains("[GENEL_OZET]")) {
+                    int start = analysisCleaned.indexOf("[GENEL_OZET]") + 12;
+                    int end = analysisCleaned.indexOf("[S1]"); 
+                    if (end == -1) end = analysisCleaned.indexOf("1. Soru");
+                    if (end == -1) end = analysisCleaned.indexOf("**1. Soru");
+                    
+                    if (end != -1 && end > start) {
+                        analysisCleaned = analysisCleaned.substring(start, end).trim();
+                    } else {
+                        analysisCleaned = analysisCleaned.substring(start).trim();
+                    }
+                }
+            }
 
-        // Her soru için geri bildirim ve skoru da ayrıştırıp kaydet
-        for (InterviewQuestion q : session.getQuestions()) {
-            q.setScore(extractQuestionScore(analysis, q.getQuestionText()));
-            q.setFeedback(extractQuestionFeedback(analysis, q.getQuestionText()));
-            questionRepository.save(q);
+            session.setOverallFeedback(analysisCleaned != null ? analysisCleaned : "Analiz hazır.");
+            session.setStatus("COMPLETED");
+            session.setOverallScore(extractScore(analysis, "TOTAL_SKOR"));
+
+            // Her soru için geri bildirim ve skoru da ayrıştırıp kaydet
+            List<InterviewQuestion> questions = session.getQuestions();
+            for (int i = 0; i < questions.size(); i++) {
+                InterviewQuestion q = questions.get(i);
+                int questionNo = i + 1;
+                try {
+                    String block = findQuestionBlock(analysis, questionNo, questions.size());
+                    Integer score = extractSkorFromBlock(block);
+                    String feedback = extractFeedbackFromBlock(block);
+
+                    q.setScore(score != null ? score : 0);
+                    q.setFeedback(feedback != null ? feedback : "Detaylı geri bildirim ayrıştırılamadı.");
+                    questionRepository.save(q);
+                } catch (Exception eq) {
+                    logger.warn("Soru detayları kaydedilirken hata (Soru ID: {}): {}", q.getId(), eq.getMessage());
+                }
+            }
+
+            return mapToResponse(sessionRepository.save(session));
+        } catch (Exception e) {
+            logger.error("Analiz genel hatası: {}", e.getMessage(), e);
+            try {
+                InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+                if (session != null) {
+                    session.setStatus("COMPLETED");
+                    return mapToResponse(sessionRepository.save(session));
+                }
+            } catch (Exception e2) {}
+            throw new RuntimeException("Analiz sırasında hata: " + e.getMessage());
         }
+    }
 
-        return mapToResponse(sessionRepository.save(session));
+    private String findQuestionBlock(String analysis, int questionNo, int totalQuestions) {
+        if (analysis == null) return "";
+        try {
+            String startPattern = "(?i)(\\[S" + questionNo + "\\]|" + questionNo + "\\.\\s*Soru|\\*\\*" + questionNo + "\\.\\s*Soru)";
+            String nextPattern = "(?i)(\\[S" + (questionNo + 1) + "\\]|" + (questionNo + 1) + "\\.\\s*Soru|\\*\\*" + (questionNo + 1) + "\\.\\s*Soru|TOPLAM PUAN|\\[TOTAL_SKOR)";
+            
+            java.util.regex.Pattern pStart = java.util.regex.Pattern.compile(startPattern);
+            java.util.regex.Matcher mStart = pStart.matcher(analysis);
+            
+            if (mStart.find()) {
+                int start = mStart.start();
+                java.util.regex.Pattern pEnd = java.util.regex.Pattern.compile(nextPattern);
+                java.util.regex.Matcher mEnd = pEnd.matcher(analysis);
+                
+                if (mEnd.find(mStart.end())) {
+                    return analysis.substring(start, mEnd.start());
+                } else {
+                    return analysis.substring(start);
+                }
+            }
+        } catch (Exception e) {}
+        return "";
+    }
+
+    private Integer extractSkorFromBlock(String block) {
+        if (block == null || block.isBlank()) return 0;
+        try {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(?i)(skor|puan|skoru|başarı skoru)\\s*[:\\*\\s]*(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher m = p.matcher(block);
+            if (m.find()) return Integer.parseInt(m.group(2));
+            
+            p = java.util.regex.Pattern.compile("(\\d+)\\s*/\\s*100");
+            m = p.matcher(block);
+            if (m.find()) return Integer.parseInt(m.group(1));
+        } catch (Exception e) {}
+        return 0;
+    }
+
+    private String extractFeedbackFromBlock(String block) {
+        if (block == null || block.isBlank()) return null;
+        try {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(?i)(feedback|geri bildirim|değerlendirme)\\s*[:\\*\\s]*(.*)", java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(block);
+            if (m.find()) {
+                return m.group(2).trim().replaceAll("^[\\*\\s:]+|[\\*\\s]+$", "");
+            }
+        } catch (Exception e) {}
+        return null;
     }
 
     private Integer extractQuestionScore(String analysis, String questionText) {
@@ -564,6 +660,20 @@ public class InterviewService {
             logger.warn("Soru skoru ayıklanırken hata: {}", e.getMessage());
         }
         return 0;
+    }
+
+    private String extractFeedbackByTag(String analysis, String tag) {
+        if (analysis == null) return null;
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?i)\\[" + tag + "\\s*:\\s*(.*?)\\]", java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher matcher = pattern.matcher(analysis);
+            if (matcher.find()) {
+                return matcher.group(1).trim();
+            }
+        } catch (Exception e) {
+            logger.warn("Tag bazlı feedback ayıklama hatası ({}): {}", tag, e.getMessage());
+        }
+        return null;
     }
 
     private String extractQuestionFeedback(String analysis, String questionText) {

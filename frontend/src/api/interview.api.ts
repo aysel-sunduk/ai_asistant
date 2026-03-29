@@ -13,7 +13,7 @@ export const interviewApi = {
         apiClient.get<InterviewSession[]>('/v1/ai/interview/my-sessions'),
 
     createSession: (data: CreateInterviewSessionRequest) =>
-        apiClient.post<InterviewSession>('/v1/ai/interview/create', data),
+        apiClient.post<InterviewSession>('/v1/ai/interview/create', data, { timeout: 120000 }),
 
     getSession: (id: string) =>
         apiClient.get<InterviewSession>(`/v1/ai/interview/${id}`),
@@ -34,13 +34,13 @@ export const interviewApi = {
         apiClient.put<InterviewSession>(`/v1/ai/interview/${id}/questions/reorder`, data),
 
     generateQuestions: (id: string) =>
-        apiClient.post<InterviewSession>(`/v1/ai/interview/${id}/generate-questions`),
+        apiClient.post<InterviewSession>(`/v1/ai/interview/${id}/generate-questions`, null, { timeout: 120000 }),
 
     startInterview: (id: string) =>
         apiClient.post<void>(`/v1/ai/interview/${id}/start`),
 
     submitAnswer: (data: SubmitAnswerRequest) =>
-        apiClient.post<void>('/v1/ai/interview/answer', data),
+        apiClient.post<void>('/v1/ai/interview/answer', data, { timeout: 120000 }),
 
     submitVideoAnswer: (questionId: string, formData: FormData) =>
         apiClient.post<string>('/v1/ai/interview/answer-video', formData, {
@@ -49,5 +49,5 @@ export const interviewApi = {
         }),
 
     analyzeInterview: (id: string) =>
-        apiClient.post<InterviewSession>(`/v1/ai/interview/${id}/analyze`),
+        apiClient.post<InterviewSession>(`/v1/ai/interview/${id}/analyze`, null, { timeout: 120000 }),
 };

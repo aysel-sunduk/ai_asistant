@@ -17,6 +17,7 @@ public class FollowDto {
         private String email;
         private String firstName;
         private String lastName;
+        private String profilePictureUrl;
 
         public UUID getUserId() {
             return userId;
@@ -48,6 +49,14 @@ public class FollowDto {
 
         public void setLastName(String lastName) {
             this.lastName = lastName;
+        }
+
+        public String getProfilePictureUrl() {
+            return profilePictureUrl;
+        }
+
+        public void setProfilePictureUrl(String profilePictureUrl) {
+            this.profilePictureUrl = profilePictureUrl;
         }
     }
 
@@ -222,6 +231,7 @@ public class FollowDto {
         private long followingCount;
         private long followersCount;
         private String profileVisibility;
+        private String profilePictureUrl;
 
         public UUID getUserId() {
             return userId;
@@ -285,6 +295,14 @@ public class FollowDto {
 
         public void setProfileVisibility(String profileVisibility) {
             this.profileVisibility = profileVisibility;
+        }
+
+        public String getProfilePictureUrl() {
+            return profilePictureUrl;
+        }
+
+        public void setProfilePictureUrl(String profilePictureUrl) {
+            this.profilePictureUrl = profilePictureUrl;
         }
     }
 }

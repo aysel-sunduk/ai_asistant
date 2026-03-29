@@ -377,6 +377,8 @@ public class SocialFollowService {
         summary.setEmail(user.getEmail());
         summary.setFirstName(user.getFirstName());
         summary.setLastName(user.getLastName());
+        userProfileRepository.findById(user.getId())
+                .ifPresent(profile -> summary.setProfilePictureUrl(profile.getProfilePictureUrl()));
         return summary;
     }
 
@@ -457,6 +459,7 @@ public class SocialFollowService {
 
         // Respect phone/email visibility settings
         userProfileRepository.findById(targetUserId).ifPresent(profile -> {
+            response.setProfilePictureUrl(profile.getProfilePictureUrl());
             if (profile.isShowEmail()) {
                 response.setEmail(user.getEmail());
             }

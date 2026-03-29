@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     Linking,
     Modal,
     StyleSheet,
@@ -11,9 +12,16 @@ import {
     View,
 } from 'react-native';
 import { socialService } from '../../services/social.service';
+import { API_BASE_URL } from '../../src/api/client';
 import type { PublicProfileResponse } from '../../src/models/social.model';
 
 const COLOR = '#34D399';
+
+const getImageUrl = (path?: string) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 interface Props {
     visible: boolean;
@@ -81,7 +89,11 @@ export default function UserProfileModal({ visible, userId, onClose }: Props) {
                             {/* Avatar */}
                             <View style={styles.avatarWrap}>
                                 <View style={styles.avatar}>
-                                    <Text style={styles.avatarText}>{initials}</Text>
+                                    {profile.profilePictureUrl ? (
+                                        <Image source={{ uri: getImageUrl(profile.profilePictureUrl) as string }} style={styles.avatarImage} />
+                                    ) : (
+                                        <Text style={styles.avatarText}>{initials}</Text>
+                                    )}
                                 </View>
                                 <Text style={styles.name}>{fullName}</Text>
                                 <Text style={styles.visibility}>
@@ -210,6 +222,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     avatarText: { fontSize: 24, fontWeight: '900', color: '#047857' },
+    avatarImage: { width: '100%', height: '100%' },
     name: { fontSize: 20, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
     visibility: { marginTop: 4, fontSize: 12, color: '#64748B' },
     statsRow: {
