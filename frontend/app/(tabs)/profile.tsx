@@ -8,7 +8,9 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Modal,
     Platform,
+    Pressable,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -70,6 +72,7 @@ export default function ProfileScreen() {
     const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
     const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
+    const [themeModalVisible, setThemeModalVisible] = useState(false);
     const { code } = useLocalSearchParams<{ code?: string }>();
 
     const fetchStatusAndStats = useCallback(async () => {
@@ -293,12 +296,7 @@ export default function ProfileScreen() {
             : 'Sistem';
 
     const handleThemeSelect = () => {
-        Alert.alert('Görünüm', 'Tema seçin', [
-            { text: `Açık ${themeMode === 'light' ? '✅' : ''}`, onPress: () => { void setThemeMode('light'); } },
-            { text: `Koyu ${themeMode === 'dark' ? '✅' : ''}`, onPress: () => { void setThemeMode('dark'); } },
-            { text: `Sistem ${themeMode === 'system' ? '✅' : ''}`, onPress: () => { void setThemeMode('system'); } },
-            { text: 'İptal', style: 'cancel' },
-        ]);
+        setThemeModalVisible(true);
     };
 
     const accountItems: MenuItem[] = [
@@ -471,6 +469,61 @@ export default function ProfileScreen() {
 
                 <Text style={[styles.versionText, isDark && styles.versionTextDark]}>AsistAI v1.0.0</Text>
             </ScrollView>
+
+            {/* Tema Secim Modali */}
+            <Modal visible={themeModalVisible} transparent animationType="fade" onRequestClose={() => setThemeModalVisible(false)}>
+                <Pressable style={styles.modalBackdrop} onPress={() => setThemeModalVisible(false)}>
+                    <Pressable style={[styles.modalCard, isDark && styles.modalCardDark]} onPress={(e) => e.stopPropagation()}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>Görünüm</Text>
+                                <Text style={[styles.modalSub, isDark && styles.modalSubDark]}>Uygulama temasını seçin</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setThemeModalVisible(false)}>
+                                <Ionicons name="close" size={22} color={isDark ? '#94A3B8' : '#64748B'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.themeOptions}>
+                            {[
+                                { id: 'light', label: 'Açık', icon: 'sunny-outline', color: '#FF9500' },
+                                { id: 'dark', label: 'Koyu', icon: 'moon-outline', color: '#6C63FF' },
+                                { id: 'system', label: 'SistemVarsayılanı', icon: 'settings-outline', color: '#8E8E93' },
+                            ].map((opt) => {
+                                const isSelected = themeMode === opt.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={opt.id}
+                                        style={[
+                                            styles.themeOption,
+                                            isDark && styles.themeOptionDark,
+                                            isSelected && styles.themeOptionSelected,
+                                            isDark && isSelected && styles.themeOptionSelectedDark,
+                                        ]}
+                                        onPress={() => {
+                                            void setThemeMode(opt.id as any);
+                                        }}
+                                    >
+                                        <View style={[styles.optionIconBox, { backgroundColor: opt.color + '15' }]}>
+                                            <Ionicons name={opt.icon as any} size={20} color={isSelected ? PURPLE : opt.color} />
+                                        </View>
+                                        <Text style={[
+                                            styles.optionText,
+                                            isDark && styles.optionTextDark,
+                                            isSelected && styles.optionTextSelected,
+                                        ]}>
+                                            {opt.label}
+                                        </Text>
+                                        <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                                            {isSelected && <View style={styles.radioInner} />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -665,5 +718,108 @@ const styles = StyleSheet.create({
     },
     versionTextDark: {
         color: '#6B7280',
+    },
+    /* ─── Modal Styles ─── */
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    modalCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    modalCardDark: {
+        backgroundColor: '#1E293B',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#1E293B',
+    },
+    modalTitleDark: {
+        color: '#F8FAFC',
+    },
+    modalSub: {
+        fontSize: 14,
+        color: '#64748B',
+        marginTop: 2,
+    },
+    modalSubDark: {
+        color: '#94A3B8',
+    },
+    themeOptions: {
+        gap: 12,
+    },
+    themeOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
+        borderColor: 'transparent',
+    },
+    themeOptionDark: {
+        backgroundColor: '#0F172A',
+    },
+    themeOptionSelected: {
+        borderColor: PURPLE,
+        backgroundColor: '#F5F3FF',
+    },
+    themeOptionSelectedDark: {
+        borderColor: PURPLE,
+        backgroundColor: 'rgba(108, 99, 255, 0.1)',
+    },
+    optionIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    optionText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    optionTextDark: {
+        color: '#CBD5E1',
+    },
+    optionTextSelected: {
+        color: PURPLE,
+    },
+    radio: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    radioSelected: {
+        borderColor: PURPLE,
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: PURPLE,
     },
 });
