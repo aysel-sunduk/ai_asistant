@@ -105,14 +105,13 @@ public class PushNotificationService {
         sendToUser(
                 userId,
                 "Alisveris Hatirlaticisi",
-                itemName + " bitmis olabilir, gida kayitlariniza eklemek ister misiniz?",
+                itemName + " bitmis olabilir. Alisveris listenize eklemek ister misiniz?",
                 Map.of(
                         "type", "shopping_reminder",
                         "itemName", itemName,
-                        "screen", "/(tabs)/health",
+                        "screen", "/(shopping)/lists",
                         "params", Map.of(
-                                "openModal", "meal",
-                                "itemName", itemName
+                                "addItem", itemName
                         )));
     }
 

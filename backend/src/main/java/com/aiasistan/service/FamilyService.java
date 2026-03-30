@@ -257,6 +257,7 @@ public class FamilyService {
         birthday.setNote(request.getNote());
         birthday.setBloodType(request.getBloodType());
         birthday.setRelationDegree(request.getRelationDegree());
+        birthday.setReminderTime(request.getReminderTime() != null ? request.getReminderTime() : LocalTime.of(9, 0));
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         createBirthdayReminder(userId, savedBirthday);
         syncBirthdayToGoogle(savedBirthday);
@@ -292,6 +293,7 @@ public class FamilyService {
         birthday.setNote(request.getNote());
         birthday.setBloodType(request.getBloodType());
         birthday.setRelationDegree(request.getRelationDegree());
+        birthday.setReminderTime(request.getReminderTime() != null ? request.getReminderTime() : LocalTime.of(9, 0));
         FamilyBirthday savedBirthday = birthdayRepository.save(birthday);
         syncBirthdayReminder(userId, oldTitle, savedBirthday);
         syncBirthdayToGoogle(savedBirthday);
@@ -359,6 +361,7 @@ public class FamilyService {
         response.setNote(birthday.getNote());
         response.setBloodType(birthday.getBloodType());
         response.setRelationDegree(birthday.getRelationDegree());
+        response.setReminderTime(birthday.getReminderTime());
         response.setCreatedAt(birthday.getCreatedAt());
         response.setUpdatedAt(birthday.getUpdatedAt());
         return response;
@@ -483,7 +486,7 @@ public class FamilyService {
         Reminder reminder = new Reminder();
         reminder.setUserId(userId);
         reminder.setTitle(birthdayReminderTitle(birthday.getFullName()));
-        reminder.setRemindAt(nextBirthdayReminderAt(birthday.getBirthDate()));
+        reminder.setRemindAt(nextBirthdayReminderAt(birthday.getBirthDate(), birthday.getReminderTime()));
         reminder.setSourceModule("family");
         reminder.setRecurrence("yearly");
         reminder.setChannel("in_app");
@@ -499,7 +502,7 @@ public class FamilyService {
         }
 
         String newTitle = birthdayReminderTitle(birthday.getFullName());
-        OffsetDateTime remindAt = nextBirthdayReminderAt(birthday.getBirthDate());
+        OffsetDateTime remindAt = nextBirthdayReminderAt(birthday.getBirthDate(), birthday.getReminderTime());
         for (Reminder reminder : reminders) {
             reminder.setTitle(newTitle);
             reminder.setRemindAt(remindAt);
@@ -521,10 +524,11 @@ public class FamilyService {
         }
     }
 
-    private OffsetDateTime nextBirthdayReminderAt(LocalDate birthDate) {
+    private OffsetDateTime nextBirthdayReminderAt(LocalDate birthDate, LocalTime reminderTime) {
         OffsetDateTime now = OffsetDateTime.now();
         LocalDate nextBirthday = nextBirthdayDate(birthDate, now.toLocalDate());
-        OffsetDateTime remindAt = OffsetDateTime.of(nextBirthday, LocalTime.of(9, 0), now.getOffset());
+        LocalTime time = reminderTime != null ? reminderTime : LocalTime.of(9, 0);
+        OffsetDateTime remindAt = OffsetDateTime.of(nextBirthday, time, now.getOffset());
         if (remindAt.isBefore(now)) {
             remindAt = remindAt.plusYears(1);
         }

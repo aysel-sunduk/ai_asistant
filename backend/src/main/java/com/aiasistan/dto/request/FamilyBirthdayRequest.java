@@ -27,6 +27,15 @@ public class FamilyBirthdayRequest {
   private String note;
   private String bloodType;
   private String relationDegree;
+  private java.time.LocalTime reminderTime;
+
+  public java.time.LocalTime getReminderTime() {
+    return reminderTime;
+  }
+
+  public void setReminderTime(java.time.LocalTime reminderTime) {
+    this.reminderTime = reminderTime;
+  }
 
   public String getFullName() {
     return fullName;

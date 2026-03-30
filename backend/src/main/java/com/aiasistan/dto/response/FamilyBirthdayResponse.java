@@ -23,6 +23,7 @@ public class FamilyBirthdayResponse {
     private String relationDegree;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private java.time.LocalTime reminderTime;
 
     public UUID getId() {
         return id;
@@ -110,5 +111,13 @@ public class FamilyBirthdayResponse {
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public java.time.LocalTime getReminderTime() {
+        return reminderTime;
+    }
+
+    public void setReminderTime(java.time.LocalTime reminderTime) {
+        this.reminderTime = reminderTime;
     }
 }

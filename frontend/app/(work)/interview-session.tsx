@@ -435,27 +435,41 @@ export default function InterviewSessionScreen() {
                             <Ionicons name="list" size={24} color={PRIMARY} />
                             <Text style={styles.sectionTitle}>Soru Bazlı Detaylar</Text>
                         </View>
-                        {questions.map((q, i) => (
-                            <View key={q.id} style={styles.detailCard}>
-                                <View style={styles.detailHeader}>
-                                    <Text style={styles.detailNum}>{i + 1}. Soru</Text>
-                                    {q.score !== undefined && (
-                                        <View style={[styles.scoreBadge, q.score >= 70 ? styles.scoreHigh : q.score >= 40 ? styles.scoreMed : styles.scoreLow]}>
-                                            <Text style={styles.scoreText}>{q.score}</Text>
+                        {questions.map((q, i) => {
+                            const diff = q.difficulty?.toUpperCase() || 'MEDIUM';
+                            const colors = {
+                                EASY: { bg: '#F0FDF4', border: '#BBF7D0', text: '#166534', badge: '#22C55E' },
+                                MEDIUM: { bg: '#FFFBEB', border: '#FEF3C7', text: '#92400E', badge: '#F59E0B' },
+                                HARD: { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B', badge: '#EF4444' },
+                            }[diff as 'EASY' | 'MEDIUM' | 'HARD'] || { bg: '#F8FAFC', border: '#E2E8F0', text: '#475569', badge: '#64748B' };
+
+                            return (
+                                <View 
+                                    key={q.id} 
+                                    style={[
+                                        styles.detailCard, 
+                                        { backgroundColor: colors.bg, borderColor: colors.border },
+                                        isDark && { backgroundColor: '#111827', borderColor: '#374151' }
+                                    ]}
+                                >
+                                    <View style={styles.detailHeader}>
+                                        <Text style={[styles.detailNum, { color: colors.text }]}>{i + 1}. Soru</Text>
+                                        <View style={[styles.scoreBadge, { backgroundColor: colors.badge }]}>
+                                            <Text style={styles.scoreText}>{q.score || 0}</Text>
                                         </View>
+                                    </View>
+                                    <Text style={[styles.detailQuestion, isDark && styles.textDark]}>{q.questionText}</Text>
+                                    <Text style={styles.detailAnswerTitle}>Cevabın:</Text>
+                                    <Text style={[styles.detailAnswer, isDark && styles.textDark]}>{q.answerText || 'Cevaplanmadı'}</Text>
+                                    {q.feedback && (
+                                        <>
+                                            <Text style={[styles.detailFeedbackTitle, { color: colors.badge }]}>AI Geri Bildirimi:</Text>
+                                            <Text style={[styles.detailFeedback, isDark && styles.textDark]}>{q.feedback}</Text>
+                                        </>
                                     )}
                                 </View>
-                                <Text style={styles.detailQuestion}>{q.questionText}</Text>
-                                <Text style={styles.detailAnswerTitle}>Cevabın:</Text>
-                                <Text style={styles.detailAnswer}>{q.answerText || 'Cevaplanmadı'}</Text>
-                                {q.feedback && (
-                                    <>
-                                        <Text style={styles.detailFeedbackTitle}>AI Geri Bildirimi:</Text>
-                                        <Text style={styles.detailFeedback}>{q.feedback}</Text>
-                                    </>
-                                )}
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
 
                     <TouchableOpacity

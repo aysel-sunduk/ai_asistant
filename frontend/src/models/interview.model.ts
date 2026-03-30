@@ -38,6 +38,7 @@ export interface UpdateInterviewSessionRequest {
 export interface UpdateInterviewQuestionsRequest {
     questions: {
         questionText: string;
+        difficulty?: string;
         orderNo: number;
     }[];
 }

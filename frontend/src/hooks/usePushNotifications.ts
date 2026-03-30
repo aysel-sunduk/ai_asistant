@@ -100,11 +100,6 @@ export function usePushNotifications() {
                             pathname: data.screen as any,
                             params: (data.params as any) || {}
                         });
-                    } else if (data?.type === 'shopping_reminder' && data?.itemName) {
-                        router.push({ 
-                            pathname: '/(tabs)/health', 
-                            params: { openModal: 'meal', itemName: String(data.itemName) } 
-                        });
                     }
                 },
             );

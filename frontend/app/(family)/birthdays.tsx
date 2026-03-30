@@ -24,6 +24,7 @@ import type { Contact } from '../../src/models/contact.model';
 import type { FamilyBirthdayResponse } from '../../src/models/family.model';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
+import { googleCalendarService } from '../../services/google-calendar.service';
 
 const COLOR = '#FF8A65';
 
@@ -55,7 +56,7 @@ const daysUntilBirthday = (birthDateIso: string) => {
     return diff;
 };
 
-export default function ContactsScreen() {
+export default function BirthdaysScreen() {
     const mode = useThemeStore((s) => s.mode);
     const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
     const isDark = resolveTheme(mode, systemScheme) === 'dark';
@@ -71,7 +72,9 @@ export default function ContactsScreen() {
     const [relationship, setRelationship] = useState('');
     const [note, setNote] = useState('');
     const [birthMonthDay, setBirthMonthDay] = useState(new Date(2000, 0, 1));
+    const [reminderTime, setReminderTime] = useState(new Date(2000, 0, 1, 9, 0));
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
     const [bloodType, setBloodType] = useState('');
     const [contactsPickerOpen, setContactsPickerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -150,20 +153,32 @@ export default function ContactsScreen() {
         return marked;
     }, [birthdays, currentYear]);
 
-    const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
-        if (Platform.OS === 'android') setShowDatePicker(false);
-        if (event.type === 'dismissed' || !selected) return;
-        const next = new Date(2000, selected.getMonth(), selected.getDate());
-        setBirthMonthDay(next);
-    };
-
     const resetForm = () => {
         setFullName('');
         setRelationship('');
         setNote('');
         setBirthMonthDay(new Date(2000, 0, 1));
+        setReminderTime(new Date(2000, 0, 1, 9, 0));
         setBloodType('');
         setEditingBirthdayId(null);
+    };
+
+    const handleSyncCalendar = async () => {
+        try {
+            const status = await googleCalendarService.getStatus();
+            if (!status.connected) {
+                Alert.alert(
+                    'Bağlantı Gerekli',
+                    'Google Takvim senkronizasyonu için önce hesabınızı bağlamanız gerekmektedir. Ayarlar sayfasından bağlayabilirsiniz.',
+                    [{ text: 'Tamam' }]
+                );
+                return;
+            }
+            const res = await googleCalendarService.resync();
+            showToast('success', `${res.synced} doğum günü takvimle senkronize edildi.`);
+        } catch (error) {
+            showToast('error', 'Senkronizasyon başarısız oldu.');
+        }
     };
 
     const openCreateModal = () => {
@@ -187,14 +202,18 @@ export default function ContactsScreen() {
         setContactsPickerOpen(false);
     };
 
-    const openEditModal = (birthday: FamilyBirthdayResponse) => {
-        const d = new Date(birthday.birthDate);
-        setEditingBirthdayId(birthday.id);
-        setFullName(birthday.fullName || '');
-        setRelationship(birthday.relationship || '');
-        setNote(birthday.note || '');
-        setBloodType(birthday.bloodType || '');
-        setBirthMonthDay(new Date(2000, d.getMonth(), d.getDate()));
+    const openEditModal = (b: FamilyBirthdayResponse) => {
+        const d = new Date(b.birthDate);
+        setEditingBirthdayId(b.id);
+        setFullName(b.fullName || '');
+        setRelationship(b.relationship || '');
+        setNote(b.note || '');
+        setBloodType(b.bloodType || '');
+        if (b.birthDate) setBirthMonthDay(new Date(b.birthDate));
+        if (b.reminderTime) {
+            const [h, m] = b.reminderTime.split(':');
+            setReminderTime(new Date(2000, 0, 1, parseInt(h), parseInt(m)));
+        }
         setModalVisible(true);
     };
 
@@ -204,17 +223,13 @@ export default function ContactsScreen() {
             return;
         }
 
-        const day = birthMonthDay.getDate();
-        const month = birthMonthDay.getMonth() + 1;
-        const fixedYear = 2000; // backend LocalDate zorunlulugu icin teknik sabit yil
-        const birthDateIso = `${fixedYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
         setSaving(true);
         try {
             const payload = {
                 fullName: fullName.trim(),
                 relationship: relationship.trim() || undefined,
-                birthDate: birthDateIso,
+                birthDate: birthMonthDay.toISOString().split('T')[0],
+                reminderTime: `${String(reminderTime.getHours()).padStart(2, '0')}:${String(reminderTime.getMinutes()).padStart(2, '0')}`,
                 bloodType: bloodType || undefined,
                 note: note.trim() || undefined,
             };
@@ -266,33 +281,29 @@ export default function ContactsScreen() {
         <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
-                <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="chevron-back" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <Text style={[styles.headerTitle, isDark && styles.textDark]}>Dogum Gunleri</Text>
-                    <TouchableOpacity onPress={openCreateModal} style={styles.backBtn}>
-                        <Ionicons name="add" size={24} color="#fff" />
-                    </TouchableOpacity>
+                <View>
+                    <Text style={styles.headerTitle}>Aile & Dostlar</Text>
+                    <Text style={styles.headerSub}>Dogum gunlerini asla unutma</Text>
                 </View>
-                <View style={styles.summaryRow}>
-                    <Ionicons name="gift-outline" size={24} color="#fff" />
-                    <View>
-                        <Text style={styles.summaryNum}>{birthdays.length} kayit</Text>
-                        <Text style={styles.summarySub}>Dogum gunu hatirlaticisi</Text>
-                    </View>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity
+                        style={[styles.headerActionBtn, { marginRight: 10 }]}
+                        onPress={handleSyncCalendar}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="logo-google" size={20} color="#EA4335" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.addBtn}
+                        onPress={openCreateModal}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="add" size={24} color="#FFF" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                <TouchableOpacity style={styles.primaryAction} onPress={openCreateModal}>
-                    <Ionicons name="gift-outline" size={16} color="#fff" />
-                    <Text style={styles.primaryActionText}>Dogum Gunu Ekle</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push('/(family)/contacts')}>
-                    <Ionicons name="people-outline" size={16} color={COLOR} />
-                    <Text style={styles.secondaryActionText}>Kisileri Yonet</Text>
-                </TouchableOpacity>
                 <Text style={styles.sectionTitle}>Takvim</Text>
                 <View style={styles.calendarWrapper}>
                     <Calendar
@@ -366,11 +377,19 @@ export default function ContactsScreen() {
                                 <Text style={styles.cardSub}>
                                     {b.relationship || 'Kisi'} | {trDate(b.birthDate)}
                                 </Text>
-                                <Text style={styles.daysLeft}>
-                                    {(b.daysLeft as number) === 0
-                                        ? 'Bugun'
-                                        : `${b.daysLeft} gun kaldi`}
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <Text style={styles.daysLeft}>
+                                        {(b.daysLeft as number) === 0
+                                            ? 'Bugun'
+                                            : `${b.daysLeft} gun kaldi`}
+                                    </Text>
+                                    {b.reminderTime && (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                                            <Ionicons name="notifications-outline" size={12} color="#64748B" />
+                                            <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 2 }}>{b.reminderTime}</Text>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
                             <View style={styles.cardActions}>
                                 <TouchableOpacity style={styles.iconAction} onPress={() => openEditModal(b)}>
@@ -430,6 +449,13 @@ export default function ContactsScreen() {
                                 <TouchableOpacity style={[styles.input, isDark && styles.inputDark]} onPress={() => setShowDatePicker(true)}>
                                     <Text style={styles.dateText}>
                                         {birthMonthDay.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <Text style={styles.fieldLabel}>Hatirlatma Saati</Text>
+                                <TouchableOpacity style={[styles.input, isDark && styles.inputDark]} onPress={() => setShowTimePicker(true)}>
+                                    <Text style={styles.dateText}>
+                                        {reminderTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -504,7 +530,23 @@ export default function ContactsScreen() {
                     value={birthMonthDay}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onDateChange}
+                    onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) setBirthMonthDay(date);
+                    }}
+                />
+            )}
+
+            {showTimePicker && (
+                <DateTimePicker
+                    value={reminderTime}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, date) => {
+                        setShowTimePicker(false);
+                        if (date) setReminderTime(date);
+                    }}
                 />
             )}
 
@@ -520,58 +562,37 @@ export default function ContactsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
+    containerDark: { backgroundColor: '#0B1220' },
     header: {
         backgroundColor: COLOR,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
-        paddingBottom: 20,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
     },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-    summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, marginTop: 14 },
-    summaryNum: { fontSize: 18, fontWeight: '800', color: '#fff' },
-    summarySub: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+    headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+    headerActionBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     scroll: { padding: 16, paddingBottom: 28 },
-    primaryAction: {
-        marginBottom: 12,
-        backgroundColor: COLOR,
-        borderRadius: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-    },
-    primaryActionText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-    secondaryAction: {
-        marginBottom: 12,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#FED7C8',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-    },
-    secondaryActionText: { color: COLOR, fontSize: 14, fontWeight: '800' },
     sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 10 },
     calendarWrapper: {
         backgroundColor: '#fff',
@@ -747,9 +768,7 @@ const styles = StyleSheet.create({
     bloodChipTextActive: { color: '#fff' },
 
     /* ─── Dark Mode ─── */
-    containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
-    subTextDark: { color: '#9CA3AF' },
 });

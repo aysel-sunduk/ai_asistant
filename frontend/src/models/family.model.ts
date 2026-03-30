@@ -7,6 +7,7 @@ export interface FamilyBirthdayRequest {
     email?: string;
     note?: string;
     bloodType?: string;
+    reminderTime?: string; // HH:mm
 }
 
 export interface FamilyBirthdayResponse {
@@ -18,6 +19,7 @@ export interface FamilyBirthdayResponse {
     email?: string;
     note?: string;
     bloodType?: string;
+    reminderTime?: string; // HH:mm
     createdAt: string;
     updatedAt: string;
 }

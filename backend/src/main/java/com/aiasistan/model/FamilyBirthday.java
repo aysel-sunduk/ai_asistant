@@ -24,7 +24,10 @@ public class FamilyBirthday extends UserOwnedEntity {
     private String relationship;
 
     @Column(name = "birth_date", nullable = false)
-    private LocalDate birthDate;
+    private java.time.LocalDate birthDate;
+
+    @Column(name = "reminder_time")
+    private java.time.LocalTime reminderTime = java.time.LocalTime.of(9, 0);
 
     @Column(name = "phone", length = 30)
     private String phone;
@@ -64,8 +67,16 @@ public class FamilyBirthday extends UserOwnedEntity {
         return birthDate;
     }
 
-    public void setBirthDate(LocalDate birthDate) {
+    public void setBirthDate(java.time.LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+
+    public java.time.LocalTime getReminderTime() {
+        return reminderTime;
+    }
+
+    public void setReminderTime(java.time.LocalTime reminderTime) {
+        this.reminderTime = reminderTime;
     }
 
     public String getPhone() {

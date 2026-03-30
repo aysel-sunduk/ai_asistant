@@ -447,6 +447,7 @@ public class InterviewService {
             q.setSession(session);
             q.setQuestionText(dto.getQuestionText());
             q.setOrderNo(dto.getOrderNo());
+            q.setDifficulty(dto.getDifficulty());
             session.getQuestions().add(q);
         }
 

@@ -255,13 +255,18 @@ public class OpenRouterAiService {
                         .append("Cevap: ").append(pair.get("answer")).append("\n---\n");
             }
 
-            promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI** değerlendirmeyi yap:\n")
+            promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI VE GERÇEKÇİ** değerlendirmeyi yap:\n")
                     .append("Giriş metni, 'Tamamdır', 'Analiz ediyorum' gibi cümleler ASLA ekleme. Doğrudan analize baş.\n\n")
+                    .append("ÖNEMLİ ANALİZ KURALLARI:\n")
+                    .append("- **ANLAMSIZ CEVAP KONTROLÜ**: Eğer cevap rastgele karakterlerden (örn: 'asdasd', 'gjghj'), anlamsız kelime dizilerinden veya soruyla tamamen alakasız içerikten oluşuyorsa, o soruya **KESİNLİKLE 0 ile 10 ARASI** puan ver.\n")
+                    .append("- **HALÜSİNASYON YASAK**: Adayın cevabında geçmeyen teknik terimleri veya bilgileri sanki söylemiş gibi yorumlama. Sadece verilen metne sadık kal.\n")
+                    .append("- **KISA CEVAP KATI PUANLAMA**: Çok kısa veya yüzeysel cevaplara (örn: 'evet', 'bilmiyorum', 'metrikler iyidir') yüksek puan verme.\n")
+                    .append("- **TEKRAR EDEN İÇERİK**: Aday soruyu tekrar ediyorsa veya sadece sorudaki kelimeleri kullanıyorsa puan kırma.\n\n")
                     .append("1. **GENEL ÖZET**: Mülakatın genel bir değerlendirmesini (adayın güçlü/zayıf yanları) 2-3 paragraf halinde buraya yaz. Başına [GENEL_OZET] etiketi koy.\n\n")
                     .append("2. **SORU BAZLI ANALİZLER**: Her soru için şu bilgileri eksiksiz ver (Her soru bölümünün başına [S1], [S2] gibi etiketler koy):\n")
                     .append("   [S1] Soru: (Soruyu buraya yaz)\n")
                     .append("   Skor: (100 üzerinden bir puan, örn: 85/100)\n")
-                    .append("   Feedback: (Bu soruya özel detaylı teknik geri bildirim)\n\n")
+                    .append("   Feedback: (Bu soruya özel detaylı teknik geri bildirim. Eğer cevap anlamsızsa bunu açıkça belirt.)\n\n")
                     .append("3. **TOPLAM PUAN**: Tüm mülakatın toplam puanını buraya [TOTAL_SKOR: 85] formatında yaz.\n\n")
                     .append("ÖNEMLİ: Puanlama yaparken katı ol. Teknik derinlik yoksa yüksek puan verme.\n")
                     .append("Yanıtın tamamen Türkçe olsun.");

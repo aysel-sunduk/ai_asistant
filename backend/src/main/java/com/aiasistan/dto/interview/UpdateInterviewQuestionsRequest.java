@@ -18,6 +18,16 @@ public class UpdateInterviewQuestionsRequest {
         private String questionText;
         private Integer orderNo;
 
+        private String difficulty;
+
+        public String getDifficulty() {
+            return difficulty;
+        }
+
+        public void setDifficulty(String difficulty) {
+            this.difficulty = difficulty;
+        }
+
         public UUID getId() {
             return id;
         }
