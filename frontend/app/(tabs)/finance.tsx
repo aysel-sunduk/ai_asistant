@@ -152,11 +152,11 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
 
                     <View style={styles.modalStatsRow}>
                         <View style={styles.modalStatItem}>
-                            <Text style={styles.modalStatLabel}>GÜVEN SKORU</Text>
+                            <Text style={[styles.modalStatLabel, isDark && styles.subDark]}>GÜVEN SKORU</Text>
                             <Text style={[styles.modalStatValue, { color: actionColor }]}>%{Number(recommendation.confidenceScore || 0).toFixed(1)}</Text>
                         </View>
                         <View style={styles.modalStatItem}>
-                            <Text style={styles.modalStatLabel}>RİSK SEVİYESİ</Text>
+                            <Text style={[styles.modalStatLabel, isDark && styles.subDark]}>RİSK SEVİYESİ</Text>
                             <Text style={[styles.modalStatValue, { color: actionColor }]}>{riskLabel}</Text>
                         </View>
                     </View>
@@ -167,13 +167,13 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
                         <Ionicons name="chatbubble-ellipses-outline" size={20} color={PURPLE} style={{ marginTop: 2 }} />
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.modalInfoTitle, isDark && styles.textDark]}>AI Analizi</Text>
-                            <Text style={styles.modalInfoDetail}>{recommendation.reason}</Text>
+                            <Text style={[styles.modalInfoDetail, isDark && styles.subDark]}>{recommendation.reason}</Text>
                         </View>
                     </View>
 
                     <View style={styles.modalDisclaimerBox}>
                         <Ionicons name="warning-outline" size={16} color="#F59E0B" />
-                        <Text style={styles.modalDisclaimerText}>
+                        <Text style={[styles.modalDisclaimerText, isDark && styles.subDark]}>
                             Bu bir yatırım tavsiyesi değildir. Lütfen kendi araştırmanızı yapınız.
                         </Text>
                     </View>
@@ -273,21 +273,21 @@ function FinanceScreenContent({
                 {/* ─── 3 Stat Kartları ─── */}
                 <View style={styles.statsRow}>
                     <View style={[styles.statCard, isDark && styles.cardDark]}>
-                        <View style={[styles.statIcon, { backgroundColor: '#EDE9FE' }]}>
+                        <View style={[styles.statIcon, { backgroundColor: isDark ? '#2D1B69' : '#EDE9FE' }]}>
                             <Ionicons name="arrow-down-circle" size={18} color={PURPLE} />
                         </View>
                         <Text style={[styles.statLabel, isDark && styles.subDark]}>Maliyet</Text>
                         <Text style={[styles.statValue, isDark && styles.textDark]}>{formatCurrency(totalCost)}</Text>
                     </View>
                     <View style={[styles.statCard, isDark && styles.cardDark]}>
-                        <View style={[styles.statIcon, { backgroundColor: '#D1FAE5' }]}>
+                        <View style={[styles.statIcon, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
                             <Ionicons name="bar-chart" size={18} color="#34D399" />
                         </View>
                         <Text style={[styles.statLabel, isDark && styles.subDark]}>Değer</Text>
                         <Text style={[styles.statValue, isDark && styles.textDark]}>{formatCurrency(totalValue)}</Text>
                     </View>
                     <View style={[styles.statCard, isDark && styles.cardDark]}>
-                        <View style={[styles.statIcon, { backgroundColor: pnl >= 0 ? '#D1FAE5' : '#FEE2E2' }]}>
+                        <View style={[styles.statIcon, { backgroundColor: pnl >= 0 ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#7F1D1D' : '#FEE2E2') }]}>
                             <Ionicons
                                 name={pnl >= 0 ? 'arrow-up' : 'arrow-down'}
                                 size={18}
@@ -357,9 +357,9 @@ function FinanceScreenContent({
                         </View>
 
                         {/* Disclaimer */}
-                        <View style={styles.disclaimerCard}>
+                        <View style={[styles.disclaimerCard, isDark && styles.disclaimerCardDark]}>
                             <Ionicons name="information-circle" size={16} color="#8B5CF6" />
-                            <Text style={styles.disclaimerText}>
+                            <Text style={[styles.disclaimerText, isDark && styles.disclaimerTextDark]}>
                                 Bu öneriler yapay zeka tarafından üretilmiştir ve yatırım tavsiyesi niteliği taşımamaktadır. Yatırım kararlarınızı almadan önce kendi araştırmanızı yapınız.
                             </Text>
                         </View>
@@ -514,7 +514,7 @@ function FinanceScreenContent({
                                     key={cur.id || index}
                                     style={[
                                         styles.currencyRow,
-                                        index < favCurrencies.length - 1 && styles.currencyRowBorder,
+                                        index < favCurrencies.length - 1 && (isDark ? styles.currencyRowBorderDark : styles.currencyRowBorder),
                                     ]}
                                 >
                                     <View style={styles.currencyLeft}>
@@ -756,4 +756,7 @@ const styles = StyleSheet.create({
     iconBtnDark: { backgroundColor: '#1E293B' },
     textDark: { color: '#E5E7EB' },
     subDark: { color: '#9CA3AF' },
+    disclaimerCardDark: { backgroundColor: '#1E1B4B', borderColor: '#312E81' },
+    disclaimerTextDark: { color: '#A5B4FC' },
+    currencyRowBorderDark: { borderBottomWidth: 1, borderBottomColor: '#1F2937' },
 });

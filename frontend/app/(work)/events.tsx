@@ -256,9 +256,10 @@ export default function WorkEventsScreen() {
                         value={query}
                         onChangeText={setQuery}
                         placeholder="Toplanti ara (min. 2 karakter)"
+                        placeholderTextColor={isDark ? '#6B7280' : '#94A3B8'}
                         style={[styles.searchInput, isDark && styles.inputDark]}
                     />
-                    <TouchableOpacity style={styles.filterBtn} onPress={() => setFiltersVisible(true)}>
+                    <TouchableOpacity style={[styles.filterBtn, isDark && styles.filterBtnDark]} onPress={() => setFiltersVisible(true)}>
                         <Ionicons name="options-outline" size={16} color={COLOR} />
                         <Text style={styles.filterBtnText}>Filtrele</Text>
                         {activeFilterCount > 0 && (
@@ -283,10 +284,12 @@ export default function WorkEventsScreen() {
                     <View style={styles.list}>
                         {events.map((event) => {
                             const tone = cardTone(event);
+                            const cardBg = isDark ? '#111827' : tone.bg;
+                            const cardBorder = isDark ? '#1F2937' : tone.border;
                             return (
                                 <TouchableOpacity
                                     key={event.id}
-                                    style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}
+                                    style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
                                     activeOpacity={0.88}
                                     onPress={() => router.push({ pathname: '/(work)/event-detail', params: { id: event.id } })}
                                 >
@@ -329,19 +332,19 @@ export default function WorkEventsScreen() {
                 <Pressable style={styles.modalBackdrop} onPress={() => setFiltersVisible(false)}>
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                         <Pressable style={[styles.modalSheet, isDark && styles.modalSheetDark]} onPress={() => undefined}>
-                            <View style={styles.modalHandle} />
+                            <View style={[styles.modalHandle, isDark && styles.modalHandleDark]} />
                             <View style={styles.modalHeader}>
                                 <View>
                                     <Text style={[styles.modalTitle, isDark && styles.textDark]}>Filtreler</Text>
-                                    <Text style={styles.modalSubTitle}>Toplantilari daha hizli daralt</Text>
+                                    <Text style={[styles.modalSubTitle, isDark && styles.subTextDark]}>Toplantilari daha hizli daralt</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => setFiltersVisible(false)}>
-                                    <Ionicons name="close" size={20} color="#334155" />
+                                    <Ionicons name="close" size={20} color={isDark ? '#9CA3AF' : '#334155'} />
                                 </TouchableOpacity>
                             </View>
 
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
-                                <Text style={styles.modalLabel}>Zaman</Text>
+                                <Text style={[styles.modalLabel, isDark && styles.subTextDark]}>Zaman</Text>
                                 <View style={styles.modalChips}>
                                     {QUICK_FILTERS.map((item) => (
                                         <Chip
@@ -354,7 +357,7 @@ export default function WorkEventsScreen() {
                                     ))}
                                 </View>
 
-                                <Text style={styles.modalLabel}>Durum</Text>
+                                <Text style={[styles.modalLabel, isDark && styles.subTextDark]}>Durum</Text>
                                 <View style={styles.modalChips}>
                                     {STATUSES.map((item) => (
                                         <Chip
@@ -367,7 +370,7 @@ export default function WorkEventsScreen() {
                                     ))}
                                 </View>
 
-                                <Text style={styles.modalLabel}>Oncelik</Text>
+                                <Text style={[styles.modalLabel, isDark && styles.subTextDark]}>Oncelik</Text>
                                 <View style={styles.modalChips}>
                                     {PRIORITIES.map((item) => (
                                         <Chip
@@ -383,14 +386,14 @@ export default function WorkEventsScreen() {
 
                             <View style={styles.modalActions}>
                                 <TouchableOpacity
-                                    style={styles.clearBtn}
+                                    style={[styles.clearBtn, isDark && styles.clearBtnDark]}
                                     onPress={() => {
                                         setQuickFilter('ALL');
                                         setStatusFilter('ALL');
                                         setPriorityFilter('ALL');
                                     }}
                                 >
-                                    <Text style={styles.clearBtnText}>Temizle</Text>
+                                    <Text style={[styles.clearBtnText, isDark && styles.textDark]}>Temizle</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.applyBtn} onPress={() => setFiltersVisible(false)}>
                                     <Text style={styles.applyBtnText}>Uygula</Text>
@@ -650,8 +653,11 @@ const styles = StyleSheet.create({
     containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     emptyBoxDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
-    modalSheetDark: { backgroundColor: '#111827' },
+    modalSheetDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    modalHandleDark: { backgroundColor: '#374151' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    filterBtnDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
+    clearBtnDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
     sectionTitleDark: { color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },

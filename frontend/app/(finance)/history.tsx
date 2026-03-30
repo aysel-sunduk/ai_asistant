@@ -102,27 +102,27 @@ export default function FinanceHistoryScreen() {
 
     return (
         <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-            <StatusBar barStyle="dark-content" />
-            <View style={styles.header}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+            <View style={[styles.header, isDark && styles.headerDark]}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="chevron-back" size={24} color={DARK} />
+                        <Ionicons name="chevron-back" size={24} color={isDark ? '#E5E7EB' : DARK} />
                     </TouchableOpacity>
                     <Text style={[styles.title, isDark && styles.textDark]}>Finansal Gecmis</Text>
                     <TouchableOpacity onPress={loadHistory} style={styles.backBtn}>
-                        <Ionicons name="refresh" size={20} color={DARK} />
+                        <Ionicons name="refresh" size={20} color={isDark ? '#E5E7EB' : DARK} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Month Navigation Row */}
-                <View style={styles.monthNavRow}>
-                    <TouchableOpacity onPress={() => goMonth(-1)} style={styles.monthNavBtn}>
+                <View style={[styles.monthNavRow, isDark && styles.monthNavRowDark]}>
+                    <TouchableOpacity onPress={() => goMonth(-1)} style={[styles.monthNavBtn, isDark && styles.monthNavBtnDark]}>
                         <Ionicons name="chevron-back" size={20} color={PURPLE} />
                     </TouchableOpacity>
                     <Text style={styles.monthNavLabel}>{currentMonthLabel}</Text>
                     <TouchableOpacity
                         onPress={() => goMonth(1)}
-                        style={[styles.monthNavBtn, monthOffset >= 0 && { opacity: 0.3 }]}
+                        style={[styles.monthNavBtn, isDark && styles.monthNavBtnDark, monthOffset >= 0 && { opacity: 0.3 }]}
                         disabled={monthOffset >= 0}
                     >
                         <Ionicons name="chevron-forward" size={20} color={PURPLE} />
@@ -139,7 +139,7 @@ export default function FinanceHistoryScreen() {
                     <View style={[styles.card, isDark && styles.cardDark]}>
                         <View style={styles.cardHeader}>
                             <View>
-                                <Text style={styles.monthLabel}>{displayData.monthLabel}</Text>
+                                <Text style={[styles.monthLabel, isDark && styles.textDark]}>{displayData.monthLabel}</Text>
                                 <TouchableOpacity
                                     style={[styles.detailBtn, !currentMonthData && { opacity: 0.5 }]}
                                     disabled={!currentMonthData}
@@ -165,14 +165,14 @@ export default function FinanceHistoryScreen() {
                                 </Text>
                             </View>
                         </View>
-                        <View style={styles.cardBody}>
+                        <View style={[styles.cardBody, isDark && styles.cardBodyDark]}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Gelir</Text>
+                                <Text style={[styles.statLabel, isDark && styles.subTextDark]}>Gelir</Text>
                                 <Text style={[styles.statValue, { color: SUCCESS }]}>{formatCurrency(displayData.income)}</Text>
                             </View>
-                            <View style={styles.statDivider} />
+                            <View style={[styles.statDivider, isDark && styles.statDividerDark]} />
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Gider</Text>
+                                <Text style={[styles.statLabel, isDark && styles.subTextDark]}>Gider</Text>
                                 <Text style={[styles.statValue, { color: DANGER }]}>{formatCurrency(displayData.expense)}</Text>
                             </View>
                         </View>
@@ -288,7 +288,12 @@ const styles = StyleSheet.create({
 
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
+    headerDark: { backgroundColor: '#111827', borderBottomColor: '#1F2937' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    cardBodyDark: { backgroundColor: '#1E293B' },
+    monthNavRowDark: { backgroundColor: '#1E293B' },
+    monthNavBtnDark: { backgroundColor: '#111827', shadowOpacity: 0 },
+    statDividerDark: { backgroundColor: '#374151' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },

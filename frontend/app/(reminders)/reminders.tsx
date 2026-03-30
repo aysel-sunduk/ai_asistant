@@ -316,41 +316,37 @@ export default function RemindersScreen() {
                         <View key={r.id} style={[styles.card, isDark && styles.cardDark]}>
                             <View style={[styles.categoryBar, { backgroundColor: categoryTone(r.sourceModule).bar }]} />
                             <View style={styles.cardHeader}>
-                                <Text style={[styles.cardTitle, isDark && styles.textDark]}>{r.title}</Text>
+                                <Text style={[styles.cardTitle, isDark && styles.textDark]} numberOfLines={1}>{r.title}</Text>
                                 <StatusBadge status={r.status} />
                             </View>
-                            <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(r.remindAt)}</Text>
-                            <View style={styles.metaRow}>
-                                <MiniTag text={categoryTone(r.sourceModule).label} />
-                                <MiniTag text={r.recurrence === 'none' ? 'Tekrar yok' : REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />
-                                <MiniTag text={r.channel === 'in_app' ? 'Uygulama ici' : r.channel} />
+                            <View style={styles.cardFooter}>
+                                <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(r.remindAt)}</Text>
+                                <View style={styles.metaRow}>
+                                    <MiniTag text={categoryTone(r.sourceModule).label} />
+                                    {r.recurrence !== 'none' && <MiniTag text={REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />}
+                                </View>
                             </View>
                             <View style={styles.actionRow}>
                                 {r.status === 'scheduled' && (
-                                    <TouchableOpacity style={styles.actionBtnSuccess} onPress={() => updateStatus(r.id, 'sent')}>
-                                        <Ionicons name="checkmark-circle-outline" size={16} color="#16A34A" />
-                                        <Text style={styles.actionText}>Tamamlandi</Text>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'sent')}>
+                                        <Ionicons name="checkmark-circle-outline" size={20} color="#16A34A" />
                                     </TouchableOpacity>
                                 )}
                                 {r.status === 'scheduled' && (
-                                    <TouchableOpacity style={styles.actionBtnNeutral} onPress={() => postponeReminder(r, 24 * 60)}>
-                                        <Ionicons name="time-outline" size={16} color="#475569" />
-                                        <Text style={styles.actionText}>+1 gun ertele</Text>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => postponeReminder(r, 24 * 60)}>
+                                        <Ionicons name="time-outline" size={20} color="#64748B" />
                                     </TouchableOpacity>
                                 )}
                                 {r.status !== 'scheduled' && (
-                                    <TouchableOpacity style={styles.actionBtnNeutral} onPress={() => updateStatus(r.id, 'scheduled')}>
-                                        <Ionicons name="refresh-outline" size={16} color="#475569" />
-                                        <Text style={styles.actionText}>Yeniden Aktif</Text>
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'scheduled')}>
+                                        <Ionicons name="refresh-outline" size={20} color="#64748B" />
                                     </TouchableOpacity>
                                 )}
-                                <TouchableOpacity style={styles.actionBtnNeutral} onPress={() => openEditModal(r)}>
-                                    <Ionicons name="create-outline" size={16} color="#475569" />
-                                    <Text style={styles.actionText}>Duzenle</Text>
+                                <TouchableOpacity style={styles.iconAction} onPress={() => openEditModal(r)}>
+                                    <Ionicons name="create-outline" size={20} color="#64748B" />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.actionBtnDangerSoft} onPress={() => removeReminder(r.id)}>
-                                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                                    <Text style={styles.actionText}>Sil</Text>
+                                <TouchableOpacity style={[styles.iconAction, styles.iconActionDanger]} onPress={() => removeReminder(r.id)}>
+                                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -549,8 +545,9 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: 12,
-        marginBottom: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        marginBottom: 8,
     },
     categoryBar: {
         position: 'absolute',
@@ -562,42 +559,24 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 14,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-    cardTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: '#0F172A' },
-    cardTime: { marginTop: 6, fontSize: 12, color: '#64748B', fontWeight: '600' },
-    metaRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 8 },
-    miniTag: { backgroundColor: '#F1F5F9', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-    miniTagText: { fontSize: 11, fontWeight: '700', color: '#334155' },
-    statusBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-    statusText: { fontSize: 11, fontWeight: '800' },
-    actionRow: { marginTop: 10, flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    actionBtnSuccess: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderRadius: 10,
-        backgroundColor: '#ECFDF5',
-    },
-    actionBtnDangerSoft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderRadius: 10,
-        backgroundColor: '#FEF2F2',
-    },
-    actionBtnNeutral: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
+    cardTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+    cardTime: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+    metaRow: { flexDirection: 'row', gap: 4 },
+    miniTag: { backgroundColor: '#F1F5F9', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
+    miniTagText: { fontSize: 10, fontWeight: '600', color: '#334155' },
+    statusBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+    statusText: { fontSize: 10, fontWeight: '800' },
+    actionRow: { marginTop: 8, flexDirection: 'row', gap: 4, justifyContent: 'flex-end' },
+    iconAction: {
+        width: 34,
+        height: 34,
         borderRadius: 10,
         backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    actionText: { fontSize: 12, fontWeight: '700', color: '#475569' },
+    iconActionDanger: { backgroundColor: '#FEF2F2' },
     emptyBox: {
         backgroundColor: '#fff',
         borderRadius: 14,

@@ -344,7 +344,7 @@ export default function Game2048Screen() {
                     ))}
                 </View>
 
-                <Text style={styles.hint}>↕ ↔ Kaydırarak oyna</Text>
+                <Text style={[styles.hint, isDark && styles.subTextDark]}>↕ ↔ Kaydırarak oyna</Text>
 
                 {/* Direction buttons for accessibility */}
                 <View style={styles.controls}>
@@ -372,20 +372,20 @@ export default function Game2048Screen() {
             {/* Win / Game Over Overlay */}
             {(won || gameOver) && (
                 <View style={styles.overlay}>
-                    <View style={styles.modal}>
+                    <View style={[styles.modal, isDark && styles.modalDark]}>
                         <Text style={styles.modalEmoji}>{won ? '🏆' : '💪'}</Text>
-                        <Text style={styles.modalTitle}>{won ? 'Muhteşem!' : 'Oyun Bitti!'}</Text>
-                        <Text style={styles.modalSubtitle}>
+                        <Text style={[styles.modalTitle, isDark && styles.textDark]}>{won ? 'Muhteşem!' : 'Oyun Bitti!'}</Text>
+                        <Text style={[styles.modalSubtitle, isDark && styles.subTextDark]}>
                             {won ? '2048 taşına ulaştın!' : 'Hareket kalmadı'}
                         </Text>
 
                         <View style={styles.resultRow}>
                             <View style={styles.resultItem}>
-                                <Text style={styles.resultLabel}>Skor</Text>
+                                <Text style={[styles.resultLabel, isDark && styles.subTextDark]}>Skor</Text>
                                 <Text style={styles.resultVal}>{score}</Text>
                             </View>
                             <View style={styles.resultItem}>
-                                <Text style={styles.resultLabel}>Süre</Text>
+                                <Text style={[styles.resultLabel, isDark && styles.subTextDark]}>Süre</Text>
                                 <Text style={styles.resultVal}>{formatTime(elapsedRef.current)}</Text>
                             </View>
                         </View>
@@ -395,8 +395,8 @@ export default function Game2048Screen() {
                         )}
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
-                                <Text style={styles.btnSecondaryText}>Geri Dön</Text>
+                            <TouchableOpacity style={[styles.btnSecondary, isDark && styles.btnSecondaryDark]} onPress={() => router.back()}>
+                                <Text style={[styles.btnSecondaryText, isDark && styles.textDark]}>Geri Dön</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.btnPrimary} onPress={() => { setWon(false); setGameOver(false); initGame(); }}>
                                 <Ionicons name="refresh" size={18} color="#fff" />
@@ -409,13 +409,13 @@ export default function Game2048Screen() {
 
             {isPaused && !won && !gameOver && (
                 <View style={styles.overlay}>
-                    <View style={styles.modal}>
+                    <View style={[styles.modal, isDark && styles.modalDark]}>
                         <Text style={styles.modalEmoji}>⏸️</Text>
-                        <Text style={styles.modalTitle}>Oyun Duraklatildi</Text>
-                        <Text style={styles.modalSubtitle}>Devam et veya cikis yap</Text>
+                        <Text style={[styles.modalTitle, isDark && styles.textDark]}>Oyun Duraklatildi</Text>
+                        <Text style={[styles.modalSubtitle, isDark && styles.subTextDark]}>Devam et veya cikis yap</Text>
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.btnSecondary} onPress={() => router.back()}>
-                                <Text style={styles.btnSecondaryText}>Oyundan Cik</Text>
+                            <TouchableOpacity style={[styles.btnSecondary, isDark && styles.btnSecondaryDark]} onPress={() => router.back()}>
+                                <Text style={[styles.btnSecondaryText, isDark && styles.textDark]}>Oyundan Cik</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.btnPrimary} onPress={handlePauseToggle}>
                                 <Ionicons name="play" size={18} color="#fff" />
@@ -471,6 +471,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
         shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     },
+    controlBtnDark: { backgroundColor: '#1E293B', shadowOpacity: 0 },
     controlSpacer: { width: 52 },
 
     overlay: {
@@ -504,6 +505,8 @@ const styles = StyleSheet.create({
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    modalDark: { backgroundColor: '#111827' },
+    btnSecondaryDark: { backgroundColor: '#1E293B' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },

@@ -120,21 +120,21 @@ export default function GameListScreen() {
                         <ActivityIndicator color={COLOR} />
                     </View>
                 ) : segmentInfo ? (
-                    <View style={styles.aiBanner}>
+                    <View style={[styles.aiBanner, isDark && styles.aiBannerDark]}>
                         <View style={styles.aiHeader}>
                             <View style={[styles.segmentBadge, { backgroundColor: getSegmentColor(segmentInfo.segment) }]}>
                                 <Text style={styles.segmentBadgeText}>{segmentInfo.segment}</Text>
                             </View>
-                            <Text style={styles.aiLabel}>✨ AI Oyuncu Analizi</Text>
+                            <Text style={[styles.aiLabel, isDark && styles.subTextDark]}>✨ AI Oyuncu Analizi</Text>
                         </View>
-                        <Text style={styles.aiMessage}>{segmentInfo.message}</Text>
+                        <Text style={[styles.aiMessage, isDark && styles.aiMessageDark]}>{segmentInfo.message}</Text>
 
                         {/* Motivasyon Mesajı */}
                         {motivationInfo && (
-                            <View style={styles.motivationBox}>
-                                <Text style={styles.motivationMsg}>💬 {motivationInfo.message}</Text>
+                            <View style={[styles.motivationBox, isDark && styles.motivationBoxDark]}>
+                                <Text style={[styles.motivationMsg, isDark && styles.motivationMsgDark]}>💬 {motivationInfo.message}</Text>
                                 {motivationInfo.confidence && (
-                                    <Text style={styles.motivationMeta}>
+                                    <Text style={[styles.motivationMeta, isDark && styles.motivationMetaDark]}>
                                         🤖 AI güven: %{(motivationInfo.confidence * 100).toFixed(0)}
                                     </Text>
                                 )}
@@ -269,6 +269,11 @@ const styles = StyleSheet.create({
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    aiBannerDark: { backgroundColor: '#111827', borderColor: '#1F2937', shadowOpacity: 0 },
+    aiMessageDark: { color: '#CBD5E1' },
+    motivationBoxDark: { backgroundColor: '#1E1B4B', borderColor: '#312E81' },
+    motivationMsgDark: { color: '#C4B5FD' },
+    motivationMetaDark: { color: '#A78BFA' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },

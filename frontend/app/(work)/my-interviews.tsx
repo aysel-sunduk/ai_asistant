@@ -291,20 +291,21 @@ export default function MyInterviewsScreen() {
                         value={query}
                         onChangeText={setQuery}
                         placeholder="Mülakat ara (min. 2 karakter)"
-                        style={styles.searchInput}
+                        placeholderTextColor={isDark ? '#6B7280' : '#94A3B8'}
+                        style={[styles.searchInput, isDark && styles.inputDark]}
                     />
                 </View>
 
-                <Text style={styles.sectionTitle}>Mülakatlar</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Mülakatlar</Text>
 
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={COLOR} />
                     </View>
                 ) : sessions.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyTitle}>Mülakat bulunamadı</Text>
-                        <Text style={styles.emptySub}>Yeni mülakat ekleyebilirsiniz.</Text>
+                    <View style={[styles.emptyBox, isDark && styles.emptyBoxDark]}>
+                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Mülakat bulunamadı</Text>
+                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Yeni mülakat ekleyebilirsiniz.</Text>
                     </View>
                 ) : (
                     <View style={styles.list}>
@@ -316,7 +317,7 @@ export default function MyInterviewsScreen() {
                             return (
                                 <TouchableOpacity
                                     key={s.id}
-                                    style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}
+                                    style={[styles.card, isDark ? styles.cardDark : { backgroundColor: tone.bg, borderColor: tone.border }]}
                                     activeOpacity={0.88}
                                     onPress={() =>
                                         router.push({
@@ -358,7 +359,7 @@ export default function MyInterviewsScreen() {
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.cardActions}>
-                                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(s.id)}>
+                                        <TouchableOpacity style={[styles.actionBtn, isDark && styles.actionBtnDark]} onPress={() => handleDelete(s.id)}>
                                             <Ionicons name="trash-outline" size={16} color="#EF4444" />
                                         </TouchableOpacity>
                                     </View>
@@ -373,9 +374,9 @@ export default function MyInterviewsScreen() {
             <Modal visible={addVisible} transparent animationType="slide" onRequestClose={() => setAddVisible(false)}>
                 <Pressable style={styles.modalBackdrop} onPress={() => setAddVisible(false)}>
                     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                        <Pressable style={[styles.modalSheet, isDark && styles.cardDark]} onPress={() => undefined}>
-                            <View style={styles.modalHandle} />
-                            <Text style={styles.modalTitleText}>Yeni Mülakat Ekle</Text>
+                        <Pressable style={[styles.modalSheet, isDark && styles.modalSheetDark]} onPress={() => undefined}>
+                            <View style={[styles.modalHandle, isDark && styles.modalHandleDark]} />
+                            <Text style={[styles.modalTitleText, isDark && styles.textDark]}>Yeni Mülakat Ekle</Text>
 
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                                 <Text style={[styles.label, isDark && styles.subTextDark]}>Başlık *</Text>
@@ -397,9 +398,9 @@ export default function MyInterviewsScreen() {
                                 />
 
                                 <Text style={[styles.label, isDark && styles.subTextDark]}>Mülakat Tarihi</Text>
-                                <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
-                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                    <Text style={styles.dateBtnText}>
+                                <TouchableOpacity style={[styles.dateBtn, isDark && styles.dateBtnDark]} onPress={() => setShowDatePicker(true)}>
+                                    <Ionicons name="calendar-outline" size={18} color={isDark ? '#9CA3AF' : '#64748B'} />
+                                    <Text style={[styles.dateBtnText, isDark && styles.subTextDark]}>
                                         {interviewDate
                                             ? interviewDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
                                             : 'Tarih seç (opsiyonel)'}
@@ -446,8 +447,8 @@ export default function MyInterviewsScreen() {
                             </ScrollView>
 
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity style={styles.cancelBtn} onPress={() => { resetForm(); setAddVisible(false); }}>
-                                    <Text style={styles.cancelBtnText}>Vazgeç</Text>
+                                <TouchableOpacity style={[styles.cancelBtn, isDark && styles.cancelBtnDark]} onPress={() => { resetForm(); setAddVisible(false); }}>
+                                    <Text style={[styles.cancelBtnText, isDark && styles.subTextDark]}>Vazgeç</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.createBtn, creating && { opacity: 0.6 }]}
@@ -678,6 +679,12 @@ const styles = StyleSheet.create({
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    emptyBoxDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    actionBtnDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
+    modalSheetDark: { backgroundColor: '#111827' },
+    modalHandleDark: { backgroundColor: '#374151' },
+    dateBtnDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
+    cancelBtnDark: { backgroundColor: '#1E293B' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },

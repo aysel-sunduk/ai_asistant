@@ -86,17 +86,17 @@ export default function PerformanceStatsScreen() {
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={COLOR} />
-                        <Text style={styles.loadingText}>AI Verileriniz Analiz Ediliyor...</Text>
+                        <Text style={[styles.loadingText, isDark && styles.subTextDark]}>AI Verileriniz Analiz Ediliyor...</Text>
                     </View>
                 ) : trendData ? (
                     <>
                         {/* Motivasyon Mesajı Card */}
                         {motivationData && (
-                            <View style={styles.motivationCard}>
+                            <View style={[styles.motivationCard, isDark && styles.motivationCardDark]}>
                                 <Text style={styles.motivationEmoji}>💬</Text>
-                                <Text style={styles.motivationMessage}>{motivationData.message}</Text>
+                                <Text style={[styles.motivationMessage, isDark && styles.motivationMessageDark]}>{motivationData.message}</Text>
                                 {motivationData.confidence && (
-                                    <Text style={styles.motivationMeta}>
+                                    <Text style={[styles.motivationMeta, isDark && styles.motivationMetaDark]}>
                                         AI güven: %{(motivationData.confidence * 100).toFixed(0)} • {motivationData.labelName}
                                     </Text>
                                 )}
@@ -104,7 +104,7 @@ export default function PerformanceStatsScreen() {
                         )}
 
                         {/* Summary Card */}
-                        <View style={styles.mainCard}>
+                        <View style={[styles.mainCard, isDark && styles.mainCardDark]}>
                             <View style={[styles.trendBadge, { backgroundColor: getTrendColor() + '20' }]}>
                                 <Ionicons name={getTrendIcon() as any} size={24} color={getTrendColor()} />
                                 <Text style={[styles.trendText, { color: getTrendColor() }]}>
@@ -112,22 +112,22 @@ export default function PerformanceStatsScreen() {
                                 </Text>
                             </View>
 
-                            <Text style={styles.improvementVal}>%{trendData.improvementPct.toFixed(1)}</Text>
-                            <Text style={styles.improvementLabel}>Haftalık Gelişim Oranı</Text>
+                            <Text style={[styles.improvementVal, isDark && styles.textDark]}>%{trendData.improvementPct.toFixed(1)}</Text>
+                            <Text style={[styles.improvementLabel, isDark && styles.subTextDark]}>Haftalık Gelişim Oranı</Text>
 
-                            <View style={styles.divider} />
+                            <View style={[styles.divider, isDark && styles.dividerDark]} />
 
                             <View style={styles.aiMessageContainer}>
                                 <Text style={styles.aiLabel}>🤖 AI Notu:</Text>
-                                <Text style={styles.aiMessage}>{trendData.message}</Text>
+                                <Text style={[styles.aiMessage, isDark && styles.aiMessageDark]}>{trendData.message}</Text>
                             </View>
                         </View>
 
                         {/* Chart Area */}
-                        <Text style={styles.sectionTitle}>Haftalık Skor Grafiği</Text>
-                        <View style={styles.chartCard}>
+                        <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Haftalık Skor Grafiği</Text>
+                        <View style={[styles.chartCard, isDark && styles.mainCardDark]}>
                             <View style={styles.chartHeader}>
-                                <Text style={styles.chartSub}>Son 7 gün ortalama skorların</Text>
+                                <Text style={[styles.chartSub, isDark && styles.subTextDark]}>Son 7 gün ortalama skorların</Text>
                             </View>
 
                             <View style={styles.barContainer}>
@@ -137,7 +137,7 @@ export default function PerformanceStatsScreen() {
                                     return (
                                         <View key={idx} style={styles.barWrapper}>
                                             <View style={[styles.bar, { height: Math.max(height, 5) }]} />
-                                            <Text style={styles.barLabel}>{idx + 1}. G</Text>
+                                            <Text style={[styles.barLabel, isDark && styles.subTextDark]}>{idx + 1}. G</Text>
                                         </View>
                                     );
                                 })}
@@ -145,9 +145,9 @@ export default function PerformanceStatsScreen() {
                         </View>
 
                         {/* Analysis Footer */}
-                        <View style={styles.infoBox}>
-                            <Ionicons name="information-circle-outline" size={20} color="#64748B" />
-                            <Text style={styles.infoText}>
+                        <View style={[styles.infoBox, isDark && styles.infoBoxDark]}>
+                            <Ionicons name="information-circle-outline" size={20} color={isDark ? '#6B7280' : '#64748B'} />
+                            <Text style={[styles.infoText, isDark && styles.subTextDark]}>
                                 Bu analiz Linear Regression ve RandomForest modelleri kullanılarak gerçek oyun geçmişinden üretilmiştir.
                             </Text>
                         </View>
@@ -260,6 +260,13 @@ const styles = StyleSheet.create({
 
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
+    mainCardDark: { backgroundColor: '#111827', shadowOpacity: 0 },
+    dividerDark: { backgroundColor: '#1F2937' },
+    aiMessageDark: { color: '#CBD5E1' },
+    infoBoxDark: { backgroundColor: '#1E293B' },
+    motivationCardDark: { backgroundColor: '#1E1B4B', borderColor: '#312E81' },
+    motivationMessageDark: { color: '#C4B5FD' },
+    motivationMetaDark: { color: '#A78BFA' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
