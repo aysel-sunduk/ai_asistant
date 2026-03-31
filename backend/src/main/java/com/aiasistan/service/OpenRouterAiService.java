@@ -257,18 +257,17 @@ public class OpenRouterAiService {
 
             promptBuilder.append("\nSen bir kıdemli teknik mülakatçı, CTO ve kariyer koçusun. Lütfen şu yapıda **MÜMKÜN OLAN EN DETAYLI VE GERÇEKÇİ** değerlendirmeyi yap:\n")
                     .append("Giriş metni, 'Tamamdır', 'Analiz ediyorum' gibi cümleler ASLA ekleme. Doğrudan analize baş.\n\n")
-                    .append("ÖNEMLİ ANALİZ KURALLARI:\n")
-                    .append("- **ANLAMSIZ CEVAP KONTROLÜ**: Eğer cevap rastgele karakterlerden (örn: 'asdasd', 'gjghj'), anlamsız kelime dizilerinden veya soruyla tamamen alakasız içerikten oluşuyorsa, o soruya **KESİNLİKLE 0 ile 10 ARASI** puan ver.\n")
-                    .append("- **HALÜSİNASYON YASAK**: Adayın cevabında geçmeyen teknik terimleri veya bilgileri sanki söylemiş gibi yorumlama. Sadece verilen metne sadık kal.\n")
-                    .append("- **KISA CEVAP KATI PUANLAMA**: Çok kısa veya yüzeysel cevaplara (örn: 'evet', 'bilmiyorum', 'metrikler iyidir') yüksek puan verme.\n")
-                    .append("- **TEKRAR EDEN İÇERİK**: Aday soruyu tekrar ediyorsa veya sadece sorudaki kelimeleri kullanıyorsa puan kırma.\n\n")
+                    .append("ÖNEMLİ ANALİZ VE PUANLAMA KURALLARI:\n")
+                    .append("- **[KRİTİK] ANLAMSIZ VE RASTGELE CEVAP KONTROLÜ**: Eğer cevap 'aa', 'asd', 'efsdgfe', 'asdfgh', '...', '123' gibi anlamsız, rastgele harf/sayı yığınlarından veya sadece noktalama işaretlerinden oluşuyorsa, bu soruya **MUTLAKA 0 (SIFIR)** puan ver.\n")
+                    .append("- **[KRİTİK] HALÜSİNASYON YASAK**: Adayın cevabında GEÇMEYEN teknik bilgileri (örneğin cevabı anlamsızken 'HashMap kullanmayı önerdi' demek gibi) sanki söylemiş gibi uydurma. Sadece ve sadece aday tarafından yazılan metni değerlendir.\n")
+                    .append("- **KISA CEVAP KATI PUANLAMA**: 'evet', 'hayır', 'bilmiyorum', 'metrikler iyidir' gibi tek kelimelik veya çok yüzeysel cevaplara yüksek puan verme (Maksimum 10-20 puan).\n")
+                    .append("- **KATI DEĞERLENDİRME**: Teknik derinlik (nasıl, neden, senaryo) yoksa puan kırmaktan çekinme. Profesyonel bir seviye bekle.\n\n")
                     .append("1. **GENEL ÖZET**: Mülakatın genel bir değerlendirmesini (adayın güçlü/zayıf yanları) 2-3 paragraf halinde buraya yaz. Başına [GENEL_OZET] etiketi koy.\n\n")
                     .append("2. **SORU BAZLI ANALİZLER**: Her soru için şu bilgileri eksiksiz ver (Her soru bölümünün başına [S1], [S2] gibi etiketler koy):\n")
                     .append("   [S1] Soru: (Soruyu buraya yaz)\n")
-                    .append("   Skor: (100 üzerinden bir puan, örn: 85/100)\n")
-                    .append("   Feedback: (Bu soruya özel detaylı teknik geri bildirim. Eğer cevap anlamsızsa bunu açıkça belirt.)\n\n")
+                    .append("   Skor: (100 üzerinden bir puan, örn: 85/100. **Eğer cevap anlamsızsa mutlaka 0/100 ver.**)\n")
+                    .append("   Feedback: (Bu soruya özel detaylı teknik geri bildirim. Eğer cevap anlamsızsa: 'Cevap anlamsız/rastgele olduğu için puan verilmemiştir.' şeklinde belirt ve ASLA ekleme yapma.)\n\n")
                     .append("3. **TOPLAM PUAN**: Tüm mülakatın toplam puanını buraya [TOTAL_SKOR: 85] formatında yaz.\n\n")
-                    .append("ÖNEMLİ: Puanlama yaparken katı ol. Teknik derinlik yoksa yüksek puan verme.\n")
                     .append("Yanıtın tamamen Türkçe olsun.");
 
             return callOpenRouter(promptBuilder.toString());

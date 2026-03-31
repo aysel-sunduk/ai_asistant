@@ -240,6 +240,7 @@ export default function InterviewSessionScreen() {
         <KeyboardAvoidingView
             style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
@@ -336,7 +337,12 @@ export default function InterviewSessionScreen() {
             )}
 
             {mode === 'ANSWERING' && currentQuestion && (
-                <View style={styles.viewContainer}>
+                <ScrollView 
+                    style={{ flex: 1 }} 
+                    contentContainerStyle={styles.answeringContent}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                >
                     <View style={styles.progressContainer}>
                         <View style={styles.progressInfo}>
                             <Text style={styles.progressLabel}>Soru {currentIndex + 1} / {questions.length}</Text>
@@ -407,7 +413,7 @@ export default function InterviewSessionScreen() {
                             )}
                         </TouchableOpacity>
                     </View>
-                </View>
+                </ScrollView>
             )}
 
             {mode === 'COMPLETED' && (
@@ -517,6 +523,11 @@ const styles = StyleSheet.create({
     },
     statusText: { fontSize: 11, fontWeight: '800', color: PRIMARY },
     viewContainer: { flex: 1, padding: 20 },
+    answeringContent: {
+        flexGrow: 1,
+        padding: 20,
+        paddingBottom: 40,
+    },
     title: { fontSize: 24, fontWeight: '900', color: '#1E293B', marginBottom: 8 },
     subtitle: { fontSize: 14, color: '#64748B', fontWeight: '500', marginBottom: 24, lineHeight: 20 },
     scrollList: { flex: 1 },
@@ -603,7 +614,7 @@ const styles = StyleSheet.create({
         lineHeight: 30,
     },
     inputArea: {
-        flex: 1,
+        minHeight: 200,
         backgroundColor: CARD_BG,
         borderRadius: 28,
         padding: 20,

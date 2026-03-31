@@ -524,9 +524,16 @@ public class InterviewService {
             List<Map<String, String>> qaPairs = session.getQuestions().stream()
                     .map(q -> {
                         Map<String, String> map = new HashMap<>();
+                        String answer = q.getAnswerText() != null ? q.getAnswerText() : "Cevaplanmadı";
+                        
+                        // ÖNEMLİ: Anlamsız cevap kontrolü ve AI'ya ipucu ekleme
+                        if (isNonsense(answer)) {
+                            answer = answer + " [SİSTEM UYARISI: BU CEVAP ANLAMSIZDIR. PUAN: 0 VERİLMELİDİR.]";
+                        }
+
                         map.put("question", q.getQuestionText());
                         map.put("difficulty", q.getDifficulty() != null ? q.getDifficulty() : "MEDIUM");
-                        map.put("answer", q.getAnswerText() != null ? q.getAnswerText() : "Cevaplanmadı");
+                        map.put("answer", answer);
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -565,6 +572,9 @@ public class InterviewService {
 
             // Her soru için geri bildirim ve skoru da ayrıştırıp kaydet
             List<InterviewQuestion> questions = session.getQuestions();
+            int manualCalculatedTotalScore = 0;
+            boolean hasManualOverride = false;
+
             for (int i = 0; i < questions.size(); i++) {
                 InterviewQuestion q = questions.get(i);
                 int questionNo = i + 1;
@@ -573,12 +583,29 @@ public class InterviewService {
                     Integer score = extractSkorFromBlock(block);
                     String feedback = extractFeedbackFromBlock(block);
 
+                    // ÖNEMLİ: Anlamsız cevaplar için KESİN 0 PUAN (Override)
+                    if (isNonsense(q.getAnswerText())) {
+                        score = 0;
+                        feedback = "Bu cevap anlamsız veya rastgele karakterlerden oluştuğu için 0 puan verildi. (Sistem Tarafından Doğrulandı)";
+                        hasManualOverride = true;
+                    }
+
                     q.setScore(score != null ? score : 0);
                     q.setFeedback(feedback != null ? feedback : "Detaylı geri bildirim ayrıştırılamadı.");
                     questionRepository.save(q);
+                    
+                    manualCalculatedTotalScore += (score != null ? score : 0);
                 } catch (Exception eq) {
                     logger.warn("Soru detayları kaydedilirken hata (Soru ID: {}): {}", q.getId(), eq.getMessage());
                 }
+            }
+
+            // Eğer manuel override varsa toplam skoru da yeniden hesaplayalım
+            if (hasManualOverride) {
+                int finalScore = Math.round((float) manualCalculatedTotalScore / questions.size());
+                session.setOverallScore(finalScore);
+            } else {
+                session.setOverallScore(extractScore(analysis, "TOTAL_SKOR"));
             }
 
             return mapToResponse(sessionRepository.save(session));
@@ -740,6 +767,38 @@ public class InterviewService {
 
         question.setDeleted(true);
         questionRepository.save(question);
+    }
+
+    /**
+     * Cevabın anlamsız (rastgele karakterler, çok kısa, anlamsız tekrar) olup olmadığını kontrol eder.
+     */
+    private boolean isNonsense(String answer) {
+        if (answer == null || answer.isBlank() || answer.equals("Cevaplanmadı")) return true;
+        
+        String trimmed = answer.trim().toLowerCase();
+        
+        // Çok kısa cevaplar
+        if (trimmed.length() <= 2) return true;
+
+        // Bilinen teknik terim whitelist (Bunlar kısa olsa da kabul edilir)
+        List<String> whitelist = Arrays.asList("java", "html", "css", "js", "sql", "git", "aws", "ios", "vm", "api", "rest", "iot", "ux", "ui", "db", "ts", "py", "sh", "go", "php", "npm", "xml", "json", "jwt", "mvc", "orm", "sdk", "cli", "ssh", "ssl");
+        if (trimmed.length() < 5 && whitelist.contains(trimmed)) return false;
+        if (trimmed.length() < 5 && !whitelist.contains(trimmed)) return true;
+
+        // Tekrarlayan veya klavye dizileri
+        if (trimmed.matches("^([a-z0-9])\\1{2,}$")) return true; 
+        if (trimmed.matches("^(asdfghjkl|qwertyuio|zxcvbnm|asdasd|qweqwe|tyutyu|ghjghj|fghfgh|cvbcvb).*")) return true;
+        
+        // Rastgelelik kontrolü: Çok uzun sessiz harf dizisi (Türkçe ve İngilizce için genelde 4+ sessiz yan yana gelmez)
+        // efsdgfe -> fsdgf (4 sessiz)
+        if (trimmed.matches(".*[bcçdfgğhjklmnpqrstvwxyz]{4,}.*")) return true;
+
+        // Vokal oranı kontrolü (Sesli harf yoksa veya çok azsa)
+        long vowelCount = trimmed.chars().filter(ch -> "aeıioöuü".indexOf(ch) >= 0).count();
+        if (vowelCount == 0) return true;
+        if (trimmed.length() > 6 && (float)vowelCount / trimmed.length() < 0.20) return true;
+
+        return false;
     }
 
     /**

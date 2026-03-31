@@ -16,6 +16,7 @@ target/
 uploads/
 
 
+package-lock.json
 backend/build_*.txt
 backend/*_utf8.txt
 backend/build_log.txt

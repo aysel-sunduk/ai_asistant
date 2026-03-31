@@ -333,7 +333,7 @@ export default function MyInterviewsScreen() {
                                         <View style={styles.metaRow}>
                                             <MiniTag text={s.position} />
                                             <MiniTag text={STATUS_LABELS[s.status] || s.status} />
-                                            {s.overallScore != null && s.overallScore > 0 && (
+                                            {s.status === 'COMPLETED' && s.overallScore != null && (
                                                 <MiniTag text={`Skor: ${s.overallScore}`} color="#F59E0B" />
                                             )}
                                         </View>
@@ -344,7 +344,7 @@ export default function MyInterviewsScreen() {
                                         )}
 
                                         <TouchableOpacity
-                                            style={[styles.primaryBtn, isGenerating && { opacity: 0.7 }]}
+                                            style={[styles.primaryBtn, isGenerating && { opacity: 0.7 }, s.status === 'COMPLETED' && { backgroundColor: '#10B981' }]}
                                             onPress={() => handlePrepareInterview(s)}
                                             disabled={isGenerating}
                                         >
@@ -352,8 +352,10 @@ export default function MyInterviewsScreen() {
                                                 <ActivityIndicator size="small" color="#fff" />
                                             ) : (
                                                 <>
-                                                    <Ionicons name="logo-electron" size={16} color="#fff" />
-                                                    <Text style={styles.primaryBtnText}>Mülakata Hazırlan</Text>
+                                                    <Ionicons name={s.status === 'COMPLETED' ? "analytics" : "logo-electron"} size={16} color="#fff" />
+                                                    <Text style={styles.primaryBtnText}>
+                                                        {s.status === 'COMPLETED' ? 'Sonuçları Görüntüle' : 'Mülakata Hazırlan'}
+                                                    </Text>
                                                 </>
                                             )}
                                         </TouchableOpacity>
