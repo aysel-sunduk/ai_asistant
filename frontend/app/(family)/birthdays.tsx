@@ -281,9 +281,14 @@ export default function BirthdaysScreen() {
         <View style={[styles.container, isDark && styles.containerDark]}>
             <StatusBar barStyle="light-content" />
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerTitle}>Aile & Dostlar</Text>
-                    <Text style={styles.headerSub}>Dogum gunlerini asla unutma</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <View>
+                        <Text style={styles.headerTitle}>Aile & Dostlar</Text>
+                        <Text style={styles.headerSub}>Dogum gunlerini asla unutma</Text>
+                    </View>
                 </View>
                 <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity
@@ -576,6 +581,14 @@ const styles = StyleSheet.create({
     },
     headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     headerActionBtn: {
         width: 44,
         height: 44,
