@@ -15,9 +15,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useColorScheme } from '../../hooks/use-color-scheme';
 import { useAuth } from '../../src/hooks/useAuth';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
-import { useColorScheme } from '../../hooks/use-color-scheme';
 
 const PURPLE = '#6C63FF';
 const PURPLE_LIGHT = '#8B83FF';
@@ -82,7 +82,7 @@ export default function LoginScreen() {
                                 <Ionicons name="sparkles" size={32} color="#fff" />
                             </View>
                         </View>
-                        <Text style={styles.appName}>AsistAI</Text>
+                        <Text style={styles.appName}>Assistify</Text>
                         <Text style={[styles.subtitle, isDark && styles.subTextDark]}>Hesabınıza giriş yapın</Text>
                     </View>
 
