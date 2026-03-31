@@ -91,6 +91,7 @@ public class InterviewService {
         session.setStatus("SETUP");
 
         if (request.getInterviewDate() != null && !request.getInterviewDate().isBlank()) {
+            validateInterviewDate(request.getInterviewDate());
             session.setInterviewDate(Instant.parse(request.getInterviewDate()));
         }
 
@@ -421,6 +422,7 @@ public class InterviewService {
         if (request.getJobDescription() != null)
             session.setJobDescription(request.getJobDescription());
         if (request.getInterviewDate() != null && !request.getInterviewDate().isBlank()) {
+            validateInterviewDate(request.getInterviewDate());
             session.setInterviewDate(Instant.parse(request.getInterviewDate()));
         }
 
@@ -804,6 +806,24 @@ public class InterviewService {
     /**
      * Session'ı Response DTO'suna dönüştürür
      */
+    /**
+     * Mülakat tarihinin geçmişte olup olmadığını kontrol eder.
+     */
+    private void validateInterviewDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return;
+        try {
+            Instant interviewDate = Instant.parse(dateStr);
+            // 5 dakikalık bir tolerans payı ile (istemci/sunucu saat farkı için)
+            if (interviewDate.isBefore(Instant.now().minusSeconds(300))) {
+                throw new RuntimeException("Mülakat tarihi geçmiş bir tarih olamaz.");
+            }
+        } catch (Exception e) {
+            if (e instanceof RuntimeException && e.getMessage().contains("geçmiş"))
+                throw (RuntimeException) e;
+            throw new RuntimeException("Geçersiz tarih formatı: " + dateStr);
+        }
+    }
+
     private InterviewSessionResponse mapToResponse(InterviewSession session) {
         InterviewSessionResponse resp = new InterviewSessionResponse();
         resp.setId(session.getId());

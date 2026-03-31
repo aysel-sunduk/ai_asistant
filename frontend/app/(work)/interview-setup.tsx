@@ -158,6 +158,7 @@ export default function InterviewSetupScreen() {
                                 value={interviewDate || new Date()}
                                 mode="date"
                                 display="spinner"
+                                minimumDate={new Date()}
                                 onChange={(_, date) => {
                                     setShowDatePicker(Platform.OS === 'ios');
                                     if (date) setInterviewDate(date);
