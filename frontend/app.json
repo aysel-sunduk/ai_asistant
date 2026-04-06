@@ -52,7 +52,15 @@
         }
       ],
       "expo-router",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#6C63FF",
+          "defaultChannel": "default",
+          "mode": "production"
+        }
+      ],
       "react-native-health",
       "expo-health-connect",
       "./plugins/withHealthPermissions",

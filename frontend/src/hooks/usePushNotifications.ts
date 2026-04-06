@@ -1,4 +1,4 @@
-﻿// Kisa aciklama: Push notification izinleri alir ve token'i backend'e gonderir.
+// Kisa aciklama: Push notification izinleri alir ve token'i backend'e gonderir.
 // NOT: expo-notifications ve expo-device native moduldur.
 // Expo Go'da calismaz, development build gerektirir.
 // Bu hook Expo Go'da sessizce atlar, uygulama cokmez.
@@ -27,14 +27,17 @@ try {
 }
 
 // Bildirim handler'i ayarla (sadece native modul varsa)
+// shouldShowAlert/shouldShowBanner: foreground'da da sistem banner'i goster
 if (Notifications) {
     try {
         Notifications.setNotificationHandler({
             handleNotification: async () => ({
                 shouldPlaySound: true,
-                shouldSetBadge: false,
+                shouldSetBadge: true,
                 shouldShowBanner: true,
                 shouldShowList: true,
+                // iOS uyumluluğu için her ikisini de true yap
+                shouldShowAlert: true,
             }),
         });
     } catch {
@@ -51,15 +54,28 @@ export function usePushNotifications() {
 
     useEffect(() => {
         if (!Notifications) {
-            console.log('[PushNotifications] Native modul yok, atlanÄ±yor. Development build gerekli.');
+            console.log('[PushNotifications] Native modul yok, atlaniyor. Development build gerekli.');
             return;
+        }
+
+        // Android bildirim kanalini hemen olustur (MAX importance = her zaman sistem tepsisinde goster)
+        if (Platform.OS === 'android') {
+            Notifications.setNotificationChannelAsync('default', {
+                name: 'Genel Bildirimler',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#6C63FF',
+                sound: 'default',
+                enableVibrate: true,
+                showBadge: true,
+            }).catch(() => {});
         }
 
         // Uygulama acilisinda izin popup'i gostermeden, yalnizca izin zaten varsa token guncelle.
         registerIfPermissionGranted().then((token) => {
             if (token) {
                 setExpoPushToken(token);
-                console.log('[PushNotifications] Token alindi:', token);
+                console.log('[PushNotifications] Token alindi (tip: FCM):', token.substring(0, 20) + '...');
 
                 userApi
                     .updatePushToken({
@@ -78,22 +94,9 @@ export function usePushNotifications() {
         try {
             notificationListener.current = Notifications.addNotificationReceivedListener(
                 (notif) => {
-                    const data = (notif.request.content.data || {}) as Record<string, any>;
-                    const isLocalEcho = data.__localEcho === '1';
-
-                    // Android'de app foreground'dayken ustten bildirim her zaman cikmayabilir.
-                    // Bu durumda local echo ile sistem banner'i garantiye aliyoruz.
-                    if (AppState.currentState === 'active' && !isLocalEcho) {
-                        void Notifications.scheduleNotificationAsync({
-                            content: {
-                                title: notif.request.content.title || 'Yeni Bildirim',
-                                body: notif.request.content.body || '',
-                                data: { ...data, __localEcho: '1' },
-                            },
-                            trigger: null,
-                        });
-                    }
-
+                    // setNotificationHandler sayesinde shouldShowBanner:true ile
+                    // foreground'da da sistem banner'i otomatik gorunecek.
+                    // Local echo'ya artik gerek yok.
                     setNotification(notif);
                     console.log('[PushNotifications] Bildirim alindi:', notif.request.content.title);
                 },
@@ -231,13 +234,16 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
     if (!Notifications) return undefined;
 
     try {
-        // Android icin bildirim kanali olustur
+        // Android icin bildirim kanali olustur (MAX importance: her zaman sistem tepsisinde goster)
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
-                name: 'Varsayilan',
+                name: 'Genel Bildirimler',
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#6C63FF',
+                sound: 'default',
+                enableVibrate: true,
+                showBadge: true,
             });
         }
 
