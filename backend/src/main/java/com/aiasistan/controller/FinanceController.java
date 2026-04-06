@@ -469,8 +469,9 @@ public class FinanceController {
 
   @GetMapping("/investments/recommendations")
   @Operation(summary = "AI yatirim onerilerini getir")
-  public ResponseEntity<ApiResponse<List<InvestmentRecommendationResponse>>> getRecommendations() {
-    List<InvestmentRecommendationResponse> response = recommendationService.getActiveRecommendations();
+  public ResponseEntity<ApiResponse<List<InvestmentRecommendationResponse>>> getRecommendations(Authentication authentication) {
+    UUID userId = resolveUserId(authentication);
+    List<InvestmentRecommendationResponse> response = recommendationService.getPersonalizedRecommendations(userId);
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
 
