@@ -5,8 +5,11 @@ import com.aiasistan.model.UserPushToken;
 import com.aiasistan.repository.UserPushTokenRepository;
 import com.aiasistan.repository.UserRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.AndroidConfig.Priority;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -57,7 +60,13 @@ public class PushNotificationService {
 
             Message.Builder messageBuilder = Message.builder()
                     .setToken(targetToken)
-                    .setNotification(notification);
+                    .setNotification(notification)
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(Priority.HIGH)
+                            .setNotification(AndroidNotification.builder()
+                                    .setChannelId("default")
+                                    .build())
+                            .build());
 
             if (data != null && !data.isEmpty()) {
                 messageBuilder.putAllData(data);

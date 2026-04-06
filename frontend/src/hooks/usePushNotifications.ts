@@ -3,7 +3,7 @@
 // Expo Go'da calismaz, development build gerektirir.
 // Bu hook Expo Go'da sessizce atlar, uygulama cokmez.
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import { userApi } from '../api/user.api';
 
@@ -78,6 +78,22 @@ export function usePushNotifications() {
         try {
             notificationListener.current = Notifications.addNotificationReceivedListener(
                 (notif) => {
+                    const data = (notif.request.content.data || {}) as Record<string, any>;
+                    const isLocalEcho = data.__localEcho === '1';
+
+                    // Android'de app foreground'dayken ustten bildirim her zaman cikmayabilir.
+                    // Bu durumda local echo ile sistem banner'i garantiye aliyoruz.
+                    if (AppState.currentState === 'active' && !isLocalEcho) {
+                        void Notifications.scheduleNotificationAsync({
+                            content: {
+                                title: notif.request.content.title || 'Yeni Bildirim',
+                                body: notif.request.content.body || '',
+                                data: { ...data, __localEcho: '1' },
+                            },
+                            trigger: null,
+                        });
+                    }
+
                     setNotification(notif);
                     console.log('[PushNotifications] Bildirim alindi:', notif.request.content.title);
                 },
@@ -142,7 +158,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         
         if (existingStatus === 'granted') {
-            return true;
+            // Izin acik olsa bile token alinmadigi surece push aktif sayilmaz.
+            return await registerAndSendToken();
         }
 
         // Ä°lk kez soruluyorsa veya henÃ¼z belirlenmemiÅŸse
@@ -150,8 +167,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
         
         if (status === 'granted') {
             // Token'Ä± al ve backend'e gÃ¶nder
-            await registerAndSendToken();
-            return true;
+            return await registerAndSendToken();
         }
 
         // KullanÄ±cÄ± daha Ã¶nce reddetmiÅŸse, sistem ayarlarÄ±na yÃ¶nlendir
@@ -177,10 +193,10 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 // â”€â”€â”€ Token al ve backend'e gÃ¶nder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export async function registerAndSendToken() {
+export async function registerAndSendToken(): Promise<boolean> {
     if (!Notifications) {
         console.warn('[PushNotifications] Notifications modul yok.');
-        return;
+        return false;
     }
     try {
         console.log('[PushNotifications] Token alinmaya calisiliyor...');
@@ -188,7 +204,7 @@ export async function registerAndSendToken() {
         
         if (!token) {
             console.warn('[PushNotifications] Token alinamadi, backend\'e gonderilemiyor.');
-            return;
+            return false;
         }
 
         console.log('[PushNotifications] Token alindi, backend\'e gonderiliyor:', token);
@@ -202,9 +218,11 @@ export async function registerAndSendToken() {
         
         console.log('[PushNotifications] Token backend\'e basariyla gonderildi (izin sonrasi)');
         Alert.alert('Basarili', 'Bildirim token\'i kaydedildi!');
+        return true;
     } catch (err: any) {
         console.warn('[PushNotifications] Token gonderme hatasi:', err?.message);
         Alert.alert('Hata', 'Bildirim token\'i gonderilemedi: ' + err?.message);
+        return false;
     }
 }
 

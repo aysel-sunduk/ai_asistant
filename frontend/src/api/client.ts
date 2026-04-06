@@ -1,35 +1,37 @@
 // Kisa aciklama: Backend API cagrilarini toplar.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { NativeModules, Platform } from 'react-native';
 
 const DEFAULT_API_URL = 'http://192.168.234.217:8080/api';
+
+const getDevServerHost = (): string | null => {
+    try {
+        const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+        if (!scriptURL) return null;
+        const match = scriptURL.match(/^https?:\/\/([^/:]+)(?::\d+)?/i);
+        return match?.[1] || null;
+    } catch {
+        return null;
+    }
+};
 
 const resolveApiBaseUrl = (): string => {
     // 1. Try ENV variable
     const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
     if (envUrl) return envUrl.replace(/\/$/, '');
 
-
-    // 2. Local fallback
-    // Android emulator: 10.0.2.2
-    // iOS/Web: localhost (or LAN IP if using physical device)
-    // Note: If using physical device, change 'localhost' to your computer's IP
-
-    
-    try {
-        const { Platform } = require('react-native');
-        if (Platform.OS === 'android') {
+    // 2. Development build'de Metro host'unu yakala (fiziksel cihaz + emulator uyumlu).
+    const metroHost = getDevServerHost();
+    if (metroHost) {
+        if (Platform.OS === 'android' && (metroHost === 'localhost' || metroHost === '127.0.0.1')) {
             return 'http://10.0.2.2:8080/api';
         }
-    } catch (e) {
-        // Fallback for non-react-native environments if needed
+        return `http://${metroHost}:8080/api`;
     }
 
-    // 2. Local fallback - Use your computer's LAN IP
-    // This works for both physical devices and emulators on the same network
+    // 3. Last fallback - local LAN IP (gerektiginde manuel guncellenebilir).
     const host = '192.168.234.217'; // Your current LAN IP
-
-    
     return `http://${host}:8080/api`;
 };
 

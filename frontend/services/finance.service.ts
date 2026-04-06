@@ -58,6 +58,14 @@ export const financeService = {
     },
 
     deleteInvestment: async (id: string): Promise<void> => {
+        // Currency holding satirlari listede "currency_<uuid>" olarak tutuluyor.
+        // Bu kayitlar farkli endpointten silinmeli.
+        if (id.startsWith('currency_')) {
+            const realId = id.replace('currency_', '');
+            await financeApi.deleteCurrencyHolding(realId);
+            return;
+        }
+
         await financeApi.deleteInvestment(id);
     },
 
