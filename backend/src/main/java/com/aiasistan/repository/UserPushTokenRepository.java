@@ -12,4 +12,8 @@ public interface UserPushTokenRepository extends JpaRepository<UserPushToken, UU
     Optional<UserPushToken> findByToken(String token);
 
     List<UserPushToken> findByUserIdAndIsActiveTrueAndDeletedAtIsNull(UUID userId);
+
+    default List<UserPushToken> findByUserIdAndIsActiveTrue(UUID userId) {
+        return findByUserIdAndIsActiveTrueAndDeletedAtIsNull(userId);
+    }
 }

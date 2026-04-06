@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -32,10 +31,6 @@ public class SttService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * MultipartFile'ı ML servisine gönderir ve metin dökümünü (transcription)
-     * döner.
-     */
     public String transcribe(MultipartFile file) {
         String boundary = "Boundary-" + UUID.randomUUID().toString();
 
@@ -44,13 +39,12 @@ public class SttService {
             String fileName = file.getOriginalFilename();
             String contentType = file.getContentType();
 
-            // Multipart body oluşturma
             byte[] multipartBody = createMultipartBody(boundary, fileName, contentType, fileBytes);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(mlServiceUrl + "/api/stt/transcribe"))
                     .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                    .timeout(Duration.ofMinutes(5)) // STT uzun sürebilir
+                    .timeout(Duration.ofMinutes(5))
                     .POST(HttpRequest.BodyPublishers.ofByteArray(multipartBody))
                     .build();
 
@@ -62,7 +56,7 @@ public class SttService {
                     return json.get("transcription").asText();
                 }
             } else {
-                logger.error("ML Service STT error ({}): {}", response.statusCode(), response.body());
+                logger.error("ML Service STT hatası ({}): {}", response.statusCode(), response.body());
             }
 
         } catch (Exception e) {

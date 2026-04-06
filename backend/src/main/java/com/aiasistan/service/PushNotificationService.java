@@ -1,52 +1,80 @@
-package com.aiasistan.service;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+﻿package com.aiasistan.service;
 
 import com.aiasistan.model.User;
 import com.aiasistan.model.UserPushToken;
 import com.aiasistan.repository.UserPushTokenRepository;
 import com.aiasistan.repository.UserRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class PushNotificationService {
+
     private static final Logger logger = LoggerFactory.getLogger(PushNotificationService.class);
 
-    private final UserPushTokenRepository userPushTokenRepository;
+    private final UserPushTokenRepository tokenRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
-    private final boolean enabled;
-    private final String expoUrl;
 
-    public PushNotificationService(
-            UserPushTokenRepository userPushTokenRepository,
-            UserRepository userRepository,
-            ObjectMapper objectMapper,
-            @Value("${app.push.enabled:true}") boolean enabled,
-            @Value("${app.push.expo-url:https://exp.host/--/api/v2/push/send}") String expoUrl) {
-        this.userPushTokenRepository = userPushTokenRepository;
+    public PushNotificationService(UserPushTokenRepository tokenRepository, UserRepository userRepository) {
+        this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
-        this.objectMapper = objectMapper;
-        this.enabled = enabled;
-        this.expoUrl = expoUrl;
-        this.restTemplate = new RestTemplate();
+    }
+
+    public void sendPushNotification(UUID userId, String title, String body, Map<String, ?> data) {
+        if (userId == null) {
+            return;
+        }
+
+        List<UserPushToken> tokens = tokenRepository.findByUserIdAndIsActiveTrue(userId);
+        if (tokens.isEmpty()) {
+            logger.debug("No active push token found for user {}", userId);
+            return;
+        }
+
+        Map<String, String> normalizedData = normalizeData(data);
+        for (UserPushToken token : tokens) {
+            sendToFcm(token.getToken(), title, body, normalizedData);
+        }
+    }
+
+    private void sendToFcm(String targetToken, String title, String body, Map<String, String> data) {
+        try {
+            Notification notification = Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build();
+
+            Message.Builder messageBuilder = Message.builder()
+                    .setToken(targetToken)
+                    .setNotification(notification);
+
+            if (data != null && !data.isEmpty()) {
+                messageBuilder.putAllData(data);
+            }
+
+            String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
+            logger.debug("FCM notification sent: {}", response);
+        } catch (Exception e) {
+            logger.warn("FCM send failed for token {}: {}", targetToken, e.getMessage());
+            if (isInvalidTokenError(e)) {
+                deactivateToken(targetToken);
+            }
+        }
+    }
+
+    public void sendToUser(UUID userId, String title, String body, Map<String, ?> data) {
+        sendPushNotification(userId, title, body, data);
     }
 
     @Transactional
@@ -54,6 +82,7 @@ public class PushNotificationService {
         if (targetUserId == null || requesterUserId == null || targetUserId.equals(requesterUserId)) {
             return;
         }
+
         String requesterName = resolveDisplayName(requesterUserId);
         sendToUser(
                 targetUserId,
@@ -69,10 +98,12 @@ public class PushNotificationService {
         if (postOwnerUserId == null || actorUserId == null || postOwnerUserId.equals(actorUserId)) {
             return;
         }
+
         String actorName = resolveDisplayName(actorUserId);
         String normalizedPostTitle = postTitle == null ? "" : postTitle.trim();
         String suffix = normalizedPostTitle.isBlank() ? "gonderinizi begendi."
                 : ("\"" + normalizedPostTitle + "\" gonderinizi begendi.");
+
         sendToUser(
                 postOwnerUserId,
                 "Yeni Begeni",
@@ -87,10 +118,12 @@ public class PushNotificationService {
         if (postOwnerUserId == null || actorUserId == null || postOwnerUserId.equals(actorUserId)) {
             return;
         }
+
         String actorName = resolveDisplayName(actorUserId);
         String normalizedPostTitle = postTitle == null ? "" : postTitle.trim();
         String suffix = normalizedPostTitle.isBlank() ? "gonderinize yorum yapti."
                 : ("\"" + normalizedPostTitle + "\" gonderinize yorum yapti.");
+
         sendToUser(
                 postOwnerUserId,
                 "Yeni Yorum",
@@ -102,75 +135,33 @@ public class PushNotificationService {
 
     @Transactional
     public void sendShoppingReminder(UUID userId, String itemName) {
+        String safeItemName = itemName == null ? "urun" : itemName;
         sendToUser(
                 userId,
                 "Alisveris Hatirlaticisi",
-                itemName + " bitmis olabilir. Alisveris listenize eklemek ister misiniz?",
+                safeItemName + " bitmis olabilir. Alisveris listenize eklemek ister misiniz?",
                 Map.of(
                         "type", "shopping_reminder",
-                        "itemName", itemName,
-                        "screen", "/(shopping)/lists",
-                        "params", Map.of(
-                                "addItem", itemName
-                        )));
+                        "itemName", safeItemName,
+                        "screen", "/(shopping)/lists"));
     }
 
     @Transactional
-    protected void sendToUser(UUID userId, String title, String body, Map<String, Object> data) {
-        if (!enabled || userId == null) {
-            return;
-        }
-        List<UserPushToken> tokens = userPushTokenRepository.findByUserIdAndIsActiveTrueAndDeletedAtIsNull(userId);
-        if (tokens.isEmpty()) {
-            return;
-        }
-
-        List<Map<String, Object>> messages = new ArrayList<>();
-        for (UserPushToken token : tokens) {
-            Map<String, Object> message = new HashMap<>();
-            message.put("to", token.getToken());
-            message.put("title", title);
-            message.put("body", body);
-            message.put("sound", "default");
-            message.put("data", data != null ? data : Map.of());
-            messages.add(message);
-        }
-
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<List<Map<String, Object>>> request = new HttpEntity<>(messages, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(expoUrl, request, String.class);
-            processExpoResponse(tokens, response.getBody());
-        } catch (Exception ex) {
-            logger.warn("Push notification gonderilemedi: {}", ex.getMessage());
-        }
+    public void deactivateToken(String token) {
+        tokenRepository.findByToken(token).ifPresent(t -> {
+            t.setIsActive(false);
+            tokenRepository.save(t);
+            logger.info("Invalid push token deactivated");
+        });
     }
 
-    private void processExpoResponse(List<UserPushToken> tokens, String responseBody) {
-        if (responseBody == null || responseBody.isBlank()) {
-            return;
+    @Transactional
+    public void deactivateUserTokens(UUID userId) {
+        List<UserPushToken> tokens = tokenRepository.findByUserIdAndIsActiveTrue(userId);
+        for (UserPushToken t : tokens) {
+            t.setIsActive(false);
         }
-        try {
-            JsonNode root = objectMapper.readTree(responseBody);
-            JsonNode dataArray = root.path("data");
-            if (!dataArray.isArray()) {
-                return;
-            }
-            int size = Math.min(tokens.size(), dataArray.size());
-            for (int i = 0; i < size; i++) {
-                JsonNode entry = dataArray.get(i);
-                String status = entry.path("status").asText("");
-                String error = entry.path("details").path("error").asText("");
-                if ("error".equalsIgnoreCase(status) && "DeviceNotRegistered".equalsIgnoreCase(error)) {
-                    UserPushToken token = tokens.get(i);
-                    token.setIsActive(false);
-                    userPushTokenRepository.save(token);
-                }
-            }
-        } catch (Exception ex) {
-            logger.debug("Expo response parse edilemedi: {}", ex.getMessage());
-        }
+        tokenRepository.saveAll(tokens);
     }
 
     private String resolveDisplayName(UUID userId) {
@@ -184,5 +175,29 @@ public class PushNotificationService {
         String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
         String name = (firstName + " " + lastName).trim();
         return name.isBlank() ? user.getEmail() : name;
+    }
+
+    private Map<String, String> normalizeData(Map<String, ?> data) {
+        if (data == null || data.isEmpty()) {
+            return Map.of();
+        }
+
+        return data.entrySet().stream()
+                .filter(e -> e.getKey() != null && !e.getKey().isBlank() && e.getValue() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> Objects.toString(e.getValue(), "")));
+    }
+
+    private boolean isInvalidTokenError(Exception e) {
+        String message = e.getMessage();
+        if (message == null) {
+            return false;
+        }
+
+        String lower = message.toLowerCase();
+        return lower.contains("registration-token-not-registered")
+                || lower.contains("requested entity was not found")
+                || lower.contains("invalid registration token");
     }
 }

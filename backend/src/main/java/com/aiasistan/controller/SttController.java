@@ -12,7 +12,7 @@ import com.aiasistan.service.SttService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/stt")
+@RequestMapping("/stt")
 public class SttController {
 
     private final SttService sttService;
@@ -24,9 +24,9 @@ public class SttController {
     @PostMapping("/transcribe")
     public ResponseEntity<Map<String, String>> transcribe(@RequestParam("file") MultipartFile file) {
         String transcription = sttService.transcribe(file);
-        if (transcription == null) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "Ses dökümü yapılamadı"));
+        if (transcription != null) {
+            return ResponseEntity.ok(Map.of("transcription", transcription));
         }
-        return ResponseEntity.ok(Map.of("transcription", transcription));
+        return ResponseEntity.badRequest().build();
     }
 }

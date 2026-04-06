@@ -86,6 +86,8 @@ app:
   push:
     enabled: ${PUSH_ENABLED:true}
     expo-url: ${PUSH_EXPO_URL:https://exp.host/--/api/v2/push/send}
+    firebase:
+      config-path: ${FCM_CREDENTIALS_FILE:C:/Users/ACER/Downloads/acil-durum-24479-firebase-adminsdk-vdy8z-04de231362.json}
   google:
     calendar:
       enabled: ${GOOGLE_CALENDAR_ENABLED:false}

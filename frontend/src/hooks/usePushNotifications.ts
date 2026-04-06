@@ -1,4 +1,4 @@
-// Kisa aciklama: Push notification izinleri alir ve token'i backend'e gonderir.
+﻿// Kisa aciklama: Push notification izinleri alir ve token'i backend'e gonderir.
 // NOT: expo-notifications ve expo-device native moduldur.
 // Expo Go'da calismaz, development build gerektirir.
 // Bu hook Expo Go'da sessizce atlar, uygulama cokmez.
@@ -13,7 +13,6 @@ import type * as ExpoDevice from 'expo-device';
 // Lazy import: native modul yoksa null doner
 let Notifications: typeof ExpoNotifications | null = null;
 let Device: typeof ExpoDevice | null = null;
-let Constants: typeof import('expo-constants').default | null = null;
 
 try {
     Notifications = require('expo-notifications');
@@ -25,12 +24,6 @@ try {
     Device = require('expo-device');
 } catch {
     console.warn('[PushNotifications] expo-device yuklenemedi (Expo Go?)');
-}
-
-try {
-    Constants = require('expo-constants').default;
-} catch {
-    console.warn('[PushNotifications] expo-constants yuklenemedi');
 }
 
 // Bildirim handler'i ayarla (sadece native modul varsa)
@@ -58,12 +51,12 @@ export function usePushNotifications() {
 
     useEffect(() => {
         if (!Notifications) {
-            console.log('[PushNotifications] Native modul yok, atlanıyor. Development build gerekli.');
+            console.log('[PushNotifications] Native modul yok, atlanÄ±yor. Development build gerekli.');
             return;
         }
 
-        // Push token al ve backend'e gonder
-        registerForPushNotificationsAsync().then((token) => {
+        // Uygulama acilisinda izin popup'i gostermeden, yalnizca izin zaten varsa token guncelle.
+        registerIfPermissionGranted().then((token) => {
             if (token) {
                 setExpoPushToken(token);
                 console.log('[PushNotifications] Token alindi:', token);
@@ -124,7 +117,7 @@ export function usePushNotifications() {
     return { expoPushToken, notification };
 }
 
-// ─── Bildirim izin durumunu kontrol et (Dışa aktarılmış) ──────────────────
+// â”€â”€â”€ Bildirim izin durumunu kontrol et (DÄ±ÅŸa aktarÄ±lmÄ±ÅŸ) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getNotificationPermissionStatus(): Promise<ExpoNotifications.PermissionStatus> {
     if (!Notifications) return 'undetermined' as any;
     try {
@@ -135,12 +128,12 @@ export async function getNotificationPermissionStatus(): Promise<ExpoNotificatio
     }
 }
 
-// ─── Bildirim izni iste (reddedildiyse ayarlara yönlendir) ───────
+// â”€â”€â”€ Bildirim izni iste (reddedildiyse ayarlara yÃ¶nlendir) â”€â”€â”€â”€â”€â”€â”€
 export async function requestNotificationPermission(): Promise<boolean> {
     if (!Notifications) {
         Alert.alert(
-            'Bildirim Desteği Yok',
-            'Push notification için Development Build gereklidir.',
+            'Bildirim DesteÄŸi Yok',
+            'Push notification iÃ§in Development Build gereklidir.',
         );
         return false;
     }
@@ -152,21 +145,21 @@ export async function requestNotificationPermission(): Promise<boolean> {
             return true;
         }
 
-        // İlk kez soruluyorsa veya henüz belirlenmemişse
+        // Ä°lk kez soruluyorsa veya henÃ¼z belirlenmemiÅŸse
         const { status } = await Notifications.requestPermissionsAsync();
         
         if (status === 'granted') {
-            // Token'ı al ve backend'e gönder
+            // Token'Ä± al ve backend'e gÃ¶nder
             await registerAndSendToken();
             return true;
         }
 
-        // Kullanıcı daha önce reddetmişse, sistem ayarlarına yönlendir
+        // KullanÄ±cÄ± daha Ã¶nce reddetmiÅŸse, sistem ayarlarÄ±na yÃ¶nlendir
         Alert.alert(
-            'Bildirim İzni Gerekli',
-            'Bildirimleri açmak için uygulama ayarlarından izin vermeniz gerekiyor.',
+            'Bildirim Ä°zni Gerekli',
+            'Bildirimleri aÃ§mak iÃ§in uygulama ayarlarÄ±ndan izin vermeniz gerekiyor.',
             [
-                { text: 'İptal', style: 'cancel' },
+                { text: 'Ä°ptal', style: 'cancel' },
                 {
                     text: 'Ayarlara Git',
                     onPress: () => {
@@ -178,12 +171,12 @@ export async function requestNotificationPermission(): Promise<boolean> {
         );
         return false;
     } catch (error: any) {
-        console.warn('[PushNotifications] İzin isteği hatası:', error?.message);
+        console.warn('[PushNotifications] Ä°zin isteÄŸi hatasÄ±:', error?.message);
         return false;
     }
 }
 
-// ─── Token al ve backend'e gönder ────────────────────────────────
+// â”€â”€â”€ Token al ve backend'e gÃ¶nder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function registerAndSendToken() {
     if (!Notifications) {
         console.warn('[PushNotifications] Notifications modul yok.');
@@ -215,7 +208,7 @@ export async function registerAndSendToken() {
     }
 }
 
-// ─── Yardimci: Izin iste ve Expo Push Token al ───────────────────
+// â”€â”€â”€ Yardimci: Izin iste ve Expo Push Token al â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function registerForPushNotificationsAsync(): Promise<string | undefined> {
     if (!Notifications) return undefined;
 
@@ -233,8 +226,6 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
         // Fiziksel cihaz kontrolu
         if (Device && !Device.isDevice) {
             console.warn('[PushNotifications] Fiziksel cihaz gerekli, simulator desteklenmiyor.');
-            // Simulator ise uyari ver
-            Alert.alert('Simülatör Uyarısı', 'Push bildirimleri sadece fiziksel cihazlarda çalışır.');
             return undefined;
         }
 
@@ -249,29 +240,18 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
 
         if (finalStatus !== 'granted') {
             console.warn('[PushNotifications] Bildirim izni verilmedi.');
-            Alert.alert('İzin Reddedildi', 'Bildirimlere izin vermediğiniz için bildirim alamazsınız.');
-            return undefined;
-        }
-
-        // Expo Push Token al
-        const projectId =
-            Constants?.expoConfig?.extra?.eas?.projectId ??
-            (Constants as any)?.easConfig?.projectId;
-
-        if (!projectId) {
-            console.warn('[PushNotifications] Project ID bulunamadi! app.json kontrol edin.');
-            Alert.alert('Yapılandırma Hatası', 'Project ID bulunamadı.');
+            Alert.alert('Ä°zin Reddedildi', 'Bildirimlere izin vermediÄŸiniz iÃ§in bildirim alamazsÄ±nÄ±z.');
             return undefined;
         }
 
         try {
-            const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: projectId as string,
-            });
+            // FCM iÃ§in Native Device Token alÄ±yoruz (DoÄŸrudan Google/FCM Ã¼zerinden)
+            const tokenData = await Notifications.getDevicePushTokenAsync();
+            console.log('[PushNotifications] Device Token (FCM):', tokenData.data);
             return tokenData.data;
         } catch (tokenErr: any) {
-            console.warn('[PushNotifications] Expo token alinamadi:', tokenErr?.message);
-            Alert.alert('Expo Hatası', 'Push token alınamadı: ' + tokenErr.message);
+            console.warn('[PushNotifications] Device token alinamadi:', tokenErr?.message);
+            Alert.alert('FCM HatasÄ±', 'Bildirim token\'Ä± alÄ±namadÄ±: ' + tokenErr.message);
             return undefined;
         }
     } catch (error: any) {
@@ -280,7 +260,21 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
     }
 }
 
-// ─── Test icin: Yerel bildirim gonder ────────────────────────────
+async function registerIfPermissionGranted(): Promise<string | undefined> {
+    if (!Notifications) return undefined;
+    try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+            return undefined;
+        }
+        return registerForPushNotificationsAsync();
+    } catch (error: any) {
+        console.warn('[PushNotifications] Permission check failed:', error?.message);
+        return undefined;
+    }
+}
+
+// â”€â”€â”€ Test icin: Yerel bildirim gonder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function sendTestNotification() {
     if (!Notifications) {
         Alert.alert(
@@ -293,7 +287,7 @@ export async function sendTestNotification() {
     try {
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: 'Test Bildirimi 🚀',
+                title: 'Test Bildirimi ğŸš€',
                 body: 'Push notification sisteminiz basariyla calisiyor!',
                 data: { test: true },
             },
@@ -303,3 +297,4 @@ export async function sendTestNotification() {
         Alert.alert('Hata', 'Bildirim gonderilemedi: ' + (error?.message || 'Bilinmeyen hata'));
     }
 }
+

@@ -56,8 +56,11 @@ public class PushTokenService {
         String token = pushToken.trim();
         String lower = token.toLowerCase(Locale.ROOT);
         boolean expoFormat = lower.startsWith("expopushtoken[") || lower.startsWith("exponentpushtoken[");
-        if (!expoFormat) {
-            throw new BadRequestException("Gecersiz Expo push token formati");
+        // FCM tokenlari da kabul edilir (frontend native device token gonderiyor).
+        boolean fcmFormat = token.length() >= 20 && token.length() <= 255
+                && token.matches("^[A-Za-z0-9_\\-:]+$");
+        if (!expoFormat && !fcmFormat) {
+            throw new BadRequestException("Gecersiz push token formati");
         }
         return token;
     }

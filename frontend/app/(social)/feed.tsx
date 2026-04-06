@@ -264,7 +264,32 @@ export default function FeedScreen() {
     // ─── Social Actions ───
     const handleFollowAction = async (user: DiscoverUserItem) => {
         const targetUserId = user.user.userId;
+        const previousUsers = discoverUsers;
+        const previousStats = stats;
+        const nextStatus =
+            user.relationStatus === 'following' || user.relationStatus === 'pending_outgoing'
+                ? 'not_following'
+                : user.privateProfile
+                    ? 'pending_outgoing'
+                    : 'following';
+
         setBusyUserId(targetUserId);
+
+        // Optimistic UI: kullanici butona basinca durum aninda degissin.
+        setDiscoverUsers((prev) =>
+            prev.map((u) =>
+                u.user.userId === targetUserId
+                    ? { ...u, relationStatus: nextStatus, following: nextStatus === 'following' }
+                    : u,
+            ),
+        );
+
+        if (user.relationStatus === 'following') {
+            setStats((prev) => ({ ...prev, followingCount: Math.max(0, prev.followingCount - 1) }));
+        } else if (nextStatus === 'following') {
+            setStats((prev) => ({ ...prev, followingCount: prev.followingCount + 1 }));
+        }
+
         try {
             if (user.relationStatus === 'following') {
                 await socialService.unfollow(targetUserId);
@@ -273,8 +298,12 @@ export default function FeedScreen() {
             } else {
                 await socialService.follow(targetUserId);
             }
-            await loadSocialData();
+            setTimeout(() => {
+                void loadSocialData();
+            }, 150);
         } catch (error: any) {
+            setDiscoverUsers(previousUsers);
+            setStats(previousStats);
             showToast('error', error?.response?.data?.message || 'Islem basarisiz.');
         } finally {
             setBusyUserId(null);

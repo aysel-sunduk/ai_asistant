@@ -14,7 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
 import { interviewService } from '../../services/interview.service';
+import { sttService } from '../../services/stt.service';
 import type { InterviewSession } from '../../src/models/interview.model';
 import { Alert as RNAlert } from 'react-native';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
@@ -43,6 +45,7 @@ export default function InterviewSessionScreen() {
     const [answerText, setAnswerText] = useState('');
     const [mode, setMode] = useState<'SETUP' | 'ANSWERING' | 'COMPLETED'>('SETUP');
     const [isListening, setIsListening] = useState(false);
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
 
     useEffect(() => {
         loadSession();
@@ -177,7 +180,52 @@ export default function InterviewSessionScreen() {
     };
 
     const toggleListening = async () => {
-        Alert.alert('Bilgi', 'Google Speech-to-Text API kurulumu devam ediyor. Yakinda hazir olacak!');
+        try {
+            if (isListening) {
+                // Kaydı durdur ve işle
+                setIsListening(false);
+                if (recording) {
+                    await recording.stopAndUnloadAsync();
+                    const uri = recording.getURI();
+                    if (uri) {
+                        setSubmitting(true);
+                        try {
+                            const text = await sttService.transcribe(uri);
+                            if (text) {
+                                setAnswerText(prev => prev ? `${prev} ${text}` : text);
+                            }
+                        } catch (err) {
+                            Alert.alert('STT Hatası', 'Ses metne dönüştürülemedi.');
+                        } finally {
+                            setSubmitting(false);
+                        }
+                    }
+                    setRecording(null);
+                }
+            } else {
+                // Kaydı başlat
+                const { status } = await Audio.requestPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert('İzin Gerekli', 'Mikrofon izni verilmedi.');
+                    return;
+                }
+
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: true,
+                    playsInSilentModeIOS: true,
+                });
+
+                const { recording: newRecording } = await Audio.Recording.createAsync(
+                    Audio.RecordingOptionsPresets.HIGH_QUALITY
+                );
+                setRecording(newRecording);
+                setIsListening(true);
+            }
+        } catch (error) {
+            console.error('Mic error:', error);
+            Alert.alert('Hata', 'Mikrofon kullanılırken bir sorun oluştu.');
+            setIsListening(false);
+        }
     };
 
     const handleDeleteQuestion = async (questionId: string) => {

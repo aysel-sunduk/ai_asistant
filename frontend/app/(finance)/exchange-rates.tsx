@@ -154,6 +154,7 @@ export default function ExchangeRatesScreen() {
                 currencyName: rate?.currencyName || currencyCode,
                 rate: rate?.rate || 0,
                 changeRate: rate?.changeRate || 0,
+                changePercent: rate?.changePercent || 0,
                 baseCurrency: 'TRY',
                 rateDate: rate?.lastUpdatedAt || new Date().toISOString(),
                 lastUpdatedAt: rate?.lastUpdatedAt,

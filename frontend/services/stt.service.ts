@@ -1,19 +1,28 @@
-import { sttApi } from '../src/api/stt.api';
+import apiClient from '../src/api/client';
 
 export const sttService = {
-    transcribe: async (fileUri: string) => {
-        const formData = new FormData();
-        const filename = fileUri.split('/').pop() || 'recording.m4a';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `audio/${match[1]}` : `audio/m4a`;
+  /**
+   * Ses dosyasını (wav/m4a) backend'e gönderir ve metni döner.
+   */
+  async transcribe(uri: string): Promise<string> {
+    const formData = new FormData();
+    
+    // React Native'de dosya gönderimi için özel format
+    // URI'nin başına 'file://' eklenmiş olabilir veya olmayabilir
+    const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+    
+    formData.append('file', {
+      uri: fileUri,
+      name: 'recording.m4a',
+      type: 'audio/m4a',
+    } as any);
 
-        formData.append('file', {
-            uri: fileUri,
-            name: filename,
-            type,
-        } as any);
+    const response = await apiClient.post<{ transcription: string }>('/stt/transcribe', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
-        const response = await sttApi.transcribe(formData);
-        return response.data.transcription;
-    },
+    return response.data.transcription;
+  },
 };

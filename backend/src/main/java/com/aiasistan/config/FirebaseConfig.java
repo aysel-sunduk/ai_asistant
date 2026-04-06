@@ -16,34 +16,38 @@ import java.nio.file.Paths;
 
 @Configuration
 public class FirebaseConfig {
+
     private static final Logger logger = LoggerFactory.getLogger(FirebaseConfig.class);
 
-    @Value("${app.firebase.credentials-file:}")
-    private String credentialsFile;
+    @Value("${app.push.firebase.config-path:${app.firebase.config-path:${FCM_CREDENTIALS_FILE:${FIREBASE_CREDENTIALS_PATH:}}}}")
+    private String configPath;
 
     @PostConstruct
     public void initialize() {
-        if (credentialsFile == null || credentialsFile.isBlank()) {
-            logger.warn("Firebase credentials-file yolu belirtilmemis. Bildirim servisi calismayabilir.");
-            return;
-        }
-
         try {
-            if (!Files.exists(Paths.get(credentialsFile))) {
-                logger.error("Firebase credentials dosyasi bulunamadi: {}", credentialsFile);
-                return;
-            }
-
-            FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(new FileInputStream(credentialsFile)))
-                    .build();
-
             if (FirebaseApp.getApps().isEmpty()) {
+                if (configPath == null || configPath.isEmpty()) {
+                    logger.warn("Firebase yapılandırma yolu belirtilmemiş. Bildirimler çalışmayabilir.");
+                    return;
+                }
+
+                if (!Files.exists(Paths.get(configPath))) {
+                    logger.error("Firebase JSON dosyası bulunamadı: {}. Lütfen .env dosyasını kontrol edin.", configPath);
+                    return;
+                }
+
+                FileInputStream serviceAccount = new FileInputStream(configPath);
+
+                FirebaseOptions options = FirebaseOptions.builder()
+                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                        .build();
+
                 FirebaseApp.initializeApp(options);
-                logger.info("Firebase Admin SDK basariyla baslatildi. Dosya: {}", credentialsFile);
+                logger.info("Firebase Admin SDK başarıyla başlatıldı (Dosya: {})", configPath);
             }
         } catch (IOException e) {
-            logger.error("Firebase Admin SDK baslatilirken hata: {}", e.getMessage());
+            logger.error("Firebase başlatılırken hata oluştu: {}", e.getMessage());
+            // Uygulamanın çökmemesi için hatayı fırlatmıyoruz, sadece logluyoruz.
         }
     }
 }

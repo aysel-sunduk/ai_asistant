@@ -147,7 +147,9 @@ function RecommendationDetailModal({ visible, recommendation, onClose }: { visib
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={[styles.modalSymbol, isDark && styles.textDark]}>{recommendation.symbol}</Text>
+                    <Text style={[styles.modalSymbol, isDark && styles.textDark]}>
+                        {getInvestmentDisplayName(recommendation.symbol, recommendation.assetType) || recommendation.symbol}
+                    </Text>
                     <Text style={styles.modalAssetType}>{recommendation.assetType}</Text>
 
                     <View style={styles.modalStatsRow}>
@@ -393,7 +395,9 @@ function FinanceScreenContent({
                                                 <Text style={[styles.recRiskText, { color: riskColor }]}>{riskLabel}</Text>
                                             </View>
                                         </View>
-                                        <Text style={[styles.recSymbol, isDark && styles.textDark]}>{rec.symbol}</Text>
+                                        <Text style={[styles.recSymbol, isDark && styles.textDark]}>
+                                            {getInvestmentDisplayName(rec.symbol, rec.assetType) || rec.symbol}
+                                        </Text>
                                         <Text style={styles.recAssetType}>{rec.assetType}</Text>
                                         <View style={styles.recConfidence}>
                                             <View style={styles.recConfBar}>
