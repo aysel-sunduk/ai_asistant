@@ -25,7 +25,7 @@ import { blogService } from '../../services/blog.service';
 import { socialService } from '../../services/social.service';
 import { API_BASE_URL } from '../../src/api/client';
 import type { BlogPost } from '../../src/models/blog.model';
-import type { DiscoverUserItem, FollowRequestItem, FollowStats } from '../../src/models/social.model';
+import type { DiscoverUserItem, FollowItem, FollowRequestItem, FollowStats } from '../../src/models/social.model';
 import { resolveTheme, useThemeStore } from '../../src/store/theme.store';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
@@ -113,6 +113,31 @@ export default function FeedScreen() {
     const [toastMessage, setToastMessage] = useState('');
     const [profileModalVisible, setProfileModalVisible] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+    // Follow List states
+    const [followListModalVisible, setFollowListModalVisible] = useState(false);
+    const [followListType, setFollowListType] = useState<'followers' | 'following'>('followers');
+    const [followList, setFollowList] = useState<FollowItem[]>([]);
+    const [followListLoading, setFollowListLoading] = useState(false);
+
+    const openFollowList = async (type: 'followers' | 'following') => {
+        setFollowListType(type);
+        setFollowListModalVisible(true);
+        setFollowListLoading(true);
+        try {
+            if (type === 'followers') {
+                const res = await socialService.getFollowers(0, 100);
+                setFollowList(res.content || []);
+            } else {
+                const res = await socialService.getFollowing(0, 100);
+                setFollowList(res.content || []);
+            }
+        } catch (error) {
+            showToast('error', 'Liste alinamadi.');
+        } finally {
+            setFollowListLoading(false);
+        }
+    };
 
     const openProfile = (userId: string) => {
         setSelectedUserId(userId);
@@ -610,15 +635,15 @@ export default function FeedScreen() {
                     </TouchableOpacity>
                 </View>
                 <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
+                    <TouchableOpacity style={styles.statItem} onPress={() => openFollowList('following')}>
                         <Text style={styles.statNum}>{stats.followingCount}</Text>
                         <Text style={styles.statLabel}>Takip</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
+                    <TouchableOpacity style={styles.statItem} onPress={() => openFollowList('followers')}>
                         <Text style={styles.statNum}>{stats.followersCount}</Text>
                         <Text style={styles.statLabel}>Takipci</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
                         <Text style={styles.statNum}>{incomingRequests.length}</Text>
@@ -659,6 +684,69 @@ export default function FeedScreen() {
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
             <UserProfileModal visible={profileModalVisible} userId={selectedUserId} onClose={() => setProfileModalVisible(false)} />
+
+            {/* Follow List Modal */}
+            <Modal visible={followListModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFollowListModalVisible(false)}>
+                <View style={[styles.container, isDark && styles.containerDark]}>
+                    <View style={[{ paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 24 : 20, paddingBottom: 16, borderBottomWidth: 1, borderColor: isDark ? '#1E293B' : '#F1F5F9', backgroundColor: isDark ? '#0F172A' : '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                        <TouchableOpacity onPress={() => setFollowListModalVisible(false)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
+                            <Ionicons name="close" size={22} color={isDark ? '#E5E7EB' : '#0F172A'} />
+                        </TouchableOpacity>
+                        <Text style={[{ fontSize: 18, fontWeight: '800', color: isDark ? '#E5E7EB' : '#0F172A' }]}>
+                            {followListType === 'followers' ? 'Takipciler' : 'Takip Ettiklerin'}
+                        </Text>
+                        <View style={{ width: 40 }} />
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: isDark ? '#0B1220' : '#FAFAFA' }}>
+                        {followListLoading ? (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <ActivityIndicator size="large" color={COLOR} />
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={followList}
+                                keyExtractor={(item) => item.user.userId}
+                                contentContainerStyle={{ padding: 18 }}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => {
+                                    const name = fullName(item.user.firstName, item.user.lastName);
+                                    return (
+                                        <TouchableOpacity
+                                            style={[{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: isDark ? '#111827' : '#fff', borderRadius: 18, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 3 }]}
+                                            activeOpacity={0.85}
+                                            onPress={() => {
+                                                setFollowListModalVisible(false);
+                                                openProfile(item.user.userId);
+                                            }}
+                                        >
+                                            <View style={styles.avatar}>
+                                                {item.user.profilePictureUrl ? (
+                                                    <Image source={{ uri: getImageUrl(item.user.profilePictureUrl) as string }} style={styles.avatarImg} />
+                                                ) : (
+                                                    <Text style={styles.avatarText}>{initials(name)}</Text>
+                                                )}
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 14 }}>
+                                                <Text style={[styles.cardTitle, isDark && styles.textDark]}>{name}</Text>
+                                                <Text style={[styles.cardSub, isDark && styles.subTextDark, { marginTop: 4 }]}>{item.user.email}</Text>
+                                            </View>
+                                            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#9CA3AF' : '#64748B'} />
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                                ListEmptyComponent={
+                                    <View style={[styles.emptyBox, isDark && styles.emptyBoxDark, { marginTop: 24 }]}>
+                                        <Text style={[styles.emptyTitle, isDark && styles.textDark]}>Liste boş</Text>
+                                        <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Burada henüz kayıt yok.</Text>
+                                    </View>
+                                }
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
 
             {/* AI Suggestions Modal */}
             <Modal visible={showAiModal} transparent animationType="slide" onRequestClose={() => setShowAiModal(false)}>

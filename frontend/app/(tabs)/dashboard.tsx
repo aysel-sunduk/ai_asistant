@@ -214,17 +214,6 @@ export default function DashboardScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
-
-                <View style={styles.aiCard}>
-                    <View style={styles.aiCardHeader}>
-                        <Ionicons name="sparkles" size={20} color="#fff" />
-                        <Text style={styles.aiCardTitle}>AsistAI</Text>
-                    </View>
-                    <Text style={styles.aiCardText}>
-                        Yaklasan hatirlaticilarin ve modullerden son hareketlerin burada gorunur.
-                    </Text>
-                </View>
-
                 {financeReport && (
                     <View style={[styles.financeCard, isDark && styles.financeCardDark]}>
                         <View style={styles.financeHeader}>

@@ -63,9 +63,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="social"
         options={{
-          title: 'Blog',
+          href: '/(social)/feed',
+          title: 'Sosyal',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />
