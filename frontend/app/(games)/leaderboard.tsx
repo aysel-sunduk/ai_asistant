@@ -127,38 +127,38 @@ export default function LeaderboardScreen() {
     }, [rows]);
 
     const summaryPanel = rankSummary ? (
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, isDark && styles.summaryCardDark]}>
             <View style={styles.summaryHeader}>
                 <View style={styles.summaryTitleWrap}>
-                    <Ionicons name="analytics-outline" size={16} color="#5F46D5" />
-                    <Text style={styles.summaryTitle}>Siralama Ozeti</Text>
+                    <Ionicons name="analytics-outline" size={16} color={isDark ? '#A78BFA' : '#5F46D5'} />
+                    <Text style={[styles.summaryTitle, isDark && { color: '#A78BFA' }]}>Siralama Ozeti</Text>
                 </View>
-                <Text style={styles.summaryBadge}>{activeTab.toUpperCase()}</Text>
+                <Text style={[styles.summaryBadge, isDark && styles.summaryBadgeDark]}>{activeTab.toUpperCase()}</Text>
             </View>
 
             <View style={styles.metricGrid}>
-                <View style={styles.metricCard}>
-                    <Ionicons name="earth-outline" size={14} color="#5F46D5" />
-                    <Text style={styles.metricLabel}>Global</Text>
-                    <Text style={styles.metricValue}>{rankSummary!.globalRank ?? '-'} / {rankSummary!.globalPlayerCount}</Text>
+                <View style={[styles.metricCard, isDark && styles.metricCardDark]}>
+                    <Ionicons name="earth-outline" size={14} color={isDark ? '#A78BFA' : '#5F46D5'} />
+                    <Text style={[styles.metricLabel, isDark && styles.subTextDark]}>Global</Text>
+                    <Text style={[styles.metricValue, isDark && styles.textDark]}>{rankSummary!.globalRank ?? '-'} / {rankSummary!.globalPlayerCount}</Text>
                 </View>
-                <View style={styles.metricCard}>
-                    <Ionicons name="people-outline" size={14} color="#5F46D5" />
-                    <Text style={styles.metricLabel}>Arkadas</Text>
-                    <Text style={styles.metricValue}>{rankSummary!.friendsRank ?? '-'} / {rankSummary!.friendsPlayerCount}</Text>
+                <View style={[styles.metricCard, isDark && styles.metricCardDark]}>
+                    <Ionicons name="people-outline" size={14} color={isDark ? '#A78BFA' : '#5F46D5'} />
+                    <Text style={[styles.metricLabel, isDark && styles.subTextDark]}>Arkadas</Text>
+                    <Text style={[styles.metricValue, isDark && styles.textDark]}>{rankSummary!.friendsRank ?? '-'} / {rankSummary!.friendsPlayerCount}</Text>
                 </View>
-                <View style={styles.metricCard}>
-                    <Ionicons name="trophy-outline" size={14} color="#5F46D5" />
-                    <Text style={styles.metricLabel}>En Iyi Skor</Text>
-                    <Text style={styles.metricValue}>{rankSummary!.bestScore ?? '-'}</Text>
+                <View style={[styles.metricCard, isDark && styles.metricCardDark]}>
+                    <Ionicons name="trophy-outline" size={14} color={isDark ? '#A78BFA' : '#5F46D5'} />
+                    <Text style={[styles.metricLabel, isDark && styles.subTextDark]}>En Iyi Skor</Text>
+                    <Text style={[styles.metricValue, isDark && styles.textDark]}>{rankSummary!.bestScore ?? '-'}</Text>
                 </View>
             </View>
 
             <View style={styles.progressRow}>
-                <Text style={styles.progressLabel}>Global Yuzdelik</Text>
-                <Text style={styles.progressValue}>{getPercentileText(rankSummary!.globalRank, rankSummary!.globalPlayerCount)}</Text>
+                <Text style={[styles.progressLabel, isDark && styles.subTextDark]}>Global Yuzdelik</Text>
+                <Text style={[styles.progressValue, isDark && { color: '#A78BFA' }]}>{getPercentileText(rankSummary!.globalRank, rankSummary!.globalPlayerCount)}</Text>
             </View>
-            <View style={styles.progressTrack}>
+            <View style={[styles.progressTrack, isDark && styles.progressTrackDark]}>
                 <View
                     style={[
                         styles.progressFill,
@@ -216,10 +216,10 @@ export default function LeaderboardScreen() {
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     {summaryPanel}
                     {rows.map((row, index) => (
-                        <View key={row.id} style={styles.singleCard}>
+                        <View key={row.id} style={[styles.singleCard, isDark && styles.singleCardDark]}>
                             <Text style={styles.singleMedal}>{getMedalEmoji(index + 1)}</Text>
                             <View style={styles.singleAvatar}><Text style={styles.avatarText}>{getInitials(row)}</Text></View>
-                            <Text style={styles.singleName}>{getDisplayName(row)}</Text>
+                            <Text style={[styles.singleName, isDark && styles.textDark]}>{getDisplayName(row)}</Text>
                             <Text style={styles.singleScore}>{formatScore(row, activeTab)}</Text>
                         </View>
                     ))}
@@ -232,8 +232,8 @@ export default function LeaderboardScreen() {
                             <View style={styles.podiumItem}>
                                 <View style={styles.avatarWrap}><Text style={styles.avatarText}>{getInitials(podiumData.second.row)}</Text></View>
                                 <View style={[styles.podiumBar, styles.podiumBar2]}><Text style={styles.podiumRank}>{getMedalEmoji(2)}</Text></View>
-                                <Text style={styles.podiumName}>{getDisplayName(podiumData.second.row)}</Text>
-                                <Text style={styles.podiumScore}>{formatScore(podiumData.second.row, activeTab)}</Text>
+                                <Text style={[styles.podiumName, isDark && styles.textDark]}>{getDisplayName(podiumData.second.row)}</Text>
+                                <Text style={[styles.podiumScore, isDark && styles.subTextDark]}>{formatScore(podiumData.second.row, activeTab)}</Text>
                             </View>
                         )}
 
@@ -241,7 +241,7 @@ export default function LeaderboardScreen() {
                             <View style={styles.podiumItem}>
                                 <View style={[styles.avatarWrap, styles.avatarWrapFirst]}><Text style={styles.avatarText}>{getInitials(podiumData.first.row)}</Text></View>
                                 <View style={[styles.podiumBar, styles.podiumBar1]}><Text style={styles.podiumRank}>{getMedalEmoji(1)}</Text></View>
-                                <Text style={[styles.podiumName, { fontWeight: '800' }]}>{getDisplayName(podiumData.first.row)}</Text>
+                                <Text style={[styles.podiumName, { fontWeight: '800' }, isDark && styles.textDark]}>{getDisplayName(podiumData.first.row)}</Text>
                                 <Text style={[styles.podiumScore, { color: COLOR }]}>{formatScore(podiumData.first.row, activeTab)}</Text>
                             </View>
                         )}
@@ -250,8 +250,8 @@ export default function LeaderboardScreen() {
                             <View style={styles.podiumItem}>
                                 <View style={styles.avatarWrap}><Text style={styles.avatarText}>{getInitials(podiumData.third.row)}</Text></View>
                                 <View style={[styles.podiumBar, styles.podiumBar3]}><Text style={styles.podiumRank}>{getMedalEmoji(3)}</Text></View>
-                                <Text style={styles.podiumName}>{getDisplayName(podiumData.third.row)}</Text>
-                                <Text style={styles.podiumScore}>{formatScore(podiumData.third.row, activeTab)}</Text>
+                                <Text style={[styles.podiumName, isDark && styles.textDark]}>{getDisplayName(podiumData.third.row)}</Text>
+                                <Text style={[styles.podiumScore, isDark && styles.subTextDark]}>{formatScore(podiumData.third.row, activeTab)}</Text>
                             </View>
                         )}
                     </View>
@@ -260,15 +260,15 @@ export default function LeaderboardScreen() {
                         {podiumData.rest.map((entry) => {
                             const isCurrentUser = authUserId === entry.row.userId;
                             return (
-                                <View key={entry.row.id} style={[styles.row, isCurrentUser && styles.rowCurrentUser]}>
-                                    <Text style={styles.rankText}>{entry.rank}</Text>
+                                <View key={entry.row.id} style={[styles.row, isDark && styles.rowDark, isCurrentUser && styles.rowCurrentUser]}>
+                                    <Text style={[styles.rankText, isDark && styles.subTextDark]}>{entry.rank}</Text>
                                     <View style={styles.avatarSmall}><Text style={styles.avatarSmallText}>{getInitials(entry.row)}</Text></View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={[styles.username, isCurrentUser && styles.usernameHighlight]}>
+                                        <Text style={[styles.username, isDark && styles.textDark, isCurrentUser && styles.usernameHighlight]}>
                                             {getDisplayName(entry.row)}{isCurrentUser ? ' (Sen)' : ''}
                                         </Text>
                                     </View>
-                                    <Text style={[styles.score, isCurrentUser && styles.scoreHighlight]}>{formatScore(entry.row, activeTab)}</Text>
+                                    <Text style={[styles.score, isDark && styles.subTextDark, isCurrentUser && styles.scoreHighlight]}>{formatScore(entry.row, activeTab)}</Text>
                                 </View>
                             );
                         })}
@@ -435,4 +435,10 @@ const styles = StyleSheet.create({
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
+    rowDark: { backgroundColor: '#111827' },
+    singleCardDark: { backgroundColor: '#111827' },
+    summaryCardDark: { backgroundColor: '#1A1033', borderColor: '#312E5A' },
+    metricCardDark: { backgroundColor: '#0F172A', borderColor: '#1E293B' },
+    summaryBadgeDark: { backgroundColor: '#312E81', color: '#A78BFA' },
+    progressTrackDark: { backgroundColor: '#1E293B' },
 });

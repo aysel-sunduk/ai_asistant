@@ -257,8 +257,8 @@ export default function ContactsScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-                            <Text style={{ color: '#0F172A' }}>
+                        <TouchableOpacity style={[styles.input, isDark && styles.inputDark]} onPress={() => setShowDatePicker(true)}>
+                            <Text style={{ color: isDark ? '#E5E7EB' : '#0F172A' }}>
                                 {birthDate
                                     ? birthDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })
                                     : 'Dogum gunu (opsiyonel)'}

@@ -274,20 +274,20 @@ export default function ListsScreen() {
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     <View style={[styles.card, isDark && styles.cardDark]}>
                         <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Genel Urun Durumu</Text>
-                        <View style={styles.overviewTabs}>
+                        <View style={[styles.overviewTabs]}>
                             <TouchableOpacity
-                                style={[styles.overviewTabBtn, overviewTab === 'PENDING' && styles.overviewTabBtnActive]}
+                                style={[styles.overviewTabBtn, isDark && styles.overviewTabBtnDark, overviewTab === 'PENDING' && styles.overviewTabBtnActive, overviewTab === 'PENDING' && isDark && styles.overviewTabBtnActiveDark]}
                                 onPress={() => setOverviewTab('PENDING')}
                             >
-                                <Text style={[styles.overviewTabText, overviewTab === 'PENDING' && styles.overviewTabTextActive]}>
+                                <Text style={[styles.overviewTabText, isDark && styles.subTextDark, overviewTab === 'PENDING' && styles.overviewTabTextActive]}>
                                     Alinacaklar ({allPendingItems.length})
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.overviewTabBtn, overviewTab === 'DONE' && styles.overviewTabBtnActive]}
+                                style={[styles.overviewTabBtn, isDark && styles.overviewTabBtnDark, overviewTab === 'DONE' && styles.overviewTabBtnActive, overviewTab === 'DONE' && isDark && styles.overviewTabBtnActiveDark]}
                                 onPress={() => setOverviewTab('DONE')}
                             >
-                                <Text style={[styles.overviewTabText, overviewTab === 'DONE' && styles.overviewTabTextActive]}>
+                                <Text style={[styles.overviewTabText, isDark && styles.subTextDark, overviewTab === 'DONE' && styles.overviewTabTextActive]}>
                                     Alinanlar ({allDoneItems.length})
                                 </Text>
                             </TouchableOpacity>
@@ -301,8 +301,8 @@ export default function ListsScreen() {
                                 {overviewTab === 'PENDING' ? 'Bekleyen urun yok.' : 'Alinan urun yok.'}
                             </Text>
                         ) : (
-                            overviewItems.slice(0, 6).map((item) => (
-                                <View key={item.id} style={styles.overviewRow}>
+                                     overviewItems.slice(0, 6).map((item) => (
+                                <View key={item.id} style={[styles.overviewRow, isDark && styles.overviewRowDark]}>
                                     <TouchableOpacity
                                         style={styles.overviewCheckBtn}
                                         onPress={() => void onOverviewToggleCheck(item)}
@@ -319,8 +319,8 @@ export default function ListsScreen() {
                                         activeOpacity={0.8}
                                         onPress={() => onOpenItemList(item)}
                                     >
-                                        <Text style={styles.overviewItemName}>{item.name}</Text>
-                                        <Text style={styles.overviewItemMeta}>
+                                        <Text style={[styles.overviewItemName, isDark && styles.textDark]}>{item.name}</Text>
+                                        <Text style={[styles.overviewItemMeta, isDark && styles.subTextDark]}>
                                             {item.quantity} {item.unit || 'adet'}
                                         </Text>
                                     </TouchableOpacity>
@@ -378,7 +378,7 @@ export default function ListsScreen() {
 
                                         <View style={styles.cardActions}>
                                             <TouchableOpacity
-                                                style={styles.actionBtn}
+                                                style={[styles.actionBtn, isDark && styles.actionBtnDark]}
                                                 onPress={() =>
                                                     router.push({
                                                         pathname: '/(shopping)/list-detail',
@@ -386,19 +386,19 @@ export default function ListsScreen() {
                                                     })
                                                 }
                                             >
-                                                <Ionicons name="open-outline" size={14} color="#475569" />
-                                                <Text style={styles.actionText}>Ac</Text>
+                                                <Ionicons name="open-outline" size={14} color={isDark ? '#94A3B8' : '#475569'} />
+                                                <Text style={[styles.actionText, isDark && styles.subTextDark]}>Ac</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                style={styles.actionBtn}
+                                                style={[styles.actionBtn, isDark && styles.actionBtnDark]}
                                                 onPress={() => void onToggleArchive(list.id, !list.isArchived)}
                                             >
                                                 <Ionicons
                                                     name={list.isArchived ? 'archive-outline' : 'file-tray-outline'}
                                                     size={14}
-                                                    color="#475569"
+                                                    color={isDark ? '#94A3B8' : '#475569'}
                                                 />
-                                                <Text style={styles.actionText}>{list.isArchived ? 'Cikar' : 'Arsivle'}</Text>
+                                                <Text style={[styles.actionText, isDark && styles.subTextDark]}>{list.isArchived ? 'Cikar' : 'Arsivle'}</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity style={styles.actionBtnDanger} onPress={() => onDeleteList(list.id)}>
                                                 <Ionicons name="trash-outline" size={14} color="#DC2626" />
@@ -656,5 +656,9 @@ const styles = StyleSheet.create({
     sectionTitleDark: { color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
+    overviewTabBtnDark: { backgroundColor: '#1E293B' },
+    overviewTabBtnActiveDark: { backgroundColor: '#1E1040', borderColor: '#5B21B6' },
+    overviewRowDark: { borderTopColor: '#1F2937' },
+    actionBtnDark: { backgroundColor: '#1E293B' },
 }
 );

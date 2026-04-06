@@ -122,8 +122,12 @@ export default function DashboardScreen() {
         }, [loadNotifications, loadProfile, loadFinanceSnapshot]),
     );
 
+
     const pendingReminders = useMemo(
-        () => [...reminders].sort((a, b) => +new Date(a.remindAt) - +new Date(b.remindAt)),
+        () =>
+            [...reminders]
+                .filter((r) => new Date(r.remindAt).getTime() >= Date.now() - 60 * 1000)
+                .sort((a, b) => +new Date(a.remindAt) - +new Date(b.remindAt)),
         [reminders],
     );
     const totalNotificationCount = pendingReminders.length + incomingFollowRequests.length;

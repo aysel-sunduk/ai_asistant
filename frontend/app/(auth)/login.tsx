@@ -65,7 +65,7 @@ export default function LoginScreen() {
 
     return (
         <View style={[styles.container, isDark && styles.containerDark]}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#0B1220' : '#fff'} />
             <KeyboardAvoidingView
                 style={styles.flex}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -82,7 +82,7 @@ export default function LoginScreen() {
                                 <Ionicons name="sparkles" size={32} color="#fff" />
                             </View>
                         </View>
-                        <Text style={styles.appName}>Assistify</Text>
+                        <Text style={[styles.appName, isDark && styles.textDark]}>Assistify</Text>
                         <Text style={[styles.subtitle, isDark && styles.subTextDark]}>Hesabınıza giriş yapın</Text>
                     </View>
 
@@ -90,8 +90,8 @@ export default function LoginScreen() {
                     <View style={styles.formSection}>
                         {/* E-posta */}
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, isDark && styles.subTextDark]}>E-posta</Text>
-                            <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
+                            <Text style={[styles.label, isDark && styles.textDark]}>E-posta</Text>
+                            <View style={[styles.inputWrapper, isDark && styles.inputWrapperDark, errors.email && styles.inputError]}>
                                 <Ionicons name="mail-outline" size={20} color={errors.email ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.input, isDark && styles.inputDark]}
@@ -113,8 +113,8 @@ export default function LoginScreen() {
 
                         {/* Şifre */}
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, isDark && styles.subTextDark]}>Şifre</Text>
-                            <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
+                            <Text style={[styles.label, isDark && styles.textDark]}>Şifre</Text>
+                            <View style={[styles.inputWrapper, isDark && styles.inputWrapperDark, errors.password && styles.inputError]}>
                                 <Ionicons name="lock-closed-outline" size={20} color={errors.password ? '#FF6B6B' : GRAY} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.input, isDark && styles.inputDark]}
@@ -161,26 +161,26 @@ export default function LoginScreen() {
 
                         {/* Ayırıcı */}
                         <View style={styles.dividerRow}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>veya</Text>
-                            <View style={styles.dividerLine} />
+                            <View style={[styles.dividerLine, isDark && styles.dividerLineDark]} />
+                            <Text style={[styles.dividerText, isDark && styles.subTextDark]}>veya</Text>
+                            <View style={[styles.dividerLine, isDark && styles.dividerLineDark]} />
                         </View>
 
                         {/* Sosyal Giriş Butonları */}
-                        <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+                        <TouchableOpacity style={[styles.socialButton, isDark && styles.socialButtonDark]} activeOpacity={0.7}>
                             <Ionicons name="logo-google" size={20} color="#DB4437" />
-                            <Text style={styles.socialButtonText}>Google ile devam et</Text>
+                            <Text style={[styles.socialButtonText, isDark && styles.textDark]}>Google ile devam et</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
-                            <Ionicons name="logo-apple" size={20} color="#000" />
-                            <Text style={styles.socialButtonText}>Apple ile devam et</Text>
+                        <TouchableOpacity style={[styles.socialButton, isDark && styles.socialButtonDark]} activeOpacity={0.7}>
+                            <Ionicons name="logo-apple" size={20} color={isDark ? '#E5E7EB' : '#000'} />
+                            <Text style={[styles.socialButtonText, isDark && styles.textDark]}>Apple ile devam et</Text>
                         </TouchableOpacity>
                     </View>
 
                     {/* Alt Kısım */}
                     <View style={styles.footerSection}>
-                        <Text style={styles.footerText}>Hesabınız yok mu?</Text>
+                        <Text style={[styles.footerText, isDark && styles.subTextDark]}>Hesabınız yok mu?</Text>
                         <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                             <Text style={styles.registerLink}> Kayıt Ol</Text>
                         </TouchableOpacity>
@@ -374,7 +374,10 @@ const styles = StyleSheet.create({
     /* ─── Dark Mode ─── */
     containerDark: { backgroundColor: '#0B1220' },
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
-    inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
+    inputDark: { color: '#E5E7EB' },
+    inputWrapperDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
+    socialButtonDark: { borderColor: '#374151', backgroundColor: '#111827' },
+    dividerLineDark: { backgroundColor: '#374151' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
 });

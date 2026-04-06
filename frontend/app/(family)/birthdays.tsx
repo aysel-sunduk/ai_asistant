@@ -309,18 +309,27 @@ export default function BirthdaysScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                <Text style={styles.sectionTitle}>Takvim</Text>
-                <View style={styles.calendarWrapper}>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Takvim</Text>
+                <View style={[styles.calendarWrapper, isDark && styles.calendarWrapperDark]}>
                     <Calendar
                         onMonthChange={(month: any) => {
                             setCurrentYear(month.year);
                         }}
                         markedDates={markedDates}
                         theme={{
+                            calendarBackground: isDark ? '#111827' : '#ffffff',
+                            dayTextColor: isDark ? '#E5E7EB' : '#1E293B',
+                            textDisabledColor: isDark ? '#374151' : '#CBD5E1',
+                            monthTextColor: isDark ? '#E5E7EB' : '#1E293B',
+                            textSectionTitleColor: isDark ? '#9CA3AF' : '#64748B',
+                            selectedDayBackgroundColor: COLOR,
+                            selectedDayTextColor: '#ffffff',
                             todayTextColor: COLOR,
                             arrowColor: COLOR,
                             dotColor: COLOR,
                             textMonthFontWeight: 'bold',
+                            textDayFontSize: 14,
+                            textMonthFontSize: 16,
                         }}
                         dayComponent={({ date, state }: any) => {
                             const dateStr = date.dateString;
@@ -329,11 +338,12 @@ export default function BirthdaysScreen() {
 
                             return (
                                 <TouchableOpacity
-                                    style={[styles.dayContainer, isToday && styles.todayContainer]}
+                                    style={[styles.dayContainer, isToday && (isDark ? styles.todayContainerDark : styles.todayContainer)]}
                                 >
                                     <Text style={[
                                         styles.dayText,
-                                        state === 'disabled' && styles.disabledText,
+                                        isDark && styles.dayTextDark,
+                                        state === 'disabled' && (isDark ? styles.disabledTextDark : styles.disabledText),
                                         isToday && styles.todayText
                                     ]}>
                                         {date.day}
@@ -354,7 +364,7 @@ export default function BirthdaysScreen() {
                     />
                 </View>
 
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Yaklasan Dogum Gunleri</Text>
+                <Text style={[styles.sectionTitle, { marginTop: 24 }, isDark && styles.sectionTitleDark]}>Yaklasan Dogum Gunleri</Text>
                 {loading ? (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color={COLOR} />
@@ -784,4 +794,9 @@ const styles = StyleSheet.create({
     cardDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
     inputDark: { backgroundColor: '#1E293B', borderColor: '#374151', color: '#E5E7EB' },
     textDark: { color: '#E5E7EB' },
+    sectionTitleDark: { color: '#E5E7EB' },
+    calendarWrapperDark: { backgroundColor: '#111827', borderColor: '#1F2937' },
+    dayTextDark: { color: '#E5E7EB' },
+    disabledTextDark: { color: '#374151' },
+    todayContainerDark: { backgroundColor: '#3D1A00' },
 });

@@ -122,6 +122,20 @@ export default function RemindersScreen() {
         return byFilter.sort((a, b) => +new Date(a.remindAt) - +new Date(b.remindAt));
     }, [filter, reminders]);
 
+    const now = new Date();
+    const upcomingReminders = useMemo(
+        () => filteredReminders.filter((r) => r.status === 'scheduled' && new Date(r.remindAt) >= now),
+        [filteredReminders],
+    );
+    const expiredReminders = useMemo(
+        () => filteredReminders.filter((r) => r.status === 'scheduled' && new Date(r.remindAt) < now),
+        [filteredReminders],
+    );
+    const otherReminders = useMemo(
+        () => filteredReminders.filter((r) => r.status !== 'scheduled'),
+        [filteredReminders],
+    );
+
     const activeCount = useMemo(
         () => reminders.filter((r) => r.status === 'scheduled').length,
         [reminders],
@@ -312,45 +326,87 @@ export default function RemindersScreen() {
                         <Text style={[styles.emptySub, isDark && styles.subTextDark]}>Yeni bir hatirlatici ekleyebilirsin.</Text>
                     </View>
                 ) : (
-                    filteredReminders.map((r) => (
-                        <View key={r.id} style={[styles.card, isDark && styles.cardDark]}>
-                            <View style={[styles.categoryBar, { backgroundColor: categoryTone(r.sourceModule).bar }]} />
-                            <View style={styles.cardHeader}>
-                                <Text style={[styles.cardTitle, isDark && styles.textDark]} numberOfLines={1}>{r.title}</Text>
-                                <StatusBadge status={r.status} />
+                    <>
+                        {expiredReminders.length > 0 && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <View style={styles.sectionHeaderDot} />
+                                    <Text style={[styles.sectionHeaderText, { color: '#EF4444' }]}>Süresi Geçmiş ({expiredReminders.length})</Text>
+                                </View>
+                                {expiredReminders.map((r) => (
+                                    <View key={r.id} style={[styles.card, isDark && styles.cardDark, styles.cardExpired]}>
+                                        <View style={[styles.categoryBar, { backgroundColor: '#EF4444' }]} />
+                                        <View style={styles.cardHeader}>
+                                            <Text style={[styles.cardTitle, isDark && styles.textDark, { opacity: 0.7 }]} numberOfLines={1}>{r.title}</Text>
+                                            <StatusBadge status={r.status} expired />
+                                        </View>
+                                        <View style={styles.cardFooter}>
+                                            <Text style={[styles.cardTime, { color: '#EF4444' }]}>{formatDateTime(r.remindAt)}</Text>
+                                            <View style={styles.metaRow}>
+                                                <MiniTag text={categoryTone(r.sourceModule).label} />
+                                                {r.recurrence !== 'none' && <MiniTag text={REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />}
+                                            </View>
+                                        </View>
+                                        <View style={styles.actionRow}>
+                                            <TouchableOpacity style={styles.iconAction} onPress={() => openEditModal(r)}>
+                                                <Ionicons name="create-outline" size={20} color="#64748B" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={[styles.iconAction, styles.iconActionDanger]} onPress={() => removeReminder(r.id)}>
+                                                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </>
+                        )}
+
+                        {(upcomingReminders.length > 0 || otherReminders.length > 0) && expiredReminders.length > 0 && (
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionHeaderDot, { backgroundColor: '#22C55E' }]} />
+                                <Text style={[styles.sectionHeaderText, isDark && styles.subTextDark]}>Yaklaşan Hatirlaticilar ({upcomingReminders.length + otherReminders.length})</Text>
                             </View>
-                            <View style={styles.cardFooter}>
-                                <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(r.remindAt)}</Text>
-                                <View style={styles.metaRow}>
-                                    <MiniTag text={categoryTone(r.sourceModule).label} />
-                                    {r.recurrence !== 'none' && <MiniTag text={REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />}
+                        )}
+
+                        {[...upcomingReminders, ...otherReminders].map((r) => (
+                            <View key={r.id} style={[styles.card, isDark && styles.cardDark]}>
+                                <View style={[styles.categoryBar, { backgroundColor: categoryTone(r.sourceModule).bar }]} />
+                                <View style={styles.cardHeader}>
+                                    <Text style={[styles.cardTitle, isDark && styles.textDark]} numberOfLines={1}>{r.title}</Text>
+                                    <StatusBadge status={r.status} />
+                                </View>
+                                <View style={styles.cardFooter}>
+                                    <Text style={[styles.cardTime, isDark && styles.subTextDark]}>{formatDateTime(r.remindAt)}</Text>
+                                    <View style={styles.metaRow}>
+                                        <MiniTag text={categoryTone(r.sourceModule).label} />
+                                        {r.recurrence !== 'none' && <MiniTag text={REPEAT_LABELS[r.recurrence as (typeof REPEAT_TYPES)[number]] || r.recurrence} />}
+                                    </View>
+                                </View>
+                                <View style={styles.actionRow}>
+                                    {r.status === 'scheduled' && (
+                                        <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'sent')}>
+                                            <Ionicons name="checkmark-circle-outline" size={20} color="#16A34A" />
+                                        </TouchableOpacity>
+                                    )}
+                                    {r.status === 'scheduled' && (
+                                        <TouchableOpacity style={styles.iconAction} onPress={() => postponeReminder(r, 24 * 60)}>
+                                            <Ionicons name="time-outline" size={20} color="#64748B" />
+                                        </TouchableOpacity>
+                                    )}
+                                    {r.status !== 'scheduled' && (
+                                        <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'scheduled')}>
+                                            <Ionicons name="refresh-outline" size={20} color="#64748B" />
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity style={styles.iconAction} onPress={() => openEditModal(r)}>
+                                        <Ionicons name="create-outline" size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.iconAction, styles.iconActionDanger]} onPress={() => removeReminder(r.id)}>
+                                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
-                            <View style={styles.actionRow}>
-                                {r.status === 'scheduled' && (
-                                    <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'sent')}>
-                                        <Ionicons name="checkmark-circle-outline" size={20} color="#16A34A" />
-                                    </TouchableOpacity>
-                                )}
-                                {r.status === 'scheduled' && (
-                                    <TouchableOpacity style={styles.iconAction} onPress={() => postponeReminder(r, 24 * 60)}>
-                                        <Ionicons name="time-outline" size={20} color="#64748B" />
-                                    </TouchableOpacity>
-                                )}
-                                {r.status !== 'scheduled' && (
-                                    <TouchableOpacity style={styles.iconAction} onPress={() => updateStatus(r.id, 'scheduled')}>
-                                        <Ionicons name="refresh-outline" size={20} color="#64748B" />
-                                    </TouchableOpacity>
-                                )}
-                                <TouchableOpacity style={styles.iconAction} onPress={() => openEditModal(r)}>
-                                    <Ionicons name="create-outline" size={20} color="#64748B" />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.iconAction, styles.iconActionDanger]} onPress={() => removeReminder(r.id)}>
-                                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ))
+                        ))}
+                    </>
                 )}
             </ScrollView>
 
@@ -457,31 +513,37 @@ function OptionChip({ label, selected, onPress }: { label: string; selected: boo
     );
 }
 
-function StatusBadge({ status }: { status: ReminderStatus }) {
+function StatusBadge({ status, expired }: { status: ReminderStatus; expired?: boolean }) {
     const label =
-        status === 'scheduled'
-            ? 'Planli'
-            : status === 'sent'
-                ? 'Gonderildi'
-                : status === 'skipped'
-                    ? 'Atlandi'
-                    : 'Iptal';
+        expired
+            ? 'Süresi Geçti'
+            : status === 'scheduled'
+                ? 'Planli'
+                : status === 'sent'
+                    ? 'Gonderildi'
+                    : status === 'skipped'
+                        ? 'Atlandi'
+                        : 'Iptal';
     const bg =
-        status === 'scheduled'
-            ? '#DBEAFE'
-            : status === 'sent'
-                ? '#DCFCE7'
-                : status === 'skipped'
-                    ? '#F1F5F9'
-                    : '#FEE2E2';
+        expired
+            ? '#FEE2E2'
+            : status === 'scheduled'
+                ? '#DBEAFE'
+                : status === 'sent'
+                    ? '#DCFCE7'
+                    : status === 'skipped'
+                        ? '#F1F5F9'
+                        : '#FEE2E2';
     const fg =
-        status === 'scheduled'
-            ? '#1D4ED8'
-            : status === 'sent'
-                ? '#15803D'
-                : status === 'skipped'
-                    ? '#475569'
-                    : '#DC2626';
+        expired
+            ? '#B91C1C'
+            : status === 'scheduled'
+                ? '#1D4ED8'
+                : status === 'sent'
+                    ? '#15803D'
+                    : status === 'skipped'
+                        ? '#475569'
+                        : '#DC2626';
 
     return (
         <View style={[styles.statusBadge, { backgroundColor: bg }]}>
@@ -650,4 +712,8 @@ const styles = StyleSheet.create({
     modalSheetDark: { backgroundColor: '#111827' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, marginTop: 8 },
+    sectionHeaderDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+    sectionHeaderText: { fontSize: 13, fontWeight: '800', color: '#EF4444' },
+    cardExpired: { opacity: 0.85 },
 });
