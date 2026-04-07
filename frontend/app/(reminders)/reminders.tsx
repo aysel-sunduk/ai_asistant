@@ -143,15 +143,15 @@ export default function RemindersScreen() {
 
     const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
         if (Platform.OS === 'android') setPickerMode(null);
-        if (event.type === 'dismissed' || !selected) return;
-
-        const next = new Date(remindAt);
-        if (pickerMode === 'date') {
-            next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-        } else {
-            next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+        if (selected) {
+            const next = new Date(remindAt);
+            if (pickerMode === 'date') {
+                next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+            } else {
+                next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+            }
+            setRemindAt(next);
         }
-        setRemindAt(next);
     };
 
     const createReminder = async () => {
@@ -430,19 +430,37 @@ export default function RemindersScreen() {
                         />
 
                         <View style={styles.pickRow}>
-                            <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerMode('date')}>
+                            <TouchableOpacity style={[styles.pickBtn, isDark && styles.pickBtnDark]} onPress={() => setPickerMode('date')}>
                                 <Ionicons name="calendar-outline" size={16} color={COLOR} />
-                                <Text style={styles.pickText}>
+                                <Text style={[styles.pickText, isDark && styles.textDark]}>
                                     {remindAt.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.pickBtn} onPress={() => setPickerMode('time')}>
+                            <TouchableOpacity style={[styles.pickBtn, isDark && styles.pickBtnDark]} onPress={() => setPickerMode('time')}>
                                 <Ionicons name="time-outline" size={16} color={COLOR} />
-                                <Text style={styles.pickText}>
+                                <Text style={[styles.pickText, isDark && styles.textDark]}>
                                     {remindAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                 </Text>
                             </TouchableOpacity>
                         </View>
+
+                        {pickerMode && (
+                            <View style={[styles.datePickerContainer, isDark && styles.datePickerContainerDark]}>
+                                <DateTimePicker
+                                    value={remindAt}
+                                    mode={pickerMode}
+                                    is24Hour
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={onPickerChange}
+                                    textColor={isDark ? '#E5E7EB' : '#0F172A'}
+                                />
+                                {Platform.OS === 'ios' && (
+                                    <TouchableOpacity style={styles.datePickerDoneBtn} onPress={() => setPickerMode(null)}>
+                                        <Text style={styles.datePickerDoneText}>Tamam</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
 
                         <View style={styles.repeatRow}>
                             {REPEAT_TYPES.map((item) => (
@@ -477,15 +495,7 @@ export default function RemindersScreen() {
                 </View>
             </Modal>
 
-            {pickerMode && (
-                <DateTimePicker
-                    value={remindAt}
-                    mode={pickerMode}
-                    is24Hour
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onPickerChange}
-                />
-            )}
+
 
             <Toast
                 visible={toastVisible}
@@ -712,6 +722,11 @@ const styles = StyleSheet.create({
     modalSheetDark: { backgroundColor: '#111827' },
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
+    pickBtnDark: { backgroundColor: '#1E293B', borderColor: '#374151' },
+    datePickerContainer: { backgroundColor: '#F1F5F9', borderRadius: 12, marginTop: 8, padding: 8, overflow: 'hidden' },
+    datePickerContainerDark: { backgroundColor: '#1E293B' },
+    datePickerDoneBtn: { alignSelf: 'flex-end', padding: 8, marginTop: 4 },
+    datePickerDoneText: { color: COLOR, fontWeight: 'bold', fontSize: 16 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, marginTop: 8 },
     sectionHeaderDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
     sectionHeaderText: { fontSize: 13, fontWeight: '800', color: '#EF4444' },

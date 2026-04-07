@@ -101,8 +101,9 @@ export default function ContactsScreen() {
 
     const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
         if (Platform.OS === 'android') setShowDatePicker(false);
-        if (event.type === 'dismissed' || !selected) return;
-        setBirthDate(selected);
+        if (selected) {
+            setBirthDate(selected);
+        }
     };
 
     const submit = async () => {
@@ -222,7 +223,7 @@ export default function ContactsScreen() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={[styles.name, isDark && styles.textDark]}>{c.name}</Text>
-                                    <Text style={[styles.meta, isDark && styles.subTextDark]}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}` : ''}{c.bloodType ? ` | 🩸${c.bloodType}` : ''}</Text>
+                                    <Text style={[styles.meta, isDark && styles.subTextDark]}>{c.relationship || 'Kisi'}{c.birthDate ? ` | ${new Date(c.birthDate).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}{c.bloodType ? ` | 🩸${c.bloodType}` : ''}</Text>
                                 </View>
                                 <View style={styles.actions}>
                                     <TouchableOpacity style={[styles.iconBtn, isDark && styles.iconBtnDark]} onPress={() => openEdit(c)}>
@@ -260,10 +261,27 @@ export default function ContactsScreen() {
                         <TouchableOpacity style={[styles.input, isDark && styles.inputDark]} onPress={() => setShowDatePicker(true)}>
                             <Text style={{ color: isDark ? '#E5E7EB' : '#0F172A' }}>
                                 {birthDate
-                                    ? birthDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' })
+                                    ? birthDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })
                                     : 'Dogum gunu (opsiyonel)'}
                             </Text>
                         </TouchableOpacity>
+
+                        {showDatePicker && (
+                            <View style={[styles.datePickerContainer, isDark && styles.datePickerContainerDark]}>
+                                <DateTimePicker
+                                    value={birthDate || new Date(2000, 0, 1)}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={onDateChange}
+                                    textColor={isDark ? '#E5E7EB' : '#0F172A'}
+                                />
+                                {Platform.OS === 'ios' && (
+                                    <TouchableOpacity style={styles.datePickerDoneBtn} onPress={() => setShowDatePicker(false)}>
+                                        <Text style={styles.datePickerDoneText}>Tamam</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
                         <TextInput placeholder="Telefon (opsiyonel)" value={phone} onChangeText={setPhone} style={[styles.input, isDark && styles.inputDark]} placeholderTextColor={isDark ? '#6B7280' : undefined} />
                         <TextInput placeholder="E-posta (opsiyonel)" value={email} onChangeText={setEmail} style={[styles.input, isDark && styles.inputDark]} placeholderTextColor={isDark ? '#6B7280' : undefined} />
                         <TextInput placeholder="Not (opsiyonel)" value={notes} onChangeText={setNotes} style={[styles.input, isDark && styles.inputDark, { minHeight: 72, textAlignVertical: 'top' }]} multiline placeholderTextColor={isDark ? '#6B7280' : undefined} />
@@ -294,14 +312,7 @@ export default function ContactsScreen() {
                 </View>
             </Modal>
 
-            {showDatePicker && (
-                <DateTimePicker
-                    value={birthDate || new Date(2000, 0, 1)}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onDateChange}
-                />
-            )}
+
 
             <Toast visible={toastVisible} type={toastType} message={toastMessage} onHide={() => setToastVisible(false)} />
         </View>
@@ -366,6 +377,10 @@ const styles = StyleSheet.create({
     bloodChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
     bloodChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
     bloodChipTextActive: { color: '#fff' },
+    datePickerContainer: { backgroundColor: '#F1F5F9', borderRadius: 12, marginTop: 8, padding: 8, overflow: 'hidden' },
+    datePickerContainerDark: { backgroundColor: '#1E293B' },
+    datePickerDoneBtn: { alignSelf: 'flex-end', padding: 8, marginTop: 4 },
+    datePickerDoneText: { color: COLOR, fontWeight: 'bold', fontSize: 16 },
     /* Dark mode shared */
     textDark: { color: '#E5E7EB' },
     subTextDark: { color: '#9CA3AF' },
