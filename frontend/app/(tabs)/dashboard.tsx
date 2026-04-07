@@ -72,6 +72,7 @@ export default function DashboardScreen() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
     const [reminders, setReminders] = useState<Reminder[]>([]);
+    const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([]);
     const [incomingFollowRequests, setIncomingFollowRequests] = useState<FollowRequestItem[]>([]);
     const [financeReport, setFinanceReport] = useState<FamilyFinanceReportResponse | null>(null);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -91,15 +92,18 @@ export default function DashboardScreen() {
     const loadNotifications = useCallback(async () => {
         setNotificationsLoading(true);
         try {
-            const [reminderItems, requestsPage] = await Promise.all([
+            const [reminderItems, requestsPage, allScheduled] = await Promise.all([
                 remindersService.getNotifications(1440),
                 socialService.getIncomingRequests(0, 20),
+                remindersService.getScheduled(),
             ]);
             setReminders(reminderItems || []);
             setIncomingFollowRequests(requestsPage.content || []);
+            setUpcomingReminders(allScheduled || []);
         } catch {
             setReminders([]);
             setIncomingFollowRequests([]);
+            setUpcomingReminders([]);
         } finally {
             setNotificationsLoading(false);
         }
@@ -130,6 +134,15 @@ export default function DashboardScreen() {
                 .sort((a, b) => +new Date(a.remindAt) - +new Date(b.remindAt)),
         [reminders],
     );
+
+    const validUpcoming = useMemo(
+        () =>
+            [...upcomingReminders]
+                .filter((r) => new Date(r.remindAt).getTime() >= Date.now() - 60 * 1000)
+                .sort((a, b) => +new Date(a.remindAt) - +new Date(b.remindAt)),
+        [upcomingReminders],
+    );
+
     const totalNotificationCount = pendingReminders.length + incomingFollowRequests.length;
 
     const dismissNotification = async (id: string) => {
@@ -275,13 +288,13 @@ export default function DashboardScreen() {
                 </View>
 
                 <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Yaklasan Hatirlaticilar</Text>
-                {pendingReminders.length === 0 ? (
+                {validUpcoming.length === 0 ? (
                     <View style={[styles.emptyCard, isDark && styles.emptyCardDark]}>
                         <Ionicons name="time-outline" size={34} color={isDark ? '#4B5563' : '#E0E0E0'} />
                         <Text style={[styles.emptyText, isDark && styles.emptyTextDark]}>Planli hatirlatici yok</Text>
                     </View>
                 ) : (
-                    pendingReminders.slice(0, 3).map((r) => (
+                    validUpcoming.slice(0, 3).map((r) => (
                         <TouchableOpacity key={r.id} style={[styles.reminderCard, isDark && styles.reminderCardDark]} onPress={() => router.push('/(reminders)/reminders')}>
                             <Ionicons name="alarm-outline" size={18} color={PURPLE} />
                             <View style={{ flex: 1 }}>
