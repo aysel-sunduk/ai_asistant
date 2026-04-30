@@ -97,3 +97,37 @@ Notlar
 ------
 - Migration dosyalari `backend/src/main/resources/db/migration/` altindadir.
 - Bu repo aktif gelistirme altindadir; endpoint ve modeller iteratif olarak gelismektedir.
+
+## Yapay Zeka ve ML Modelleri
+
+Uygulama, farklı yaşam alanlarında kullanıcıya rehberlik etmek için özelleştirilmiş makine öğrenmesi modelleri kullanır. Bu modeller `ml-service` altında Python FastAPI ile sunulmaktadır.
+
+| Özellik / Modül | Model Mimarisi | Veri Seti (Dataset) | Kullanım Amacı |
+| :--- | :--- | :--- | :--- |
+| **Diyet Önerisi** | RandomForest + Cosine Similarity | Food.com Recipes (Kaggle) | Kullanıcı hedeflerine (Kilo ver, Koru, Al) göre öğün önerisi. |
+| **Yatırım Danışmanı** | KMeans + SVD (Collaborative Filtering) | Sentetik Yatırımcı & Varlık Verisi | Risk profili analizi ve kişiye özel BUY/HOLD/SELL tavsiyeleri. |
+| **Yemek Analizi** | EfficientNetV2-S (PyTorch) | Turkish Foods (Custom) | Fotoğraftan yemek tanıma ve besin değeri (Kalori, P, Y, K) tahmini. |
+| **Küfür/Argo Filtresi** | FastText + Custom Blacklist | Turkish Profanity Dataset | Blog ve yorumlardaki uygunsuz içeriklerin otomatik temizlenmesi. |
+| **Başlık Önerisi** | Fine-tuned GPT-2 Turkish | Blog & News Titles | İçeriğe göre dikkat çekici ve kategori uyumlu başlık üretimi. |
+| **Motivasyon Tahmini** | RandomForestClassifier | Player Archetypes Data | Oyuncu davranışına göre dinamik motivasyon mesajları seçimi. |
+| **Oyun Analizörü** | KMeans + Linear Regression | Gameplay Stats | Oyuncu segmentasyonu ve performans trendi (gelişim) analizi. |
+| **Alışveriş Önerisi** | FP-Growth + TF-IDF Hybrid | Market Basket Analysis Data | "Birlikte alınanlar" ve stok yenileme (replenishment) tahmini. |
+| **Sesli Komut (STT)** | OpenAI Whisper / Wav2Vec2 | Common Voice Turkish | Sesli girdilerin metne ve uygulama komutlarına dönüştürülmesi. |
+
+---
+
+### Detaylı Model İncelemesi
+
+#### 1. Sağlık & Diyet (Health Module)
+- **Model:** `RandomForest` öğün tipi (Kahvaltı, Öğle vb.) sınıflandırması yaparken, `Cosine Similarity` kullanıcının hedef kalorisine ve makro oranlarına en yakın tarifleri veritabanından eşleştirir.
+- **Dataset:** shuyangli94 tarafından paylaşılan 230.000+ tarif içeren Food.com veri seti kullanılmıştır.
+
+#### 2. Finans & Yatırım (Finance Module)
+- **Model:** Hibrit bir yapı kullanılır. `KMeans` kümeleme ile kullanıcının harcama ve birikim alışkanlıklarından "Muhafazakar", "Dengeli" veya "Agresif" risk profili çıkarılır. `SVD` (Singular Value Decomposition) ise benzer yatırımcıların tercihlerine göre varlık önerir.
+
+#### 3. Görsel Yemek Analizi (CV Module)
+- **Model:** `EfficientNetV2-S` mimarisi üzerine inşa edilmiş çok görevli (multi-task) bir modeldir. Hem yemeğin kategorisini sınıflandırır hem de regresyon katmanı ile besin değerlerini tahmin eder.
+- **Dataset:** Türkiye mutfağına özgü 150 farklı yemek kategorisinden oluşan özel bir veri seti ile eğitilmiştir.
+
+#### 4. Blog & İçerik Güvenliği (Social Module)
+- **Model:** `GPT-2 Turkish` modeli, blog içeriklerinden anlamlı başlıklar türetmek için fine-tune edilmiştir. Argo filtresinde ise kelime gömmeleri (embeddings) kullanılarak sadece kelime eşleşmesi değil, anlamsal benzerlik de denetlenir.

@@ -27,12 +27,10 @@ public class FirebaseConfig {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
                 if (configPath == null || configPath.isEmpty()) {
-                    logger.warn("Firebase yapılandırma yolu belirtilmemiş. Bildirimler çalışmayabilir.");
                     return;
                 }
 
                 if (!Files.exists(Paths.get(configPath))) {
-                    logger.error("Firebase JSON dosyası bulunamadı: {}. Lütfen .env dosyasını kontrol edin.", configPath);
                     return;
                 }
 
